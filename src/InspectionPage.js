@@ -5,6 +5,7 @@ import { MOCK_QUESTIONS } from './data';
 import { submitInspection } from './api';
 
 const InspectionPage = () => {
+    // storing all answers here
     const [answers, setAnswers] = useState({});
     const [activeQuestion, setActiveQuestion] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -12,6 +13,8 @@ const InspectionPage = () => {
 
     const handleAnswerChange = (question, value) => {
         setStatus({ type: '', message: '' });
+
+        // if NO is selected, show modal
         if (value === 'NO') {
             setActiveQuestion(question);
         } else {
@@ -27,6 +30,7 @@ const InspectionPage = () => {
         }
     };
 
+    // this runs when modal is done
     const handleModalDone = (data) => {
         setAnswers(prev => ({
             ...prev,
@@ -43,6 +47,8 @@ const InspectionPage = () => {
 
     const handleSubmit = async () => {
         const answerList = Object.values(answers);
+
+        // basic validation
         if (answerList.length === 0) {
             setStatus({ type: 'error', message: "Please answer at least one question" });
             return;
@@ -50,6 +56,7 @@ const InspectionPage = () => {
 
         setIsSubmitting(true);
         setStatus({ type: '', message: '' });
+
         try {
             await submitInspection(answerList);
             setStatus({ type: 'success', message: "Inspection submitted successfully!" });
@@ -61,7 +68,7 @@ const InspectionPage = () => {
         }
     };
 
-    // Grouping questions by section
+    // grouping questions by section name
     const sections = MOCK_QUESTIONS.reduce((acc, q) => {
         if (!acc[q.sectionName]) acc[q.sectionName] = [];
         acc[q.sectionName].push(q);

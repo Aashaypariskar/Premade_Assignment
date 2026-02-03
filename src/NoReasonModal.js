@@ -12,15 +12,18 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
         setSelectedReasons(prev =>
             isSelecting ? [...prev, reason] : prev.filter(r => r !== reason)
         );
+        // clear error if they select something
         if (isSelecting) setError('');
     };
 
     const handleImageUpload = (e) => {
         const files = Array.from(e.target.files);
+        // just saving file names for mock
         setImages(prev => [...prev, ...files.map(f => f.name)]);
     };
 
     const handleDone = () => {
+        // mandatory reason check
         if (selectedReasons.length === 0) {
             setError("Please select at least one reason to continue.");
             return;
