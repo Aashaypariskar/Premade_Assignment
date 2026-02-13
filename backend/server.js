@@ -46,7 +46,7 @@ sequelize.authenticate()
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`--- BACKEND IS LIVE ---`);
             console.log(`Listening on http://localhost:${PORT}`);
-            console.log(`Or http://192.168.31.188:${PORT} (for mobile)`);
+            console.log(`Or http://10.236.52.56:${PORT} (for mobile)`);
         });
     })
     .catch(err => {
