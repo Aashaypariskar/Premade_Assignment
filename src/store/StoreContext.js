@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const StoreContext = createContext();
 
 export const StoreProvider = ({ children }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
     const [draft, setDraft] = useState({
         train: null,
         coach: null,
@@ -37,6 +38,8 @@ export const StoreProvider = ({ children }) => {
             if (saved) setDraft(JSON.parse(saved));
         } catch (e) {
             console.error('Draft load failed:', e);
+        } finally {
+            setIsLoaded(true);
         }
     };
 
@@ -46,7 +49,7 @@ export const StoreProvider = ({ children }) => {
     };
 
     return (
-        <StoreContext.Provider value={{ draft, setDraft, clearDraft, loadDraft }}>
+        <StoreContext.Provider value={{ draft, setDraft, clearDraft, loadDraft, isLoaded }}>
             {children}
         </StoreContext.Provider>
     );
