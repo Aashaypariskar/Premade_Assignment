@@ -49,6 +49,18 @@ exports.getQuestions = async (req, res) => {
     }
 };
 
+// GET /activities?category_id=X
+exports.getActivities = async (req, res) => {
+    try {
+        const { category_id } = req.query;
+        const filter = category_id ? { where: { category_id } } : {};
+        const activities = await Activity.findAll(filter);
+        res.json(activities);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // POST /inspection/submit
 exports.submitInspection = async (req, res) => {
     try {

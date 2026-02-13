@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, Alert, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
+// This modal opens up when student/engineer selects "NO" as an answer
 const NoReasonModal = ({ question, onDone, onCancel }) => {
     const [selectedReasons, setSelectedReasons] = useState([]);
     const [remarks, setRemarks] = useState('');
@@ -11,19 +12,19 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
     const REASONS = ['Dirty', 'Broken', 'Dented', 'Missing', 'Loose'];
 
     const toggleReason = (reason) => {
-        const isSelected = selectedReasons.includes(reason);
-        const next = isSelected
-            ? selectedReasons.filter(r => r !== reason)
-            : [...selectedReasons, reason];
-        setSelectedReasons(next);
-        if (next.length > 0) setError('');
+        if (selectedReasons.includes(reason)) {
+            setSelectedReasons(selectedReasons.filter(r => r !== reason));
+        } else {
+            setSelectedReasons([...selectedReasons, reason]);
+            setError(''); // clear error if user picked something
+        }
     };
 
     const pickImage = async () => {
-        // request permissions
+        // Checking for camera permission first
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Sorry, we need camera permissions to make this work!');
+            Alert.alert('No Access', 'We need camera permission to attach photo!');
             return;
         }
 
@@ -40,63 +41,67 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
     };
 
     const handleDone = () => {
+        // Simple validation
         if (selectedReasons.length === 0) {
-            setError('Please select at least one reason');
+            setError('Select at least one reason boss');
             return;
         }
         if (!image) {
-            setError('Image is mandatory for "NO" answers');
+            setError('Photo is mandatory for NO answers');
             return;
         }
-        onDone({ selectedReasons, remarks, image_uri: image });
+
+        onDone({
+            reasons: selectedReasons,
+            remarks,
+            image_path: image
+        });
     };
 
     return (
-        <Modal transparent visible animationType="slide">
+        <Modal transparent visible animationType="fade">
             <View style={styles.overlay}>
-                <View style={styles.content}>
-                    <Text style={styles.title}>Audit: {question.text}</Text>
+                <View style={styles.box}>
+                    <Text style={styles.qText}>{question.text}</Text>
 
-                    {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                    {error ? <Text style={styles.redText}>{error}</Text> : null}
 
                     <Text style={styles.label}>Select Reasons:</Text>
-                    <View style={styles.reasonsGrid}>
-                        {REASONS.map(reason => (
+                    <View style={styles.row}>
+                        {REASONS.map(r => (
                             <TouchableOpacity
-                                key={reason}
-                                style={[styles.chip, selectedReasons.includes(reason) && styles.chipActive]}
-                                onPress={() => toggleReason(reason)}
+                                key={r}
+                                style={[styles.tag, selectedReasons.includes(r) && styles.tagActive]}
+                                onPress={() => toggleReason(r)}
                             >
-                                <Text style={[styles.chipText, selectedReasons.includes(reason) && styles.chipTextActive]}>
-                                    {reason}
-                                </Text>
+                                <Text style={{ color: selectedReasons.includes(r) ? '#fff' : '#000' }}>{r}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
 
                     <TextInput
-                        style={styles.input}
-                        placeholder="Enter remarks (optional)..."
+                        style={styles.textArea}
+                        placeholder="Write remarks here..."
                         value={remarks}
                         onChangeText={setRemarks}
                         multiline
                     />
 
-                    <View style={styles.imageSection}>
-                        <TouchableOpacity style={styles.imgBtn} onPress={pickImage}>
-                            <Text style={styles.imgBtnText}>{image ? 'Change Image' : 'Capture Image'}</Text>
+                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                        <TouchableOpacity style={styles.camBtn} onPress={pickImage}>
+                            <Text>{image ? 'Change Photo' : 'Take Photo'}</Text>
                         </TouchableOpacity>
                         {image && (
-                            <Image source={{ uri: image }} style={styles.preview} />
+                            <Image source={{ uri: image }} style={styles.img} />
                         )}
                     </View>
 
-                    <View style={styles.footer}>
-                        <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
-                            <Text style={styles.cancelBtnText}>Cancel</Text>
+                    <View style={styles.btns}>
+                        <TouchableOpacity style={styles.btn1} onPress={onCancel}>
+                            <Text>Cancel</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
-                            <Text style={styles.doneBtnText}>Done</Text>
+                        <TouchableOpacity style={styles.btn2} onPress={handleDone}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -106,26 +111,20 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
 };
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    content: { backgroundColor: '#fff', borderRadius: 12, padding: 20 },
-    title: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#1e293b' },
-    label: { fontSize: 14, fontWeight: '600', marginBottom: 10, color: '#64748b' },
-    errorText: { color: '#ef4444', marginBottom: 10, fontSize: 13 },
-    reasonsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
-    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' },
-    chipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-    chipText: { fontSize: 12, color: '#475569' },
-    chipTextActive: { color: '#fff' },
-    input: { height: 80, backgroundColor: '#f8fafc', borderRadius: 8, padding: 12, textAlignVertical: 'top', borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 20 },
-    imageSection: { marginBottom: 20, alignItems: 'center' },
-    imgBtn: { backgroundColor: '#f1f5f9', padding: 12, borderRadius: 8, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1' },
-    imgBtnText: { color: '#475569', fontWeight: '500' },
-    preview: { width: 100, height: 100, borderRadius: 8, marginTop: 10 },
-    footer: { flexDirection: 'row', justifyContent: 'flex-end' },
-    cancelBtn: { padding: 12, marginRight: 10 },
-    cancelBtnText: { color: '#64748b', fontWeight: '500' },
-    doneBtn: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
-    doneBtnText: { color: '#fff', fontWeight: 'bold' }
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 25 },
+    box: { backgroundColor: '#fff', borderRadius: 10, padding: 20 },
+    qText: { fontSize: 17, marginBottom: 20 },
+    label: { fontWeight: 'bold', marginBottom: 10 },
+    redText: { color: 'red', marginBottom: 10, fontSize: 13 },
+    row: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 15 },
+    tag: { padding: 8, backgroundColor: '#eee', marginRight: 8, marginBottom: 8, borderRadius: 5 },
+    tagActive: { backgroundColor: '#2563eb' },
+    textArea: { height: 60, backgroundColor: '#f9f9f9', padding: 10, borderRadius: 5, marginBottom: 15, textAlignVertical: 'top' },
+    camBtn: { padding: 10, backgroundColor: '#e2e8f0', borderRadius: 5, width: '100%', alignItems: 'center' },
+    img: { width: 80, height: 80, marginTop: 10, borderRadius: 5 },
+    btns: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
+    btn1: { padding: 12, marginRight: 10 },
+    btn2: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 5 }
 });
 
 export default NoReasonModal;

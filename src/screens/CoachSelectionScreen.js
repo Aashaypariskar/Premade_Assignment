@@ -1,33 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { getCoaches } from '../services/apiIntegration';
 
-const CoachSelection = ({ route, navigation }) => {
+const CoachSelectionScreen = ({ route, navigation }) => {
     const { trainId, trainName } = route.params;
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchCoaches();
-    }, [trainId]);
+    }, []);
 
     const fetchCoaches = async () => {
         try {
             const data = await getCoaches(trainId);
             setCoaches(data);
-        } catch (error) {
-            console.error('Error fetching coaches:', error);
+        } catch (err) {
+            console.log('Coach fetch failed:', err);
+            Alert.alert('Error', 'Could not get coaches.');
         } finally {
             setLoading(false);
         }
     };
 
-    const renderItem = ({ item }) => (
+    const renderCoach = ({ item }) => (
         <TouchableOpacity
-            style={styles.card}
-            onPress={() => navigation.navigate('CategorySelection', { trainId, coachId: item.id, coachNumber: item.coach_number })}
+            style={styles.coachItem}
+            onPress={() => navigation.navigate('CategorySelection', {
+                trainId,
+                coachId: item.id,
+                coachNumber: item.coach_number
+            })}
         >
-            <Text style={styles.coachNumber}>Coach: {item.coach_number}</Text>
+            <Text style={styles.coachText}>Coach: {item.coach_number}</Text>
         </TouchableOpacity>
     );
 
@@ -35,26 +40,32 @@ const CoachSelection = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>{trainName}</Text>
-            <Text style={styles.subHeader}>Select Coach</Text>
+            <Text style={styles.info}>{trainName}</Text>
+            <Text style={styles.title}>Select Coach</Text>
             <FlatList
                 data={coaches}
-                keyExtractor={item => item.id.toString()}
-                renderItem={renderItem}
-                contentContainerStyle={styles.list}
+                renderItem={renderCoach}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={{ paddingBottom: 20 }}
             />
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', padding: 16 },
-    header: { fontSize: 18, color: '#64748b' },
-    subHeader: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#1e293b' },
-    list: { paddingBottom: 20 },
-    card: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2 },
-    coachNumber: { fontSize: 16, fontWeight: '600', color: '#334155' },
+    container: { flex: 1, backgroundColor: '#fff', padding: 20 },
+    info: { color: '#666', marginBottom: 5 },
+    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
+    coachItem: {
+        padding: 15,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 8,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#eee'
+    },
+    coachText: { fontSize: 18, textAlign: 'center' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 
-export default CoachSelection;
+export default CoachSelectionScreen;

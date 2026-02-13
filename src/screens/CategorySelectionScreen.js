@@ -1,60 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { getCategories } from '../services/apiIntegration';
 
-const CategorySelection = ({ route, navigation }) => {
+const CategorySelectionScreen = ({ route, navigation }) => {
     const { trainId, coachId, coachNumber } = route.params;
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchCategories();
-    }, [coachId]);
+        loadCategories();
+    }, []);
 
-    const fetchCategories = async () => {
+    const loadCategories = async () => {
         try {
             const data = await getCategories(coachId);
             setCategories(data);
-        } catch (error) {
-            console.error('Error fetching categories:', error);
+        } catch (err) {
+            console.log('Cat fetch failed:', err);
+            Alert.alert('Error', 'Could not get categories.');
         } finally {
             setLoading(false);
         }
     };
 
-    const renderItem = ({ item }) => (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() => navigation.navigate('ActivitySelection', { trainId, coachId, coachNumber, categoryId: item.id, categoryName: item.name })}
-        >
-            <Text style={styles.catName}>{item.name}</Text>
-        </TouchableOpacity>
-    );
+    const handleSelect = (cat) => {
+        navigation.navigate('ActivitySelection', {
+            trainId,
+            coachId,
+            coachNumber,
+            categoryId: cat.id,
+            categoryName: cat.name
+        });
+    };
 
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Coach {coachNumber}</Text>
-            <Text style={styles.subHeader}>Select area to inspect</Text>
+            <Text style={styles.topInfo}>Coach: {coachNumber}</Text>
+            <Text style={styles.title}>What to Inspect?</Text>
             <FlatList
                 data={categories}
-                keyExtractor={item => item.id.toString()}
-                renderItem={renderItem}
-                contentContainerStyle={styles.list}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.categoryCard} onPress={() => handleSelect(item)}>
+                        <Text style={styles.categoryText}>{item.name}</Text>
+                    </TouchableOpacity>
+                )}
             />
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', padding: 16 },
-    header: { fontSize: 18, color: '#64748b' },
-    subHeader: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#1e293b' },
-    list: { paddingBottom: 20 },
-    card: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2 },
-    catName: { fontSize: 16, fontWeight: '600', color: '#334155' },
+    container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
+    topInfo: { color: '#666', fontSize: 13 },
+    title: { fontSize: 24, fontWeight: 'bold', marginVertical: 15 },
+    categoryCard: {
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 10,
+        marginBottom: 10,
+        elevation: 2,
+        borderLeftWidth: 5,
+        borderLeftColor: '#2563eb'
+    },
+    categoryText: { fontSize: 18, fontWeight: '500' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 
-export default CategorySelection;
+export default CategorySelectionScreen;

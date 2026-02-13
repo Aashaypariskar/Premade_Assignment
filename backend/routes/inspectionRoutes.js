@@ -6,6 +6,7 @@ router.get('/trains', controller.getTrains);
 router.get('/coaches', controller.getCoaches);
 router.get('/categories', controller.getCategories);
 router.get('/questions', controller.getQuestions);
+router.get('/activities', controller.getActivities);
 router.post('/submit', controller.submitInspection);
 
 module.exports = router;

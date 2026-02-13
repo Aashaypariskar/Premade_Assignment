@@ -1,17 +1,21 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
 
-// For Android Emulator, use 10.0.2.2. For physical devices, use your computer's IP.
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000/api' : 'http://localhost:3000/api';
+const BASE_URL = 'http://192.168.31.188:3000/api';
 
 const api = axios.create({
     baseURL: BASE_URL,
-    timeout: 10000,
+    timeout: 5000,
 });
 
 export const getTrains = async () => {
-    const res = await api.get('/trains');
-    return res.data;
+    try {
+        const res = await api.get('/trains');
+        console.log("Trains:", res.data);
+        return res.data;
+    } catch (err) {
+        console.log("API Error:", err);
+        return [];
+    }
 };
 
 export const getCoaches = async (trainId) => {
@@ -21,6 +25,11 @@ export const getCoaches = async (trainId) => {
 
 export const getCategories = async (coachId) => {
     const res = await api.get(`/categories?coach_id=${coachId}`);
+    return res.data;
+};
+
+export const getActivities = async (categoryId) => {
+    const res = await api.get(`/activities?category_id=${categoryId}`);
     return res.data;
 };
 
