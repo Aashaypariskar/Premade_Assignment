@@ -11,6 +11,7 @@ const Coach = sequelize.define('Coach', {
 }, { tableName: 'coaches', timestamps: false });
 
 const Category = sequelize.define('Category', {
+    coach_id: { type: DataTypes.INTEGER, allowNull: false },
     name: { type: DataTypes.STRING, allowNull: false }
 }, { tableName: 'categories', timestamps: false });
 
@@ -32,6 +33,9 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
 // Associations
 Train.hasMany(Coach, { foreignKey: 'train_id' });
 Coach.belongsTo(Train, { foreignKey: 'train_id' });
+
+Coach.hasMany(Category, { foreignKey: 'coach_id' });
+Category.belongsTo(Coach, { foreignKey: 'coach_id' });
 
 Category.hasMany(Activity, { foreignKey: 'category_id' });
 Activity.belongsTo(Category, { foreignKey: 'category_id' });

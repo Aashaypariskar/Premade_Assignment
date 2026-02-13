@@ -21,10 +21,12 @@ exports.getCoaches = async (req, res) => {
     }
 };
 
-// GET /categories
+// GET /categories?coach_id=X
 exports.getCategories = async (req, res) => {
     try {
-        const categories = await Category.findAll();
+        const { coach_id } = req.query;
+        const filter = coach_id ? { where: { coach_id } } : {};
+        const categories = await Category.findAll(filter);
         res.json(categories);
     } catch (err) {
         res.status(500).json({ error: err.message });
