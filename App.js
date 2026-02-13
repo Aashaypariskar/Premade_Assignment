@@ -1,23 +1,16 @@
 import React from 'react';
-// import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
-// import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 
-// Mocking NavigationContainer for the structure
-const NavigationContainer = ({ children }) => <div className="nav-container">{children}</div>;
-
-const App = () => {
+export default function App() {
     return (
-        <NavigationContainer>
-            <AppNavigator />
-        </NavigationContainer>
+        <SafeAreaProvider>
+            <NavigationContainer>
+                <AppNavigator />
+                <StatusBar style="light" />
+            </NavigationContainer>
+        </SafeAreaProvider>
     );
-};
-
-/*
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f8fafc' },
-});
-*/
-
-export default App;
+}

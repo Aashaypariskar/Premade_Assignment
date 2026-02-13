@@ -1,27 +1,29 @@
 import React from 'react';
-// In a real development environment, we'd import { createStackNavigator } from '@react-navigation/stack';
-// For this conversion, I'm defining the structure and flow.
+import { createStackNavigator } from '@react-navigation/stack';
 
-import TrainListScreen from '../screens/TrainListScreen';
-import CoachListScreen from '../screens/CoachListScreen';
-import CategoryScreen from '../screens/CategoryScreen';
-import ActivityScreen from '../screens/ActivityScreen';
+import TrainSelection from '../screens/TrainSelection';
+import CoachSelection from '../screens/CoachSelection';
+import CategorySelection from '../screens/CategorySelection';
+import ActivitySelection from '../screens/ActivitySelection';
 import QuestionsScreen from '../screens/QuestionsScreen';
 
-// Mocking the Stack for the sake of the exercise flow
-const Stack = {
-    Navigator: ({ children }) => <>{children}</>,
-    Screen: () => null,
-};
+const Stack = createStackNavigator();
 
 const AppNavigator = () => {
     return (
-        <Stack.Navigator initialRouteName="TrainList">
-            <Stack.Screen name="TrainList" component={TrainListScreen} options={{ title: 'Select Train' }} />
-            <Stack.Screen name="CoachList" component={CoachListScreen} options={{ title: 'Select Coach' }} />
-            <Stack.Screen name="Category" component={CategoryScreen} options={{ title: 'Select Category' }} />
-            <Stack.Screen name="Activity" component={ActivityScreen} options={{ title: 'Select Activity' }} />
-            <Stack.Screen name="Questions" component={QuestionsScreen} options={{ title: 'Inspection' }} />
+        <Stack.Navigator
+            initialRouteName="TrainSelection"
+            screenOptions={{
+                headerStyle: { backgroundColor: '#2563eb' },
+                headerTintColor: '#fff',
+                headerTitleStyle: { fontWeight: 'bold' },
+            }}
+        >
+            <Stack.Screen name="TrainSelection" component={TrainSelection} options={{ title: 'Select Train' }} />
+            <Stack.Screen name="CoachSelection" component={CoachSelection} options={{ title: 'Select Coach' }} />
+            <Stack.Screen name="CategorySelection" component={CategorySelection} options={{ title: 'Area Selection' }} />
+            <Stack.Screen name="ActivitySelection" component={ActivitySelection} options={{ title: 'Activity Type' }} />
+            <Stack.Screen name="QuestionsScreen" component={QuestionsScreen} options={{ title: 'Inspection Checklist' }} />
         </Stack.Navigator>
     );
 };
