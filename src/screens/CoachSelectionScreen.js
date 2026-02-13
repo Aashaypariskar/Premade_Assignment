@@ -1,38 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { getCoaches } from '../services/apiIntegration';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { getCoaches } from '../api/api';
+import { useStore } from '../store/StoreContext';
 
+/**
+ * Modern Coach Selection Screen
+ * Features 2-column grid layout with select indicators
+ */
 const CoachSelectionScreen = ({ route, navigation }) => {
     const { trainId, trainName } = route.params;
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { setDraft } = useStore();
 
     useEffect(() => {
-        fetchCoaches();
+        loadData();
     }, []);
 
-    const fetchCoaches = async () => {
+    const loadData = async () => {
         try {
             const data = await getCoaches(trainId);
             setCoaches(data);
-        } catch (err) {
-            console.log('Coach fetch failed:', err);
-            Alert.alert('Error', 'Could not get coaches.');
+        } catch (e) {
+            console.log(e);
         } finally {
             setLoading(false);
         }
     };
 
-    const renderCoach = ({ item }) => (
-        <TouchableOpacity
-            style={styles.coachItem}
-            onPress={() => navigation.navigate('CategorySelection', {
-                trainId,
-                coachId: item.id,
-                coachNumber: item.coach_number
-            })}
-        >
-            <Text style={styles.coachText}>Coach: {item.coach_number}</Text>
+    const handleSelect = (item) => {
+        setDraft(prev => ({ ...prev, coach: item }));
+        navigation.navigate('CategorySelection', { coachId: item.id, coachNumber: item.coach_number });
+    };
+
+    const renderItem = ({ item }) => (
+        <TouchableOpacity style={styles.gridItem} onPress={() => handleSelect(item)} activeOpacity={0.7}>
+            <View style={styles.coachCard}>
+                <Text style={styles.coachIcon}>🚃</Text>
+                <Text style={styles.coachNum}>{item.coach_number}</Text>
+                <Text style={styles.type}>Sleeper/AC</Text>
+            </View>
         </TouchableOpacity>
     );
 
@@ -40,31 +47,45 @@ const CoachSelectionScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.info}>{trainName}</Text>
-            <Text style={styles.title}>Select Coach</Text>
+            <View style={styles.topBar}>
+                <Text style={styles.trainName}>{trainName}</Text>
+                <Text style={styles.title}>Select Coach Plate</Text>
+            </View>
+
             <FlatList
                 data={coaches}
-                renderItem={renderCoach}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                numColumns={2}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={styles.list}
             />
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-    info: { color: '#666', marginBottom: 5 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-    coachItem: {
-        padding: 15,
-        backgroundColor: '#f0f0f0',
-        borderRadius: 8,
-        marginBottom: 10,
+    container: { flex: 1, backgroundColor: '#f8fafc' },
+    topBar: { padding: 25, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    trainName: { color: '#64748b', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
+    title: { fontSize: 22, fontWeight: 'bold', color: '#1e293b', marginTop: 4 },
+    list: { padding: 12 },
+    gridItem: { flex: 0.5, padding: 8 },
+    coachCard: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#1e293b',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
         borderWidth: 1,
-        borderColor: '#eee'
+        borderColor: '#f1f5f9'
     },
-    coachText: { fontSize: 18, textAlign: 'center' },
+    coachIcon: { fontSize: 30, marginBottom: 10 },
+    coachNum: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
+    type: { fontSize: 11, color: '#94a3b8', marginTop: 4 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 

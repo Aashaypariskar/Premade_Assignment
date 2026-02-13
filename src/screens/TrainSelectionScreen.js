@@ -1,80 +1,97 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { getTrains } from '../services/apiIntegration';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { getTrains } from '../api/api';
+import { useStore } from '../store/StoreContext';
 
+/**
+ * Modern Train Selection Screen
+ * Features premium card design and quick info badges
+ */
 const TrainSelectionScreen = ({ navigation }) => {
     const [trains, setTrains] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { setDraft } = useStore();
 
-    // loading trains on mount
     useEffect(() => {
-        loadTrains();
+        loadData();
     }, []);
 
-    const loadTrains = async () => {
+    const loadData = async () => {
         try {
             const data = await getTrains();
             setTrains(data);
-        } catch (err) {
-            console.log('Error:', err);
-            Alert.alert('Connection Error', 'Please check if server is running!');
+        } catch (e) {
+            console.log(e);
         } finally {
             setLoading(false);
         }
     };
 
-    const renderTrain = ({ item }) => (
-        <TouchableOpacity
-            style={styles.trainCard}
-            onPress={() => navigation.navigate('CoachSelection', {
-                trainId: item.id,
-                trainName: item.name
-            })}
-        >
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.number}>#{item.train_number}</Text>
+    const handleSelect = (item) => {
+        setDraft(prev => ({ ...prev, train: item }));
+        navigation.navigate('CoachSelection', { trainId: item.id, trainName: item.name });
+    };
+
+    const renderItem = ({ item }) => (
+        <TouchableOpacity style={styles.card} onPress={() => handleSelect(item)} activeOpacity={0.7}>
+            <View style={styles.iconBox}>
+                <Text style={styles.icon}>🚆</Text>
+            </View>
+            <View style={styles.info}>
+                <Text style={styles.name}>{item.name}</Text>
+                <View style={styles.badge}>
+                    <Text style={styles.badgeText}>#{item.train_number}</Text>
+                </View>
+            </View>
+            <Text style={styles.arrow}>❯</Text>
         </TouchableOpacity>
     );
 
-    if (loading) {
-        return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#2563eb" />
-                <Text style={{ marginTop: 10 }}>Loading Trains...</Text>
-            </View>
-        );
-    }
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Available Trains</Text>
+            <View style={styles.header}>
+                <Text style={styles.title}>Active Cleanliness Audit</Text>
+                <Text style={styles.subtitle}>Select a train to begin inspection</Text>
+            </View>
             <FlatList
                 data={trains}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={renderTrain}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.list}
+                showsVerticalScrollIndicator={false}
             />
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f9f9f9', padding: 15 },
-    header: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, color: '#333' },
-    list: { paddingBottom: 20 },
-    trainCard: {
+    container: { flex: 1, backgroundColor: '#f8fafc' },
+    header: { padding: 25, backgroundColor: '#2563eb', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, marginBottom: 20, elevation: 5 },
+    title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+    subtitle: { fontSize: 14, color: '#bfdbfe', marginTop: 5 },
+    list: { padding: 20 },
+    card: {
         backgroundColor: '#fff',
+        flexDirection: 'row',
+        alignItems: 'center',
         padding: 16,
-        borderRadius: 8,
-        marginBottom: 10,
+        borderRadius: 20,
+        marginBottom: 16,
         elevation: 3,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4
     },
-    name: { fontSize: 16, fontWeight: '600' },
-    number: { color: '#888', marginTop: 4, fontSize: 12 },
+    iconBox: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
+    icon: { fontSize: 24 },
+    info: { flex: 1, marginLeft: 15 },
+    name: { fontSize: 17, fontWeight: 'bold', color: '#1e293b' },
+    badge: { backgroundColor: '#f1f5f9', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
+    badgeText: { fontSize: 12, fontWeight: 'bold', color: '#64748b' },
+    arrow: { fontSize: 18, color: '#cbd5e1', fontWeight: 'bold' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 

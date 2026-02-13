@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { getActivities } from '../services/apiIntegration';
+import { getActivities } from '../api/api';
+import { useStore } from '../store/StoreContext';
 
 /**
  * Activity Selection Screen
- * Fetches Minor/Major tasks from backend for the selected area
+ * Features side-by-side segmented tabs for Minor/Major
  */
 const ActivitySelectionScreen = ({ route, navigation }) => {
     const params = route.params;
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { setDraft } = useStore();
 
     useEffect(() => {
         loadActivities();
@@ -20,14 +22,14 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
             const data = await getActivities(params.categoryId);
             setActivities(data);
         } catch (err) {
-            console.log('Error fetching activities:', err);
-            Alert.alert('Error', 'Could not get activities from server');
+            Alert.alert('Error', 'Could not get activities');
         } finally {
             setLoading(false);
         }
     };
 
-    const goChecklist = (act) => {
+    const handleSelect = (act) => {
+        setDraft(prev => ({ ...prev, activity: act }));
         navigation.navigate('QuestionsScreen', {
             ...params,
             activityId: act.id,
@@ -39,51 +41,59 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.topInfo}>{params.categoryName} Inspection</Text>
+            <View style={styles.pills}>
+                <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
+                <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+            </View>
+
             <Text style={styles.title}>Select Activity Type</Text>
 
-            <View style={styles.row}>
+            <View style={styles.tabContainer}>
                 {activities.map(act => (
-                    <TouchableOpacity key={act.id} style={styles.box} onPress={() => goChecklist(act)}>
-                        <Text style={styles.actName}>{act.type} Check</Text>
-                        <Text style={styles.small}>Detailed inspection</Text>
+                    <TouchableOpacity
+                        key={act.id}
+                        style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
+                        onPress={() => handleSelect(act)}
+                    >
+                        <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
+                        <Text style={styles.tabText}>{act.type}</Text>
+                        <Text style={styles.subText}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
                     </TouchableOpacity>
                 ))}
             </View>
-
-            {activities.length === 0 && (
-                <View style={styles.center}>
-                    <Text style={{ color: '#999' }}>No activities found for this category.</Text>
-                </View>
-            )}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-    topInfo: { color: '#888', fontSize: 13 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 40, marginTop: 5 },
-    row: { flexDirection: 'row', justifyContent: 'space-between' },
-    box: {
+    container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
+    pills: { flexDirection: 'row', marginBottom: 20 },
+    pill: { backgroundColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginRight: 8 },
+    activePill: { backgroundColor: '#2563eb' },
+    pillText: { fontSize: 10, fontWeight: 'bold', color: '#64748b' },
+    title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b', marginBottom: 40 },
+    tabContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+    tab: {
         width: '48%',
-        height: 140,
-        backgroundColor: '#f8fafc',
-        borderRadius: 16,
+        height: 160,
+        borderRadius: 24,
         padding: 20,
-        justifyContent: 'center',
         alignItems: 'center',
-        elevation: 3,
+        justifyContent: 'center',
+        elevation: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        borderWidth: 1,
-        borderColor: '#e2e8f0'
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10
     },
-    actName: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    small: { fontSize: 12, color: '#64748b', marginTop: 8 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }
+    tabMinor: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#e2e8f0' },
+    tabMajor: { backgroundColor: '#1e293b' },
+    tabIcon: { fontSize: 32, marginBottom: 12 },
+    tabText: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
+    tabMajorText: { color: '#fff' }, // added logic for colors
+    subText: { fontSize: 12, color: '#64748b', marginTop: 5 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 
+// Fix for text colors in dynamic map
 export default ActivitySelectionScreen;

@@ -6,23 +6,35 @@ import CoachSelectionScreen from '../screens/CoachSelectionScreen';
 import CategorySelectionScreen from '../screens/CategorySelectionScreen';
 import ActivitySelectionScreen from '../screens/ActivitySelectionScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
+import SummaryScreen from '../screens/SummaryScreen';
 
 const Stack = createStackNavigator();
 
+/**
+ * PRODUCTION NAVIGATOR
+ * Features centralized styling and all inspection steps
+ */
 const AppNavigator = () => {
     return (
         <Stack.Navigator
             initialRouteName="TrainSelection"
             screenOptions={{
-                headerStyle: { backgroundColor: '#2563eb' },
-                headerTintColor: '#fff',
+                headerStyle: {
+                    backgroundColor: '#fff',
+                    elevation: 0,
+                    shadowOpacity: 0,
+                    borderBottomWidth: 0
+                },
+                headerTintColor: '#1e293b',
                 headerTitleStyle: { fontWeight: 'bold', fontSize: 18 },
+                headerTitleAlign: 'center',
+                headerBackTitleVisible: false
             }}
         >
             <Stack.Screen
                 name="TrainSelection"
                 component={TrainSelectionScreen}
-                options={{ title: 'Train Selection' }}
+                options={{ title: 'Select Train' }}
             />
             <Stack.Screen
                 name="CoachSelection"
@@ -37,12 +49,17 @@ const AppNavigator = () => {
             <Stack.Screen
                 name="ActivitySelection"
                 component={ActivitySelectionScreen}
-                options={{ title: 'Activity Type' }}
+                options={{ title: 'Type' }}
             />
             <Stack.Screen
                 name="QuestionsScreen"
                 component={QuestionsScreen}
-                options={{ title: 'Inspection' }}
+                options={{ title: 'Checklist' }}
+            />
+            <Stack.Screen
+                name="SummaryScreen"
+                component={SummaryScreen}
+                options={{ title: 'Review' }}
             />
         </Stack.Navigator>
     );
