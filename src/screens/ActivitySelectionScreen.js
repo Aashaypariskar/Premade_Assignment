@@ -56,8 +56,8 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                         onPress={() => handleSelect(act)}
                     >
                         <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
-                        <Text style={styles.tabText}>{act.type}</Text>
-                        <Text style={styles.subText}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
+                        <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
+                        <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
                     </TouchableOpacity>
                 ))}
             </View>

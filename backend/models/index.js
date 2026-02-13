@@ -27,7 +27,12 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     answer: { type: DataTypes.ENUM('YES', 'NO', 'NA'), allowNull: false },
     reasons: { type: DataTypes.JSON },
     remarks: { type: DataTypes.TEXT },
-    image_path: { type: DataTypes.STRING }
+    image_path: { type: DataTypes.STRING },
+    // Snapshot Fields
+    train_number: { type: DataTypes.STRING(50) },
+    coach_number: { type: DataTypes.STRING(50) },
+    category_name: { type: DataTypes.STRING(100) },
+    activity_type: { type: DataTypes.ENUM('Minor', 'Major') }
 }, { tableName: 'inspection_answers', updatedAt: false });
 
 // Associations

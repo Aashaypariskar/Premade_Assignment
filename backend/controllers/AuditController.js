@@ -1,8 +1,8 @@
-const { Train, Coach, Category, Activity, Question, InspectionAnswer } = require('../models');
+const { Train, Coach, Category, Activity, Question, InspectionAnswer, sequelize } = require('../models');
 
 /**
- * PRODUCTION READY CONTROLLER
- * Includes robust existence checks and error handling
+ * AuditController - Handles all business logic for Train Inspections.
+ * Manages master data retrieval and transactional audit saves.
  */
 
 // GET /trains
@@ -80,6 +80,7 @@ exports.getQuestions = async (req, res) => {
 
 // POST /inspection/submit
 exports.submitInspection = async (req, res) => {
+    const transaction = await sequelize.transaction();
     try {
         const { train_id, coach_id, activity_id, answers } = req.body;
 
@@ -87,8 +88,30 @@ exports.submitInspection = async (req, res) => {
             return res.status(400).json({ error: 'Invalid submission format' });
         }
 
-        const results = await Promise.all(answers.map(ans =>
-            InspectionAnswer.create({
+        // 1. Fetch Master Data for Snapshots
+        const [train, coach, activity] = await Promise.all([
+            Train.findByPk(train_id),
+            Coach.findByPk(coach_id),
+            Activity.findByPk(activity_id, { include: [Category] })
+        ]);
+
+        if (!train || !coach || !activity) {
+            await transaction.rollback();
+            return res.status(404).json({ error: 'One or more master records not found' });
+        }
+
+        // 2. Validate Answers & Prepare Payload
+        const processedAnswers = answers.map(ans => {
+            // Validation: Negative findings require reasons and image
+            if (ans.answer === 'NO') {
+                const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
+                const hasImage = !!ans.image_path;
+                if (!hasReasons || !hasImage) {
+                    throw new Error(`Validation Failed: Question ID ${ans.question_id} requires reasons and an image.`);
+                }
+            }
+
+            return {
                 train_id,
                 coach_id,
                 activity_id,
@@ -96,17 +119,34 @@ exports.submitInspection = async (req, res) => {
                 answer: ans.answer,
                 reasons: ans.reasons,
                 remarks: ans.remarks,
-                image_path: ans.image_path
-            })
-        ));
+                image_path: ans.image_path,
+                // Enterprise Snapshots
+                train_number: train.train_number,
+                coach_number: coach.coach_number,
+                category_name: activity.Category?.name || 'Unknown',
+                activity_type: activity.type
+            };
+        });
+
+        // 3. Optimized Bulk Insert
+        const results = await InspectionAnswer.bulkCreate(processedAnswers, { transaction });
+
+        await transaction.commit();
 
         res.status(201).json({
             success: true,
-            message: 'Inspection synchronized successfully',
+            message: 'Audit records persisted with enterprise snapshots',
             recordsSaved: results.length
         });
+
     } catch (err) {
-        console.error('Submit Error:', err);
-        res.status(500).json({ error: 'Critical failure during data synchronization' });
+        if (transaction) await transaction.rollback();
+        console.error('Submit Error:', err.message);
+
+        if (err.message.includes('Validation Failed')) {
+            return res.status(400).json({ error: err.message });
+        }
+
+        res.status(500).json({ error: 'Critical failure during data persistence' });
     }
 };

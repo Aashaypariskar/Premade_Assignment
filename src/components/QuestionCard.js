@@ -11,7 +11,10 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
     const REASONS = ['Dirty', 'Broken', 'Dented', 'Missing', 'Loose'];
 
     const setAnswer = (val) => {
-        onUpdate({ ...answerData, answer: val });
+        const current = answerData?.answer;
+        // If same value, set to null (toggle off)
+        const next = current === val ? null : val;
+        onUpdate({ ...answerData, answer: next });
     };
 
     const toggleReason = (reason) => {
