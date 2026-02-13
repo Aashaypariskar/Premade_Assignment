@@ -33,16 +33,24 @@ exports.getCategories = async (req, res) => {
     }
 };
 
-// GET /questions?activity_type= (Minor/Major)
+// GET /questions?activity_type=Minor&category_id=X
 exports.getQuestions = async (req, res) => {
     try {
-        const { activity_type } = req.query;
-        const questions = await Question.findAll({
-            include: [{
-                model: Activity,
-                where: { type: activity_type }
-            }]
+        const { activity_type, category_id } = req.query;
+
+        // Find activity first for cleaner mapping
+        const activity = await Activity.findOne({
+            where: { type: activity_type, category_id: category_id }
         });
+
+        if (!activity) {
+            return res.status(404).json({ error: 'Activity not found for this category' });
+        }
+
+        const questions = await Question.findAll({
+            where: { activity_id: activity.id }
+        });
+
         res.json(questions);
     } catch (err) {
         res.status(500).json({ error: err.message });

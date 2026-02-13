@@ -21,7 +21,7 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     const fetchQuestions = async () => {
         try {
-            const data = await getQuestions(params.activityType);
+            const data = await getQuestions(params.activityType, params.categoryId);
             setQuestions(data);
         } catch (error) {
             console.log('Error getting questions:', error);
@@ -97,14 +97,17 @@ const QuestionsScreen = ({ route, navigation }) => {
                 {questions.map((q, idx) => (
                     <View key={q.id} style={styles.card}>
                         <Text style={styles.qText}>{idx + 1}. {q.text}</Text>
-                        <View style={styles.btnRow}>
-                            {['YES', 'NO', 'NA'].map(opt => (
+                        <View style={styles.toggleRow}>
+                            {['YES', 'NO'].map(opt => (
                                 <TouchableOpacity
                                     key={opt}
-                                    style={[styles.optBtn, answers[q.id]?.answer === opt && styles.optBtnActive]}
+                                    style={[
+                                        styles.toggleBtn,
+                                        answers[q.id]?.answer === opt && (opt === 'YES' ? styles.btnYes : styles.btnNo)
+                                    ]}
                                     onPress={() => handleAnswer(q, opt)}
                                 >
-                                    <Text style={[styles.optText, answers[q.id]?.answer === opt && styles.optTextActive]}>{opt}</Text>
+                                    <Text style={[styles.toggleText, answers[q.id]?.answer === opt && styles.textActive]}>{opt}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -136,17 +139,18 @@ const styles = StyleSheet.create({
     header: { padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#ddd' },
     title: { fontSize: 18, fontWeight: 'bold' },
     details: { fontSize: 14, color: '#666' },
-    list: { padding: 12 },
-    card: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginBottom: 12, elevation: 2 },
-    qText: { fontSize: 15, marginBottom: 12 },
-    btnRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    optBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', marginHorizontal: 4, borderRadius: 4, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ccc' },
-    optBtnActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-    optText: { fontWeight: '600', color: '#666' },
-    optTextActive: { color: '#fff' },
-    submitBtn: { margin: 16, backgroundColor: '#10b981', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-    submitBtnDisabled: { backgroundColor: '#ccc' },
-    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    list: { padding: 12, paddingBottom: 100 },
+    card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2 },
+    qText: { fontSize: 16, fontWeight: '500', color: '#334155', marginBottom: 16, lineHeight: 22 },
+    toggleRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 8, padding: 4 },
+    toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },
+    btnYes: { backgroundColor: '#10b981' },
+    btnNo: { backgroundColor: '#ef4444' },
+    toggleText: { fontWeight: '700', color: '#64748b', fontSize: 14 },
+    textActive: { color: '#fff' },
+    submitBtn: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#2563eb', paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 5 },
+    submitBtnDisabled: { backgroundColor: '#cbd5e1' },
+    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 

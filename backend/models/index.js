@@ -49,4 +49,4 @@ InspectionAnswer.belongsTo(Coach, { foreignKey: 'coach_id' });
 InspectionAnswer.belongsTo(Activity, { foreignKey: 'activity_id' });
 InspectionAnswer.belongsTo(Question, { foreignKey: 'question_id' });
 
-module.exports = { Train, Coach, Category, Activity, Question, InspectionAnswer };
+module.exports = { Train, Coach, Category, Activity, Question, InspectionAnswer, sequelize };

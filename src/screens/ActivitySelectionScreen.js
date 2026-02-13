@@ -63,23 +63,26 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff', padding: 20 },
     topInfo: { color: '#888', fontSize: 13 },
-    title: { fontSize: 22, fontWeight: 'bold', marginBottom: 30, marginTop: 5 },
-    row: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' },
+    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 40, marginTop: 5 },
+    row: { flexDirection: 'row', justifyContent: 'space-between' },
     box: {
         width: '48%',
-        height: 120,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 15,
+        height: 140,
+        backgroundColor: '#f8fafc',
+        borderRadius: 16,
+        padding: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 4,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
         borderWidth: 1,
-        borderColor: '#eee',
-        marginBottom: 15
+        borderColor: '#e2e8f0'
     },
-    actName: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-    small: { fontSize: 11, color: '#aaa', marginTop: 5 },
+    actName: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
+    small: { fontSize: 12, color: '#64748b', marginTop: 8 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }
 });
 

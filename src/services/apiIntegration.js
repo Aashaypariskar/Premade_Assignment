@@ -33,8 +33,9 @@ export const getActivities = async (categoryId) => {
     return res.data;
 };
 
-export const getQuestions = async (activityType) => {
-    const res = await api.get(`/questions?activity_type=${activityType}`);
+// Getting questions based on Minor/Major and category
+export const getQuestions = async (activityType, categoryId) => {
+    const res = await api.get(`/questions?activity_type=${activityType}&category_id=${categoryId}`);
     return res.data;
 };
 
