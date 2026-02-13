@@ -5,11 +5,11 @@ import { useStore } from '../store/StoreContext';
 import QuestionCard from '../components/QuestionCard';
 
 /**
- * Questions Checklist Screen
- * Features Progress Bar and explicit Yes/No logic
+ * Questions Checklist Screen - PRODUCTION VERSION
+ * Highly defensive code to prevent "Cannot read property of null" errors
  */
 const QuestionsScreen = ({ route, navigation }) => {
-    const params = route.params;
+    const params = route?.params || {};
     const { draft, setDraft } = useStore();
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -21,8 +21,9 @@ const QuestionsScreen = ({ route, navigation }) => {
     const fetchQuestions = async () => {
         try {
             const data = await getQuestions(params.activityType, params.categoryId);
-            setQuestions(data);
+            setQuestions(Array.isArray(data) ? data : []);
         } catch (error) {
+            console.log("Fetch Error:", error);
             Alert.alert('Network Error', 'Check if backend is running');
         } finally {
             setLoading(false);
@@ -30,28 +31,39 @@ const QuestionsScreen = ({ route, navigation }) => {
     };
 
     const updateAnswer = (qId, data) => {
+        if (!qId) return;
         setDraft(prev => ({
             ...prev,
-            answers: { ...prev.answers, [qId]: data }
+            answers: { ...(prev?.answers || {}), [qId]: data }
         }));
     };
 
-    const countCompleted = questions.filter(q => draft.answers[q.id]).length;
-    const progress = questions.length > 0 ? (countCompleted / questions.length) * 100 : 0;
-    const isDone = questions.length > 0 && countCompleted === questions.length;
+    const currentAnswers = draft?.answers || {};
+    const countCompleted = (questions || []).filter(q => q && currentAnswers[q.id]).length;
+    const totalQs = (questions || []).length;
+    const progress = totalQs > 0 ? (countCompleted / totalQs) * 100 : 0;
+    const isDone = totalQs > 0 && countCompleted === totalQs;
 
     const goSummary = () => {
         console.log('Running validation check for answers...');
-        // Only validate questions that belong to the current activity
-        const currentQIds = questions.map(q => q.id.toString());
-        const relevantAnswers = Object.entries(draft.answers).filter(([id]) => currentQIds.includes(id));
+
+        const qList = questions || [];
+        const ansMap = currentAnswers || {};
+
+        const currentQIds = qList.map(q => q?.id?.toString()).filter(Boolean);
+        const relevantAnswers = Object.entries(ansMap).filter(([id]) => currentQIds.includes(id));
 
         const invalidNo = relevantAnswers.find(([id, ans]) => {
-            const hasProblem = ans.answer === 'NO' && (!ans.reasons?.length || !ans.image_path);
+            if (!ans) return false;
+            const missingReason = !ans.reasons || ans.reasons.length === 0;
+            const missingImage = !ans.image_path;
+
+            const hasProblem = ans.answer === 'NO' && (missingReason || missingImage);
+
             if (hasProblem) {
                 console.log(`Validation failed for Q ID ${id}:`, {
                     ansType: ans.answer,
-                    reasonsCount: ans.reasons?.length,
+                    reasonsCount: ans.reasons?.length || 0,
                     hasImage: !!ans.image_path
                 });
             }
@@ -59,7 +71,18 @@ const QuestionsScreen = ({ route, navigation }) => {
         });
 
         if (invalidNo) {
-            Alert.alert('Incomplete!', 'Negative findings (NO) require both reasons and a photo.');
+            const [qId, ans] = invalidNo;
+            const qObj = qList.find(q => q?.id?.toString() === qId);
+            const qText = qObj?.text || 'Question';
+
+            let missing = [];
+            if (!ans?.reasons || ans.reasons.length === 0) missing.push('Reasons');
+            if (!ans?.image_path) missing.push('a Photo');
+
+            Alert.alert(
+                'Missing Information',
+                `Question: "${qText.substring(0, 40)}..."\n\nRequires: ${missing.join(' and ')}.`
+            );
             return;
         }
 
@@ -72,7 +95,7 @@ const QuestionsScreen = ({ route, navigation }) => {
         <View style={styles.container}>
             <View style={styles.stickyHeader}>
                 <View style={styles.progressRow}>
-                    <Text style={styles.progressText}>{countCompleted} / {questions.length} Items</Text>
+                    <Text style={styles.progressText}>{countCompleted} / {totalQs} Items</Text>
                     <Text style={styles.percent}>{Math.round(progress)}%</Text>
                 </View>
                 <View style={styles.barBg}>
@@ -81,11 +104,11 @@ const QuestionsScreen = ({ route, navigation }) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-                {questions.map((q, idx) => (
+                {(questions || []).map((q, idx) => q && (
                     <QuestionCard
-                        key={q.id}
+                        key={q.id || idx}
                         question={q}
-                        answerData={draft.answers[q.id]}
+                        answerData={currentAnswers[q.id]}
                         onUpdate={(data) => updateAnswer(q.id, data)}
                     />
                 ))}

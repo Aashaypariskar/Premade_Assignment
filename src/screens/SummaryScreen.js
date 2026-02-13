@@ -4,35 +4,46 @@ import { submitInspection } from '../api/api';
 import { useStore } from '../store/StoreContext';
 
 /**
- * Inspection Summary Screen
- * Final review of all answers before API submission
+ * Inspection Summary Screen - PRODUCTION VERSION
+ * Highly defensive code to prevent "Cannot read property of null" errors
  */
 const SummaryScreen = ({ navigation }) => {
     const { draft, clearDraft } = useStore();
     const [submitting, setSubmitting] = useState(false);
 
-    const answersList = Object.entries(draft.answers);
+    // Defensive check for draft object
+    const currentDraft = draft || {};
+    const answersList = Object.entries(currentDraft.answers || {});
+
     const counts = {
         total: answersList.length,
-        yes: answersList.filter(([_, a]) => a.answer === 'YES').length,
-        no: answersList.filter(([_, a]) => a.answer === 'NO').length,
+        yes: answersList.filter(([_, a]) => a?.answer === 'YES').length,
+        no: answersList.filter(([_, a]) => a?.answer === 'NO').length,
     };
 
     const finalSubmit = async () => {
+        if (!currentDraft.train || !currentDraft.coach) {
+            Alert.alert('Error', 'Incomplete inspection data. Please go back.');
+            return;
+        }
+
         setSubmitting(true);
         const payload = {
-            train_id: draft.train.id,
-            coach_id: draft.coach.id,
-            activity_id: draft.activity.id,
+            train_id: currentDraft.train?.id,
+            coach_id: currentDraft.coach?.id,
+            activity_id: currentDraft.activity?.id,
             answers: answersList.map(([qId, data]) => ({
                 question_id: parseInt(qId),
-                ...data
+                answer: data?.answer,
+                reasons: data?.reasons || [],
+                remarks: data?.remarks || '',
+                image_path: data?.image_path || null
             }))
         };
 
         try {
             await submitInspection(payload);
-            Alert.alert('Success!', 'Inspection synced to Cloud', [
+            Alert.alert('Success!', 'Inspection submitted successfully', [
                 {
                     text: 'Done', onPress: () => {
                         clearDraft();
@@ -41,7 +52,7 @@ const SummaryScreen = ({ navigation }) => {
                 }
             ]);
         } catch (e) {
-            Alert.alert('Sync Error', 'Check connection and try again');
+            Alert.alert('Error', 'Failed to synchronize with backend. Check connection.');
         } finally {
             setSubmitting(false);
         }
@@ -52,7 +63,9 @@ const SummaryScreen = ({ navigation }) => {
             <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.headerCard}>
                     <Text style={styles.title}>Inspection Review</Text>
-                    <Text style={styles.sub}>{draft.train.name} - Coach {draft.coach.coach_number}</Text>
+                    <Text style={styles.sub}>
+                        {currentDraft.train?.name || 'Unknown Train'} - Coach {currentDraft.coach?.coach_number || 'N/A'}
+                    </Text>
 
                     <View style={styles.stats}>
                         <View style={styles.statBox}>
@@ -74,11 +87,15 @@ const SummaryScreen = ({ navigation }) => {
                 {counts.no === 0 ? (
                     <Text style={styles.emptyText}>All checks passed successfully! ✨</Text>
                 ) : (
-                    answersList.map(([id, ans]) => ans.answer === 'NO' && (
+                    answersList.map(([id, ans]) => ans?.answer === 'NO' && (
                         <View key={id} style={styles.findingCard}>
                             <Text style={styles.remarks}>{ans.remarks || 'No remarks provided'}</Text>
                             <View style={styles.chips}>
-                                {ans.reasons.map(r => <View key={r} style={styles.chip}><Text style={styles.chipText}>{r}</Text></View>)}
+                                {ans.reasons?.map(r => (
+                                    <View key={r} style={styles.chip}>
+                                        <Text style={styles.chipText}>{r}</Text>
+                                    </View>
+                                ))}
                             </View>
                             {ans.image_path && <Image source={{ uri: ans.image_path }} style={styles.thumb} />}
                         </View>
@@ -95,7 +112,12 @@ const SummaryScreen = ({ navigation }) => {
                     onPress={finalSubmit}
                     disabled={submitting}
                 >
-                    {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Sync to Cloud</Text>}
+                    {submitting ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.submitText}>Submit Inspection</Text>
+                    )
+                    }
                 </TouchableOpacity>
             </View>
         </View>
