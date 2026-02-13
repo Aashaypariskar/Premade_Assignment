@@ -11,10 +11,16 @@ export const StoreProvider = ({ children }) => {
         activity: null,
         answers: {}
     });
+    // Load saved draft on app startup
+    useEffect(() => {
+        loadDraft();
+    }, []);
 
     // Auto-save draft whenever it changes
     useEffect(() => {
-        saveDraft();
+        if (draft.train || Object.keys(draft.answers).length > 0) {
+            saveDraft();
+        }
     }, [draft]);
 
     const saveDraft = async () => {
