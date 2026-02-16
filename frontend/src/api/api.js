@@ -124,4 +124,16 @@ export const deleteReason = async (reasonId) => {
     return res.data;
 };
 
+// Report APIs
+export const getReports = async () => {
+    const res = await api.get('/reports');
+    return res.data;
+};
+
+export const getReportDetails = async (params) => {
+    // params: { train_number, coach_number, date, user_id }
+    const res = await api.get('/report-details', { params });
+    return res.data;
+};
+
 export default api;

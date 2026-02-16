@@ -1,6 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import { useStore } from '../store/StoreContext';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -13,13 +13,15 @@ import SummaryScreen from '../screens/SummaryScreen';
 import UserManagementScreen from '../screens/UserManagementScreen';
 import CreateUserScreen from '../screens/CreateUserScreen';
 import QuestionManagementScreen from '../screens/QuestionManagementScreen';
+import ReportListScreen from '../screens/ReportListScreen';
+import ReportDetailScreen from '../screens/ReportDetailScreen';
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
     const { user, isAppReady } = useStore();
 
-    if (!isAppReady) return null; // Wait for initial auth check
+    if (!isAppReady) return null;
 
     return (
         <Stack.Navigator
@@ -40,6 +42,8 @@ const AppNavigator = () => {
                 />
             ) : (
                 // App Stack
+                // Using Fragment to group multiple screens if needed, though Stack.Navigator handles children array fine
+                // But mixing conditional rendering requires Fragment usually if logic is complex
                 <>
                     <Stack.Screen
                         name="Dashboard"
@@ -71,6 +75,17 @@ const AppNavigator = () => {
                         component={SummaryScreen}
                         options={{ title: 'Review Report' }}
                     />
+                    <Stack.Screen
+                        name="ReportList"
+                        component={ReportListScreen}
+                        options={{ title: 'Inspection Reports' }}
+                    />
+                    <Stack.Screen
+                        name="ReportDetail"
+                        component={ReportDetailScreen}
+                        options={{ title: 'Report Details' }}
+                    />
+
                     {user.role === 'Admin' && (
                         <>
                             <Stack.Screen

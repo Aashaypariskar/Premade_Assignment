@@ -52,6 +52,12 @@ const CategoryDashboard = ({ navigation }) => {
                     <Text style={styles.userName}>{user?.name} 👋</Text>
                 </View>
                 <View style={styles.headerActions}>
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('ReportList')}
+                        style={styles.reportsBtn}
+                    >
+                        <Text style={styles.reportsText}>📜 History</Text>
+                    </TouchableOpacity>
                     {user?.role === 'Admin' && (
                         <TouchableOpacity
                             onPress={() => navigation.navigate('UserManagement')}
@@ -93,17 +99,19 @@ const CategoryDashboard = ({ navigation }) => {
                     }
                 />
             </View>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16 },
-    headerActions: { flexDirection: 'row', alignItems: 'center' },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     welcomeText: { fontSize: 14, color: '#64748b' },
     userName: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-    adminBtn: { padding: 8, backgroundColor: '#eff6ff', borderRadius: 8, marginRight: 10, borderWidth: 1, borderColor: '#2563eb' },
+    adminBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#eff6ff', borderRadius: 8, borderWidth: 1, borderColor: '#2563eb' },
+    reportsBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f0fdf4', borderRadius: 8, borderWidth: 1, borderColor: '#16a34a' },
+    reportsText: { color: '#16a34a', fontWeight: 'bold', fontSize: 13 },
     adminBtnText: { color: '#2563eb', fontWeight: 'bold', fontSize: 13 },
     logoutBtn: { padding: 8, backgroundColor: '#fee2e2', borderRadius: 8 },
     logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 },

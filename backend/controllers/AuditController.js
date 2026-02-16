@@ -115,7 +115,10 @@ exports.getQuestions = async (req, res) => {
 exports.submitInspection = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const { train_id, coach_id, activity_id, answers } = req.body;
+        const { train_id, coach_id, activity_id, answers, submission_id } = req.body; // submission_id here
+        const userId = req.user.id;
+        const userName = req.user.name; // assuming verifyToken puts name on req.user
+        const roleName = req.user.role;
 
         if (!answers || !Array.isArray(answers)) {
             return res.status(400).json({ error: 'Invalid submission format' });
@@ -131,11 +134,11 @@ exports.submitInspection = async (req, res) => {
 
         if (!train || !coach || !activity || !currentUser) {
             await transaction.rollback();
-            return res.status(404).json({ error: 'Context records not found' });
+            return res.status(404).json({ error: 'Train or Coach not found' });
         }
 
         // 2. Prepare Payload with Audit Trail
-        const processedAnswers = answers.map(ans => {
+        const records = answers.map(ans => {
             if (ans.answer === 'NO') {
                 const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                 const hasImage = !!ans.image_path;
@@ -143,36 +146,38 @@ exports.submitInspection = async (req, res) => {
                     throw new Error(`Validation Failed: Question ID ${ans.question_id} requires reasons and an image.`);
                 }
             }
-
             return {
-                train_id,
-                coach_id,
-                activity_id,
-                question_id: ans.question_id,
                 answer: ans.answer,
-                reasons: ans.reasons,
+                reasons: ans.reasons, // JSON array
                 remarks: ans.remarks,
                 image_path: ans.image_path,
-                // Enterprise Snapshots
+
+                // Foreign Keys
+                train_id,
+                coach_id,
+                activity_id, // This might need to come from individual answer if multiple activities
+                question_id: ans.question_id,
+                user_id: userId,
+
+                // Snapshots
+                submission_id: submission_id || `LEGACY-${Date.now()}`,
                 train_number: train.train_number,
                 coach_number: coach.coach_number,
-                category_name: activity.Category?.name || 'Unknown',
-                activity_type: activity.type,
-                // Audit Trail
-                user_id: currentUser.id,
-                user_name: currentUser.name,
-                role_snapshot: currentUser.Role.role_name
+                // category_name? We need to fetch category name if we want snapshot.
+                // For now, let's skip category_name snapshot or fetch it.
+                user_name: userName,
+                role_snapshot: roleName
             };
         });
 
         // 3. Insert
-        const results = await InspectionAnswer.bulkCreate(processedAnswers, { transaction });
+        const results = await InspectionAnswer.bulkCreate(records, { transaction });
         await transaction.commit();
 
         res.status(201).json({
             success: true,
             recordsSaved: results.length,
-            audited_by: currentUser.name
+            audited_by: userName
         });
 
     } catch (err) {

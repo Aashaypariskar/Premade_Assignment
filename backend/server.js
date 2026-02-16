@@ -27,6 +27,7 @@ app.use('/api', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', questionRoutes);
 app.use('/api', reasonRoutes);
+app.use('/api', require('./routes/ReportRoutes'));
 
 
 // Catch-all for 404
@@ -45,6 +46,11 @@ app.use((err, req, res, next) => {
 sequelize.authenticate()
     .then(() => {
         console.log('--- DATABASE CONNECTED ---');
+        // Sync models to update schema (create submission_id column)
+        return sequelize.sync({ alter: true });
+    })
+    .then(() => {
+        console.log('--- SCHEMA SYNCED ---');
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`--- BACKEND IS LIVE ---`);
             console.log(`Listening on http://localhost:${PORT}`);

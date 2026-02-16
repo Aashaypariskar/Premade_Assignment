@@ -57,6 +57,7 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     remarks: { type: DataTypes.TEXT },
     image_path: { type: DataTypes.STRING },
     // Enterprise Snapshots & Audit Trail
+    submission_id: { type: DataTypes.STRING(100), allowNull: true },
     train_number: { type: DataTypes.STRING(50) },
     coach_number: { type: DataTypes.STRING(50) },
     category_name: { type: DataTypes.STRING(100) },

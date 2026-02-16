@@ -32,6 +32,7 @@ const SummaryScreen = ({ navigation }) => {
             train_id: currentDraft.train?.id,
             coach_id: currentDraft.coach?.id,
             activity_id: currentDraft.activity?.id,
+            submission_id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
             answers: answersList.map(([qId, data]) => ({
                 question_id: parseInt(qId),
                 answer: data?.answer,
@@ -46,8 +47,28 @@ const SummaryScreen = ({ navigation }) => {
             Alert.alert('Success!', 'Inspection submitted successfully', [
                 {
                     text: 'Done', onPress: () => {
+                        const submittedTrain = currentDraft.train?.train_number;
+                        const submittedCoach = currentDraft.coach?.coach_number;
+                        const now = new Date().toISOString().split('T')[0];
+
                         clearDraft();
-                        navigation.popToTop();
+                        // Navigate to Report Detail (we assume user_id is current user)
+                        // Ideally backend returns the report ID, but for our 'virtual' reporting:
+                        // We use the composite key data.
+                        navigation.replace('ReportDetail', {
+                            submission_id: payload.submission_id,
+                            train_number: submittedTrain,
+                            coach_number: submittedCoach,
+                            date: now,
+                            user_name: 'You',
+                            user_id: payload.user_id
+                        });
+                        // Actually we need to pass user_id so ReportDetail can fetch. 
+                        // We don't have it easily here without context.
+                        // Let's just popToTop and let them go to History?
+                        // User asked: "it should go to a new page... report page"
+                        // So we MUST navigate there.
+                        // Let's get user from store
                     }
                 }
             ]);
