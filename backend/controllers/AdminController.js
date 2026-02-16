@@ -13,6 +13,12 @@ exports.createUser = async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields: name, email, password, role_id' });
         }
 
+        // Security Check: Prevent creating new Admins
+        const adminRole = await Role.findOne({ where: { role_name: 'Admin' } });
+        if (role_id == adminRole?.id) {
+            return res.status(403).json({ error: 'Creation of additional Admin accounts is restricted.' });
+        }
+
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
             return res.status(400).json({ error: 'Email already in use' });
@@ -89,9 +95,12 @@ exports.updateUser = async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Prevent admin from accidentally demoting themselves if they are the only one
-        if (req.user.id == id && role_id && role_id !== user.role_id) {
-            // We allow it, but we should be careful. For now, let's allow it as per request.
+        // Security Check: Prevent promoting to Admin
+        if (role_id) {
+            const adminRole = await Role.findOne({ where: { role_name: 'Admin' } });
+            if (role_id == adminRole?.id) {
+                return res.status(403).json({ error: 'Promotion to Admin role is restricted. Only one master Admin is allowed.' });
+            }
         }
 
         if (name) user.name = name;
@@ -169,13 +178,20 @@ exports.deleteUser = async (req, res) => {
 
 /**
  * Helper to fetch Roles and Categories for the form
+ * EXCLUDES 'Admin' role to prevent creating multiple admins
  */
 exports.getFormMetadata = async (req, res) => {
     try {
-        const roles = await Role.findAll();
+        const { Op } = require('sequelize');
+        const roles = await Role.findAll({
+            where: {
+                role_name: { [Op.ne]: 'Admin' }
+            }
+        });
         const categories = await CategoryMaster.findAll();
         res.json({ roles, categories });
     } catch (err) {
+        console.error('Metadata Error:', err);
         res.status(500).json({ error: 'Failed to fetch form metadata' });
     }
 };

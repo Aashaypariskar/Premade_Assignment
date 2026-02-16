@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAdminMetadata, createAdminUser, updateAdminUser, updateAdminUserCategories } from '../api/api';
 
 const CreateUserScreen = ({ route, navigation }) => {
@@ -22,7 +23,11 @@ const CreateUserScreen = ({ route, navigation }) => {
         const fetchMeta = async () => {
             try {
                 const data = await getAdminMetadata();
-                setRoles(data.roles);
+                // Enforce single-admin policy: Filter out 'Admin' role on frontend
+                const allowedRoles = data.roles.filter(r =>
+                    r.role_name.toLowerCase() !== 'admin'
+                );
+                setRoles(allowedRoles);
                 setCategories(data.categories);
             } catch (err) {
                 Alert.alert('Error', 'Failed to load roles and categories');
