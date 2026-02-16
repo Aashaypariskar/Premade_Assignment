@@ -50,9 +50,19 @@ const CategoryDashboard = ({ navigation }) => {
                     <Text style={styles.welcomeText}>Welcome back,</Text>
                     <Text style={styles.userName}>{user?.name} 👋</Text>
                 </View>
-                <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-                    <Text style={styles.logoutText}>Logout</Text>
-                </TouchableOpacity>
+                <View style={styles.headerActions}>
+                    {user?.role === 'Admin' && (
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('UserManagement')}
+                            style={styles.adminBtn}
+                        >
+                            <Text style={styles.adminBtnText}>Admin</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+                        <Text style={styles.logoutText}>Logout</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View style={styles.content}>
@@ -89,8 +99,11 @@ const CategoryDashboard = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16 },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
     welcomeText: { fontSize: 14, color: '#64748b' },
     userName: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
+    adminBtn: { padding: 8, backgroundColor: '#eff6ff', borderRadius: 8, marginRight: 10, borderWidth: 1, borderColor: '#2563eb' },
+    adminBtnText: { color: '#2563eb', fontWeight: 'bold', fontSize: 13 },
     logoutBtn: { padding: 8, backgroundColor: '#fee2e2', borderRadius: 8 },
     logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 },
     content: { flex: 1, paddingHorizontal: 20 },

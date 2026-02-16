@@ -49,4 +49,36 @@ export const submitInspection = async (payload) => {
     return res.data;
 };
 
+// --- Admin APIs ---
+
+export const getAdminUsers = async () => {
+    const res = await api.get('/admin/users');
+    return res.data;
+};
+
+export const createAdminUser = async (userData) => {
+    const res = await api.post('/admin/create-user', userData);
+    return res.data;
+};
+
+export const updateAdminUser = async (userId, userData) => {
+    const res = await api.put(`/admin/user/${userId}`, userData);
+    return res.data;
+};
+
+export const updateAdminUserCategories = async (userId, categoryIds) => {
+    const res = await api.put(`/admin/user-categories/${userId}`, { category_ids: categoryIds });
+    return res.data;
+};
+
+export const deleteAdminUser = async (userId) => {
+    const res = await api.delete(`/admin/user/${userId}`);
+    return res.data;
+};
+
+export const getAdminMetadata = async () => {
+    const res = await api.get('/admin/metadata');
+    return res.data;
+};
+
 export default api;

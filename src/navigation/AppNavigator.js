@@ -11,6 +11,7 @@ import ActivitySelectionScreen from '../screens/ActivitySelectionScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
 import SummaryScreen from '../screens/SummaryScreen';
 import UserManagementScreen from '../screens/UserManagementScreen';
+import CreateUserScreen from '../screens/CreateUserScreen';
 
 const Stack = createStackNavigator();
 
@@ -70,11 +71,18 @@ const AppNavigator = () => {
                         options={{ title: 'Review Report' }}
                     />
                     {user.role === 'Admin' && (
-                        <Stack.Screen
-                            name="UserManagement"
-                            component={UserManagementScreen}
-                            options={{ title: 'Admin Settings' }}
-                        />
+                        <>
+                            <Stack.Screen
+                                name="UserManagement"
+                                component={UserManagementScreen}
+                                options={{ title: 'System Users' }}
+                            />
+                            <Stack.Screen
+                                name="CreateUser"
+                                component={CreateUserScreen}
+                                options={{ title: 'User Access' }}
+                            />
+                        </>
                     )}
                 </>
             )}
