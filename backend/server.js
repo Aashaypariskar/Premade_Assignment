@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/db');
 const AuditRoutes = require('./routes/AuditRoutes');
+const AuthRoutes = require('./routes/AuthRoutes');
+const AdminRoutes = require('./routes/AdminRoutes');
 
 const app = express();
 const PORT = 3000;
@@ -12,13 +14,6 @@ app.use(express.json());
 // Log every request to see if things are working
 app.use((req, res, next) => {
     console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
-    if (req.method === 'POST') console.log('Body:', req.body);
-    next();
-});
-
-// Fallback for debugging
-app.use('/api', (req, res, next) => {
-    // This logs inside the /api prefix before routes match
     next();
 });
 
@@ -26,6 +21,8 @@ app.use('/public', express.static('public'));
 
 // Routes
 app.use('/api', AuditRoutes);
+app.use('/api/auth', AuthRoutes);
+app.use('/api/admin', AdminRoutes);
 
 // Catch-all for 404
 app.use((req, res) => {

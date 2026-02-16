@@ -19,7 +19,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     const loadActivities = async () => {
         try {
-            const data = await getActivities(params.categoryId);
+            const data = await getActivities(params.coachId, params.categoryName);
             setActivities(data);
         } catch (err) {
             Alert.alert('Error', 'Could not get activities');
@@ -29,7 +29,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     };
 
     const handleSelect = (act) => {
-        setDraft(prev => ({ ...prev, activity: act }));
+        setDraft(prev => ({ ...prev, activity: act, category: params.categoryName }));
         navigation.navigate('QuestionsScreen', {
             ...params,
             activityId: act.id,

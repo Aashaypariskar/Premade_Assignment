@@ -8,18 +8,18 @@ import { useStore } from '../store/StoreContext';
  * Features 2-column grid layout with select indicators
  */
 const CoachSelectionScreen = ({ route, navigation }) => {
-    const { trainId, trainName } = route.params;
+    const { trainId, trainName, categoryName } = route.params;
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
     const { setDraft } = useStore();
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [trainId, categoryName]);
 
     const loadData = async () => {
         try {
-            const data = await getCoaches(trainId);
+            const data = await getCoaches(trainId, categoryName);
             setCoaches(data);
         } catch (e) {
             console.log(e);
@@ -29,8 +29,12 @@ const CoachSelectionScreen = ({ route, navigation }) => {
     };
 
     const handleSelect = (item) => {
-        setDraft(prev => ({ ...prev, coach: item }));
-        navigation.navigate('CategorySelection', { coachId: item.id, coachNumber: item.coach_number });
+        setDraft(prev => ({ ...prev, coach: item, category: categoryName }));
+        navigation.navigate('ActivitySelection', {
+            coachId: item.id,
+            coachNumber: item.coach_number,
+            categoryName
+        });
     };
 
     const renderItem = ({ item }) => (

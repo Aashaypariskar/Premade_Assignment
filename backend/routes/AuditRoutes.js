@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/AuditController');
+const { verifyToken, authorizeRoles } = require('../middleware/auth');
 
-router.get('/train-list', controller.getTrains);
-router.get('/coach-list', controller.getCoaches);
-router.get('/areas', controller.getCategories);
-router.get('/checklist', controller.getQuestions);
-router.get('/activity-types', controller.getActivities);
-router.post('/save-inspection', controller.submitInspection);
+// Public/Shared (Verified) Routes
+router.get('/user-categories', verifyToken, controller.getUserCategories);
+router.get('/train-list', verifyToken, controller.getTrains);
+router.get('/coach-list', verifyToken, controller.getCoaches);
+router.get('/checklist', verifyToken, controller.getQuestions);
+router.get('/activity-types', verifyToken, controller.getActivities);
+
+// Restricted Routes
+router.post('/save-inspection', verifyToken, authorizeRoles('Admin', 'Engineer', 'Field User'), controller.submitInspection);
 
 module.exports = router;

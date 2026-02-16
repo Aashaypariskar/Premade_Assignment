@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getStoredUser, logout as authLogout } from '../api/auth';
 
 const StoreContext = createContext();
 
 export const StoreProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [isAppReady, setIsAppReady] = useState(false);
     const [draft, setDraft] = useState({
         train: null,
         coach: null,
@@ -12,21 +15,18 @@ export const StoreProvider = ({ children }) => {
         answers: {}
     });
 
-    const saveDraft = async () => {
-        try {
-            await AsyncStorage.setItem('@inspection_draft', JSON.stringify(draft));
-        } catch (e) {
-            console.error('Draft save failed:', e);
-        }
-    };
+    useEffect(() => {
+        const initialize = async () => {
+            const storedUser = await getStoredUser();
+            if (storedUser) setUser(storedUser);
+            setIsAppReady(true);
+        };
+        initialize();
+    }, []);
 
-    const loadDraft = async () => {
-        try {
-            const saved = await AsyncStorage.getItem('@inspection_draft');
-            if (saved) setDraft(JSON.parse(saved));
-        } catch (e) {
-            console.error('Draft load failed:', e);
-        }
+    const logout = async () => {
+        await authLogout();
+        setUser(null);
     };
 
     const clearDraft = async () => {
@@ -35,7 +35,10 @@ export const StoreProvider = ({ children }) => {
     };
 
     return (
-        <StoreContext.Provider value={{ draft, setDraft, clearDraft, loadDraft }}>
+        <StoreContext.Provider value={{
+            user, setUser, logout, isAppReady,
+            draft, setDraft, clearDraft
+        }}>
             {children}
         </StoreContext.Provider>
     );

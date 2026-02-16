@@ -1,15 +1,42 @@
-const { Train, Coach, Category, Activity, Question, InspectionAnswer, sequelize } = require('../models');
+const {
+    Train, Coach, Category, Activity, Question, InspectionAnswer,
+    User, Role, CategoryMaster, sequelize
+} = require('../models');
 
 /**
- * AuditController - Handles all business logic for Train Inspections.
- * Manages master data retrieval and transactional audit saves.
+ * AuditController - Upgraded for Enterprise RBAC
+ * Implements Category-First flow and User Audit Trail
  */
 
-// GET /trains
+// GET /user-categories (Dashboard)
+exports.getUserCategories = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.id, {
+            include: [{ model: CategoryMaster, through: { attributes: [] } }]
+        });
+        res.json(user.CategoryMasters);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch assigned categories' });
+    }
+};
+
+// GET /train-list?category_name=X
 exports.getTrains = async (req, res) => {
     try {
-        const trains = await Train.findAll({ order: [['name', 'ASC']] });
-        if (trains.length === 0) return res.status(404).json({ error: 'No trains found in service' });
+        const { category_name } = req.query;
+        // Logic: Return trains that have at least one coach with this category
+        const trains = await Train.findAll({
+            include: [{
+                model: Coach,
+                required: true,
+                include: [{
+                    model: Category,
+                    where: category_name ? { name: category_name } : {},
+                    required: true
+                }]
+            }],
+            order: [['name', 'ASC']]
+        });
         res.json(trains);
     } catch (err) {
         console.error('API Error:', err);
@@ -17,68 +44,74 @@ exports.getTrains = async (req, res) => {
     }
 };
 
-// GET /coaches?train_id=
+// GET /coach-list?train_id=X&category_name=Y
 exports.getCoaches = async (req, res) => {
     try {
-        const { train_id } = req.query;
+        const { train_id, category_name } = req.query;
         if (!train_id) return res.status(400).json({ error: 'Train ID is mandatory' });
 
-        const coaches = await Coach.findAll({ where: { train_id } });
+        const coaches = await Coach.findAll({
+            where: { train_id },
+            include: [{
+                model: Category,
+                where: category_name ? { name: category_name } : {},
+                required: true
+            }]
+        });
         res.json(coaches);
     } catch (err) {
         res.status(500).json({ error: 'Failed to retrieve coaches' });
     }
 };
 
-// GET /categories?coach_id=
-exports.getCategories = async (req, res) => {
-    try {
-        const { coach_id } = req.query;
-        if (!coach_id) return res.status(400).json({ error: 'Coach ID is mandatory' });
-
-        const categories = await Category.findAll({ where: { coach_id } });
-        res.json(categories);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to retrieve areas' });
-    }
-};
-
-// GET /activities?category_id=X
+// GET /activity-types?category_name=X&coach_id=Y
 exports.getActivities = async (req, res) => {
     try {
-        const { category_id } = req.query;
-        if (!category_id) return res.status(400).json({ error: 'Category ID is mandatory' });
+        const { category_name, coach_id } = req.query;
+        if (!category_name || !coach_id) return res.status(400).json({ error: 'Missing parameters' });
 
-        const activities = await Activity.findAll({ where: { category_id } });
+        const category = await Category.findOne({
+            where: { name: category_name, coach_id }
+        });
+
+        if (!category) return res.status(404).json({ error: 'Category not found for this coach' });
+
+        const activities = await Activity.findAll({ where: { category_id: category.id } });
         res.json(activities);
     } catch (err) {
         res.status(500).json({ error: 'Failed to retrieve activities' });
     }
 };
 
-// GET /questions?activity_type=Minor&category_id=X
+// GET /checklist?activity_id=X
 exports.getQuestions = async (req, res) => {
     try {
-        const { activity_type, category_id } = req.query;
-        if (!activity_type || !category_id) return res.status(400).json({ error: 'Missing query parameters' });
+        const { activity_id } = req.query;
+        if (!activity_id) return res.status(400).json({ error: 'Activity ID is mandatory' });
 
-        const activity = await Activity.findOne({
-            where: { type: activity_type, category_id: category_id }
+        // Security: Validate user has access to the category this activity belongs to
+        const activity = await Activity.findByPk(activity_id, {
+            include: [{ model: Category }]
         });
 
-        if (!activity) return res.status(404).json({ error: 'Activity map not found' });
+        if (!activity) return res.status(404).json({ error: 'Activity not found' });
 
-        const questions = await Question.findAll({
-            where: { activity_id: activity.id }
+        const user = await User.findByPk(req.user.id, {
+            include: [{ model: CategoryMaster, where: { name: activity.Category.name } }]
         });
 
+        if (!user && req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied: You are not assigned to this category' });
+        }
+
+        const questions = await Question.findAll({ where: { activity_id } });
         res.json(questions);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch checklist' });
     }
 };
 
-// POST /inspection/submit
+// POST /save-inspection
 exports.submitInspection = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
@@ -88,21 +121,21 @@ exports.submitInspection = async (req, res) => {
             return res.status(400).json({ error: 'Invalid submission format' });
         }
 
-        // 1. Fetch Master Data for Snapshots
-        const [train, coach, activity] = await Promise.all([
+        // 1. Fetch Master Data & Current User
+        const [train, coach, activity, currentUser] = await Promise.all([
             Train.findByPk(train_id),
             Coach.findByPk(coach_id),
-            Activity.findByPk(activity_id, { include: [Category] })
+            Activity.findByPk(activity_id, { include: [Category] }),
+            User.findByPk(req.user.id, { include: [Role] })
         ]);
 
-        if (!train || !coach || !activity) {
+        if (!train || !coach || !activity || !currentUser) {
             await transaction.rollback();
-            return res.status(404).json({ error: 'One or more master records not found' });
+            return res.status(404).json({ error: 'Context records not found' });
         }
 
-        // 2. Validate Answers & Prepare Payload
+        // 2. Prepare Payload with Audit Trail
         const processedAnswers = answers.map(ans => {
-            // Validation: Negative findings require reasons and image
             if (ans.answer === 'NO') {
                 const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                 const hasImage = !!ans.image_path;
@@ -124,29 +157,26 @@ exports.submitInspection = async (req, res) => {
                 train_number: train.train_number,
                 coach_number: coach.coach_number,
                 category_name: activity.Category?.name || 'Unknown',
-                activity_type: activity.type
+                activity_type: activity.type,
+                // Audit Trail
+                user_id: currentUser.id,
+                user_name: currentUser.name,
+                role_snapshot: currentUser.Role.role_name
             };
         });
 
-        // 3. Optimized Bulk Insert
+        // 3. Insert
         const results = await InspectionAnswer.bulkCreate(processedAnswers, { transaction });
-
         await transaction.commit();
 
         res.status(201).json({
             success: true,
-            message: 'Audit records persisted with enterprise snapshots',
-            recordsSaved: results.length
+            recordsSaved: results.length,
+            audited_by: currentUser.name
         });
 
     } catch (err) {
         if (transaction) await transaction.rollback();
-        console.error('Submit Error:', err.message);
-
-        if (err.message.includes('Validation Failed')) {
-            return res.status(400).json({ error: err.message });
-        }
-
-        res.status(500).json({ error: 'Critical failure during data persistence' });
+        res.status(err.message.includes('Validation') ? 400 : 500).json({ error: err.message });
     }
 };

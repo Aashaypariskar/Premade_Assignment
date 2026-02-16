@@ -16,11 +16,11 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     useEffect(() => {
         fetchQuestions();
-    }, [params.activityType]);
+    }, [params.activityId]);
 
     const fetchQuestions = async () => {
         try {
-            const data = await getQuestions(params.activityType, params.categoryId);
+            const data = await getQuestions(params.activityId);
             setQuestions(Array.isArray(data) ? data : []);
         } catch (error) {
             console.log("Fetch Error:", error);

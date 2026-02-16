@@ -7,18 +7,19 @@ import { useStore } from '../store/StoreContext';
  * Modern Train Selection Screen
  * Features premium card design and quick info badges
  */
-const TrainSelectionScreen = ({ navigation }) => {
+const TrainSelectionScreen = ({ route, navigation }) => {
+    const { categoryName } = route.params || {};
     const [trains, setTrains] = useState([]);
     const [loading, setLoading] = useState(true);
     const { setDraft } = useStore();
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [categoryName]);
 
     const loadData = async () => {
         try {
-            const data = await getTrains();
+            const data = await getTrains(categoryName);
             setTrains(data);
         } catch (e) {
             console.log(e);
@@ -28,8 +29,12 @@ const TrainSelectionScreen = ({ navigation }) => {
     };
 
     const handleSelect = (item) => {
-        setDraft(prev => ({ ...prev, train: item }));
-        navigation.navigate('CoachSelection', { trainId: item.id, trainName: item.name });
+        setDraft(prev => ({ ...prev, train: item, category: categoryName }));
+        navigation.navigate('CoachSelection', {
+            trainId: item.id,
+            trainName: item.name,
+            categoryName
+        });
     };
 
     const renderItem = ({ item }) => (

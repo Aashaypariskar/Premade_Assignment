@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL = 'http://192.168.1.7:3000/api';
 
@@ -7,35 +8,39 @@ const api = axios.create({
     timeout: 5000,
 });
 
-export const getTrains = async () => {
-    try {
-        const res = await api.get('/train-list');
-        console.log("Trains fetched:", res.data);
-        return res.data;
-    } catch (err) {
-        console.log("API Error:", err);
-        return [];
+// Inject JWT Token into requests
+api.interceptors.request.use(async (config) => {
+    const token = await SecureStore.getItemAsync('user_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     }
-};
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
 
-export const getCoaches = async (trainId) => {
-    const res = await api.get(`/coach-list?train_id=${trainId}`);
+export const getUserCategories = async () => {
+    const res = await api.get('/user-categories');
     return res.data;
 };
 
-export const getCategories = async (coachId) => {
-    const res = await api.get(`/areas?coach_id=${coachId}`);
+export const getTrains = async (categoryName) => {
+    const res = await api.get(`/train-list?category_name=${encodeURIComponent(categoryName)}`);
     return res.data;
 };
 
-export const getActivities = async (categoryId) => {
-    const res = await api.get(`/activity-types?category_id=${categoryId}`);
+export const getCoaches = async (trainId, categoryName) => {
+    const res = await api.get(`/coach-list?train_id=${trainId}&category_name=${encodeURIComponent(categoryName)}`);
     return res.data;
 };
 
-// Getting questions based on Minor/Major and category
-export const getQuestions = async (activityType, categoryId) => {
-    const res = await api.get(`/checklist?activity_type=${activityType}&category_id=${categoryId}`);
+export const getActivities = async (coachId, categoryName) => {
+    const res = await api.get(`/activity-types?coach_id=${coachId}&category_name=${encodeURIComponent(categoryName)}`);
+    return res.data;
+};
+
+export const getQuestions = async (activityId) => {
+    const res = await api.get(`/checklist?activity_id=${activityId}`);
     return res.data;
 };
 
