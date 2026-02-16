@@ -47,27 +47,25 @@ const CategoryDashboard = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.welcomeText}>Welcome back,</Text>
-                    <Text style={styles.userName}>{user?.name} 👋</Text>
-                </View>
-                <View style={styles.headerActions}>
+                <Text style={styles.welcomeText}>Welcome back,</Text>
+                <Text style={styles.userName}>{user?.name} 👋</Text>
+                <View style={styles.actionRow}>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('ReportList')}
-                        style={styles.reportsBtn}
+                        style={styles.historyBtn}
                     >
-                        <Text style={styles.reportsText}>📜 History</Text>
+                        <Text style={styles.btnText}>📜 History</Text>
                     </TouchableOpacity>
                     {user?.role === 'Admin' && (
                         <TouchableOpacity
                             onPress={() => navigation.navigate('UserManagement')}
                             style={styles.adminBtn}
                         >
-                            <Text style={styles.adminBtnText}>Admin</Text>
+                            <Text style={styles.btnText}>Admin</Text>
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-                        <Text style={styles.logoutText}>Logout</Text>
+                        <Text style={styles.btnText}>Logout</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -105,16 +103,47 @@ const CategoryDashboard = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16 },
-    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    header: { padding: 24, paddingBottom: 16 },
+    actionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        gap: 10,
+        marginTop: 12,
+        flexWrap: 'nowrap'
+    },
     welcomeText: { fontSize: 14, color: '#64748b' },
     userName: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-    adminBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#eff6ff', borderRadius: 8, borderWidth: 1, borderColor: '#2563eb' },
-    reportsBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f0fdf4', borderRadius: 8, borderWidth: 1, borderColor: '#16a34a' },
-    reportsText: { color: '#16a34a', fontWeight: 'bold', fontSize: 13 },
-    adminBtnText: { color: '#2563eb', fontWeight: 'bold', fontSize: 13 },
-    logoutBtn: { padding: 8, backgroundColor: '#fee2e2', borderRadius: 8 },
-    logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 },
+    historyBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: '#E8F5E9',
+        borderWidth: 1,
+        borderColor: '#4CAF50'
+    },
+    adminBtn: {
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#3B82F6',
+        backgroundColor: '#EFF6FF'
+    },
+    logoutBtn: {
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: '#FEE2E2',
+        borderWidth: 1,
+        borderColor: '#EF4444'
+    },
+    btnText: {
+        fontSize: 14,
+        fontWeight: '600'
+    },
     content: { flex: 1, paddingHorizontal: 20 },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginBottom: 4 },
     sectionSubtitle: { fontSize: 14, color: '#64748b', marginBottom: 24 },

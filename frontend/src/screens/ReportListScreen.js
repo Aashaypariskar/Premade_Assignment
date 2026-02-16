@@ -35,7 +35,10 @@ const ReportListScreen = ({ navigation }) => {
             })}
         >
             <View style={styles.cardHeader}>
-                <Text style={styles.trainText}>🚄 {item.train_number} - {item.coach_number}</Text>
+                <View>
+                    <Text style={styles.categoryText}>{item.category_name || 'Inspection'}</Text>
+                    <Text style={styles.trainText}>🚄 {item.train_number} - {item.coach_number}</Text>
+                </View>
                 <Text style={styles.dateText}>{item.date}</Text>
             </View>
             <View style={styles.cardFooter}>
@@ -74,6 +77,7 @@ const styles = StyleSheet.create({
     list: { padding: 16 },
     card: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    categoryText: { fontSize: 13, color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 4 },
     trainText: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
     dateText: { color: '#64748b', fontSize: 14 },
     cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

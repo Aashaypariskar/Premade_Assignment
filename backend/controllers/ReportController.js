@@ -1,4 +1,4 @@
-const { InspectionAnswer, Train, Coach, User, Activity } = require('../models');
+const { InspectionAnswer, Train, Coach, User, Activity, Question, Category } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
 
@@ -29,6 +29,9 @@ exports.getAllReports = async (req, res) => {
             attributes: [
                 'submission_id', 'train_number', 'coach_number', 'user_name', 'createdAt', 'user_id', 'id'
             ],
+            include: [
+                { model: Activity, attributes: ['type'], include: [{ model: Category, attributes: ['name'] }] }
+            ],
             order: [['createdAt', 'DESC']]
         });
 
@@ -46,6 +49,7 @@ exports.getAllReports = async (req, res) => {
                     train_number: ans.train_number,
                     coach_number: ans.coach_number,
                     user_name: ans.user_name,
+                    category_name: ans.Activity?.Category?.name || 'Inspection',
                     date: dateStr,
                     timestamp: ans.createdAt, // Keep most recent
                     total_questions: 0,
@@ -107,7 +111,8 @@ exports.getReportDetails = async (req, res) => {
         const details = await InspectionAnswer.findAll({
             where: whereClause,
             include: [
-                { model: Activity, attributes: ['type'] }
+                { model: Activity, attributes: ['type'], include: [{ model: Category, attributes: ['name'] }] },
+                { model: Question, attributes: [['text', 'question_text']] }
             ],
             order: [['id', 'ASC']]
         });
