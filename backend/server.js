@@ -24,7 +24,7 @@ app.use('/public', express.static('public'));
 // Routes
 app.use('/api', auditRoutes);
 app.use('/api', authRoutes);
-app.use('/api', adminRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', questionRoutes);
 app.use('/api', reasonRoutes);
 
