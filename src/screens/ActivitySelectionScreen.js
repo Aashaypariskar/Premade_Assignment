@@ -11,7 +11,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     const params = route.params;
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { setDraft } = useStore();
+    const { setDraft, user } = useStore();
 
     useEffect(() => {
         loadActivities();

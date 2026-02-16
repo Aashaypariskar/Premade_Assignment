@@ -81,4 +81,25 @@ export const getAdminMetadata = async () => {
     return res.data;
 };
 
+// Question Management APIs
+export const getQuestionsByActivity = async (activityId) => {
+    const res = await api.get(`/questions?activity_id=${activityId}`);
+    return res.data;
+};
+
+export const createQuestion = async (questionData) => {
+    const res = await api.post('/admin/question', questionData);
+    return res.data;
+};
+
+export const updateQuestion = async (questionId, questionData) => {
+    const res = await api.put(`/admin/question/${questionId}`, questionData);
+    return res.data;
+};
+
+export const deleteQuestion = async (questionId) => {
+    const res = await api.delete(`/admin/question/${questionId}`);
+    return res.data;
+};
+
 export default api;

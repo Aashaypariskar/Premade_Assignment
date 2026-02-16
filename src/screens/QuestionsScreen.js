@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getQuestions } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import QuestionCard from '../components/QuestionCard';
@@ -10,16 +11,13 @@ import QuestionCard from '../components/QuestionCard';
  */
 const QuestionsScreen = ({ route, navigation }) => {
     const params = route?.params || {};
-    const { draft, setDraft } = useStore();
+    const { draft, setDraft, user } = useStore();
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchQuestions();
-    }, [params.activityId]);
-
     const fetchQuestions = async () => {
         try {
+            setLoading(true);
             const data = await getQuestions(params.activityId);
             setQuestions(Array.isArray(data) ? data : []);
         } catch (error) {
@@ -29,6 +27,13 @@ const QuestionsScreen = ({ route, navigation }) => {
             setLoading(false);
         }
     };
+
+    // Refresh questions whenever screen comes into focus (e.g., after adding/deleting questions)
+    useFocusEffect(
+        useCallback(() => {
+            fetchQuestions();
+        }, [params.activityId])
+    );
 
     const updateAnswer = (qId, data) => {
         if (!qId) return;
@@ -98,6 +103,29 @@ const QuestionsScreen = ({ route, navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.stickyHeader}>
+                <View style={styles.headerTop}>
+                    <View style={styles.breadcrumbs}>
+                        <Text style={styles.breadcrumb}>{params.trainName}</Text>
+                        <Text style={styles.separator}>›</Text>
+                        <Text style={styles.breadcrumb}>{params.coachNumber}</Text>
+                        <Text style={styles.separator}>›</Text>
+                        <Text style={styles.breadcrumb}>{params.categoryName}</Text>
+                        <Text style={styles.separator}>›</Text>
+                        <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>{params.activityType}</Text>
+                    </View>
+                    {user?.role === 'Admin' && (
+                        <TouchableOpacity
+                            style={styles.editQuestionsBtn}
+                            onPress={() => navigation.navigate('QuestionManagement', {
+                                activityId: params.activityId,
+                                activityType: params.activityType,
+                                categoryName: params.categoryName
+                            })}
+                        >
+                            <Text style={styles.editQuestionsBtnText}>✏️ Edit Questions</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
                 <View style={styles.progressRow}>
                     <Text style={styles.progressText}>{countCompleted} / {totalQs} Items</Text>
                     <Text style={styles.percent}>{Math.round(progress)}%</Text>
@@ -141,7 +169,14 @@ const styles = StyleSheet.create({
     nextBtn: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#1e293b', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 8 },
     btnDisabled: { backgroundColor: '#cbd5e1' },
     nextText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    breadcrumbs: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+    breadcrumb: { fontSize: 11, color: '#64748b' },
+    separator: { fontSize: 11, color: '#94a3b8', marginHorizontal: 4 },
+    activeBreadcrumb: { color: '#2563eb', fontWeight: 'bold' },
+    editQuestionsBtn: { backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#2563eb' },
+    editQuestionsBtnText: { fontSize: 11, fontWeight: 'bold', color: '#2563eb' }
 });
 
 export default QuestionsScreen;

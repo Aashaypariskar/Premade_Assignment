@@ -62,36 +62,41 @@ async function seedProductionData() {
             ]);
 
             for (const coach of coaches) {
-                // Use 'Exterior' from master for consistency
-                const category = await Category.create({ coach_id: coach.id, name: 'Exterior' });
+                for (const masterCat of catMaster) {
+                    const category = await Category.create({
+                        coach_id: coach.id,
+                        name: masterCat.name
+                    });
 
-                const minorAct = await Activity.create({ category_id: category.id, type: 'Minor' });
-                const majorAct = await Activity.create({ category_id: category.id, type: 'Major' });
+                    const minorAct = await Activity.create({ category_id: category.id, type: 'Minor' });
+                    const majorAct = await Activity.create({ category_id: category.id, type: 'Major' });
 
-                await Question.bulkCreate([
-                    { activity_id: minorAct.id, text: 'Checking of boards for torn vinyl' },
-                    { activity_id: minorAct.id, text: 'Application of Vinyl on the board' },
-                    { activity_id: minorAct.id, text: 'Removal of boards from sick coaches' },
-                    { activity_id: minorAct.id, text: 'Fitment of boards as per location' },
-                    { activity_id: minorAct.id, text: 'Checking vinyl graphics (Plate)' },
-                    { activity_id: minorAct.id, text: 'Application of vinyl (Plate)' },
-                    { activity_id: minorAct.id, text: 'Removal from sick coaches (Plate)' },
-                    { activity_id: minorAct.id, text: 'Checking hand rails' },
-                    { activity_id: minorAct.id, text: 'Attention to loose handrails' },
-                    { activity_id: minorAct.id, text: 'Checking corrosion (Steps)' },
-                    { activity_id: minorAct.id, text: 'Attention to loose footsteps' },
-                    { activity_id: minorAct.id, text: 'Checking paint condition' },
-                    { activity_id: minorAct.id, text: 'Checking marking condition' },
-                ]);
+                    // Use the same comprehensive question set for all categories
+                    await Question.bulkCreate([
+                        { activity_id: minorAct.id, text: 'Checking of boards for torn vinyl' },
+                        { activity_id: minorAct.id, text: 'Application of Vinyl on the board' },
+                        { activity_id: minorAct.id, text: 'Removal of boards from sick coaches' },
+                        { activity_id: minorAct.id, text: 'Fitment of boards as per location' },
+                        { activity_id: minorAct.id, text: 'Checking vinyl graphics (Plate)' },
+                        { activity_id: minorAct.id, text: 'Application of vinyl (Plate)' },
+                        { activity_id: minorAct.id, text: 'Removal from sick coaches (Plate)' },
+                        { activity_id: minorAct.id, text: 'Checking hand rails' },
+                        { activity_id: minorAct.id, text: 'Attention to loose handrails' },
+                        { activity_id: minorAct.id, text: 'Checking corrosion (Steps)' },
+                        { activity_id: minorAct.id, text: 'Attention to loose footsteps' },
+                        { activity_id: minorAct.id, text: 'Checking paint condition' },
+                        { activity_id: minorAct.id, text: 'Checking marking condition' },
+                    ]);
 
-                await Question.bulkCreate([
-                    { activity_id: majorAct.id, text: 'Painting & lettering if vinyl unavailable' },
-                    { activity_id: majorAct.id, text: 'Painting & lettering (Plate)' },
-                    { activity_id: majorAct.id, text: 'Fitment of new handrail' },
-                    { activity_id: majorAct.id, text: 'Fitment of new footstep' },
-                    { activity_id: majorAct.id, text: 'Touch-up painting' },
-                    { activity_id: majorAct.id, text: 'Proper marking & lettering' },
-                ]);
+                    await Question.bulkCreate([
+                        { activity_id: majorAct.id, text: 'Painting & lettering if vinyl unavailable' },
+                        { activity_id: majorAct.id, text: 'Painting & lettering (Plate)' },
+                        { activity_id: majorAct.id, text: 'Fitment of new handrail' },
+                        { activity_id: majorAct.id, text: 'Fitment of new footstep' },
+                        { activity_id: majorAct.id, text: 'Touch-up painting' },
+                        { activity_id: majorAct.id, text: 'Proper marking & lettering' },
+                    ]);
+                }
             }
         }
 

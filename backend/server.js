@@ -4,6 +4,7 @@ const sequelize = require('./config/db');
 const AuditRoutes = require('./routes/AuditRoutes');
 const AuthRoutes = require('./routes/AuthRoutes');
 const AdminRoutes = require('./routes/AdminRoutes');
+const QuestionRoutes = require('./routes/QuestionRoutes');
 
 const app = express();
 const PORT = 3000;
@@ -23,6 +24,7 @@ app.use('/public', express.static('public'));
 app.use('/api', AuditRoutes);
 app.use('/api/auth', AuthRoutes);
 app.use('/api/admin', AdminRoutes);
+app.use('/api', QuestionRoutes);
 
 // Catch-all for 404
 app.use((req, res) => {

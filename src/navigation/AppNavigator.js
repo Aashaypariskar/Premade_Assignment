@@ -12,6 +12,7 @@ import QuestionsScreen from '../screens/QuestionsScreen';
 import SummaryScreen from '../screens/SummaryScreen';
 import UserManagementScreen from '../screens/UserManagementScreen';
 import CreateUserScreen from '../screens/CreateUserScreen';
+import QuestionManagementScreen from '../screens/QuestionManagementScreen';
 
 const Stack = createStackNavigator();
 
@@ -81,6 +82,11 @@ const AppNavigator = () => {
                                 name="CreateUser"
                                 component={CreateUserScreen}
                                 options={{ title: 'User Access' }}
+                            />
+                            <Stack.Screen
+                                name="QuestionManagement"
+                                component={QuestionManagementScreen}
+                                options={{ title: 'Question Management' }}
                             />
                         </>
                     )}
