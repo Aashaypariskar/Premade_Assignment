@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 import ImagePickerField from './ImagePickerField';
+import { getReasonsByQuestion } from '../api/api';
 
 /**
  * Modern Question Card Component
@@ -8,7 +9,26 @@ import ImagePickerField from './ImagePickerField';
  */
 const QuestionCard = ({ question, answerData, onUpdate }) => {
     const isNo = answerData?.answer === 'NO';
-    const REASONS = ['Dirty', 'Broken', 'Dented', 'Missing', 'Loose'];
+    const [reasonsList, setReasonsList] = useState([]);
+    const [loadingReasons, setLoadingReasons] = useState(false);
+
+    useEffect(() => {
+        if (isNo && reasonsList.length === 0) {
+            fetchReasons();
+        }
+    }, [isNo]);
+
+    const fetchReasons = async () => {
+        try {
+            setLoadingReasons(true);
+            const data = await getReasonsByQuestion(question.id);
+            setReasonsList(data);
+        } catch (err) {
+            console.log('Error fetching reasons:', err);
+        } finally {
+            setLoadingReasons(false);
+        }
+    };
 
     const setAnswer = (val) => {
         const current = answerData?.answer;
@@ -49,15 +69,22 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
                 <View style={styles.noSection}>
                     <Text style={styles.label}>Select Reasons (Mandatory):</Text>
                     <View style={styles.reasonsRow}>
-                        {REASONS.map(r => (
-                            <TouchableOpacity
-                                key={r}
-                                style={[styles.chip, answerData?.reasons?.includes(r) && styles.chipActive]}
-                                onPress={() => toggleReason(r)}
-                            >
-                                <Text style={[styles.chipText, answerData?.reasons?.includes(r) && styles.textActive]}>{r}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {loadingReasons ? (
+                            <ActivityIndicator size="small" color="#64748b" />
+                        ) : (
+                            reasonsList.map(r => (
+                                <TouchableOpacity
+                                    key={r.id}
+                                    style={[styles.chip, answerData?.reasons?.includes(r.text) && styles.chipActive]}
+                                    onPress={() => toggleReason(r.text)}
+                                >
+                                    <Text style={[styles.chipText, answerData?.reasons?.includes(r.text) && styles.textActive]}>{r.text}</Text>
+                                </TouchableOpacity>
+                            ))
+                        )}
+                        {!loadingReasons && reasonsList.length === 0 && (
+                            <Text style={styles.noReasonsText}>No reasons defined.</Text>
+                        )}
                     </View>
 
                     <TextInput
@@ -95,6 +122,7 @@ const styles = StyleSheet.create({
     chip: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#f1f5f9', borderRadius: 20, marginRight: 8, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' },
     chipActive: { backgroundColor: '#ef4444', borderColor: '#ef4444' },
     chipText: { fontSize: 12, color: '#475569', fontWeight: '600' },
+    noReasonsText: { fontSize: 12, color: '#94a3b8', fontStyle: 'italic' },
     input: { backgroundColor: '#f8fafc', borderRadius: 8, padding: 12, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: '#e2e8f0', color: '#1e293b', marginBottom: 15 }
 });
 

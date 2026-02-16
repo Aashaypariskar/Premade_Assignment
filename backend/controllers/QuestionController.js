@@ -1,4 +1,4 @@
-const { Question, Activity, Category } = require('../models');
+const { Question, Activity, Category, Reason } = require('../models');
 
 /**
  * QuestionController - Admin Question Management
@@ -34,7 +34,7 @@ exports.createQuestion = async (req, res) => {
             return res.status(400).json({ error: 'activity_id and text are required' });
         }
 
-        // Verify activity exists
+        // Verify activity exists and get type
         const activity = await Activity.findByPk(activity_id);
         if (!activity) {
             return res.status(404).json({ error: 'Activity not found' });
@@ -42,9 +42,24 @@ exports.createQuestion = async (req, res) => {
 
         const question = await Question.create({ activity_id, text });
 
+        // Auto-seed default reasons based on activity type
+        const defaultMinorReasons = ['Dirty', 'Broken', 'Missing', 'Loose', 'Worn Out', 'Damaged'];
+        const defaultMajorReasons = ['Complete Failure', 'Structural Damage', 'Replacement Required', 'Safety Hazard', 'Beyond Repair'];
+
+        // Default to Minor if type allows, or just a merge?
+        // Logic from seedEndToEnd.js uses exact sets.
+        const reasonsToSeed = activity.type === 'Major' ? defaultMajorReasons : defaultMinorReasons;
+
+        const reasonObjects = reasonsToSeed.map(rText => ({
+            question_id: question.id,
+            text: rText
+        }));
+
+        await Reason.bulkCreate(reasonObjects);
+
         res.status(201).json({
             success: true,
-            message: 'Question created successfully',
+            message: 'Question created successfully with default reasons',
             question
         });
     } catch (err) {

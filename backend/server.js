@@ -1,10 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/db');
-const AuditRoutes = require('./routes/AuditRoutes');
-const AuthRoutes = require('./routes/AuthRoutes');
-const AdminRoutes = require('./routes/AdminRoutes');
-const QuestionRoutes = require('./routes/QuestionRoutes');
+const auditRoutes = require('./routes/AuditRoutes');
+const authRoutes = require('./routes/AuthRoutes');
+const adminRoutes = require('./routes/AdminRoutes');
+const questionRoutes = require('./routes/QuestionRoutes');
+const reasonRoutes = require('./routes/ReasonRoutes');
 
 const app = express();
 const PORT = 3000;
@@ -21,10 +22,12 @@ app.use((req, res, next) => {
 app.use('/public', express.static('public'));
 
 // Routes
-app.use('/api', AuditRoutes);
-app.use('/api/auth', AuthRoutes);
-app.use('/api/admin', AdminRoutes);
-app.use('/api', QuestionRoutes);
+app.use('/api', auditRoutes);
+app.use('/api', authRoutes);
+app.use('/api', adminRoutes);
+app.use('/api', questionRoutes);
+app.use('/api', reasonRoutes);
+
 
 // Catch-all for 404
 app.use((req, res) => {

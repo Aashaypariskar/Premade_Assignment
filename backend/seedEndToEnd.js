@@ -1,4 +1,4 @@
-const { Train, Coach, Category, Activity, Question, User, Role, CategoryMaster, UserCategory, sequelize } = require('./models');
+const { Train, Coach, Category, Activity, Question, Reason, User, Role, CategoryMaster, UserCategory, sequelize } = require('./models');
 const bcrypt = require('bcryptjs');
 
 async function seedProductionData() {
@@ -72,30 +72,48 @@ async function seedProductionData() {
                     const majorAct = await Activity.create({ category_id: category.id, type: 'Major' });
 
                     // Use the same comprehensive question set for all categories
-                    await Question.bulkCreate([
-                        { activity_id: minorAct.id, text: 'Checking of boards for torn vinyl' },
-                        { activity_id: minorAct.id, text: 'Application of Vinyl on the board' },
-                        { activity_id: minorAct.id, text: 'Removal of boards from sick coaches' },
-                        { activity_id: minorAct.id, text: 'Fitment of boards as per location' },
-                        { activity_id: minorAct.id, text: 'Checking vinyl graphics (Plate)' },
-                        { activity_id: minorAct.id, text: 'Application of vinyl (Plate)' },
-                        { activity_id: minorAct.id, text: 'Removal from sick coaches (Plate)' },
-                        { activity_id: minorAct.id, text: 'Checking hand rails' },
-                        { activity_id: minorAct.id, text: 'Attention to loose handrails' },
-                        { activity_id: minorAct.id, text: 'Checking corrosion (Steps)' },
-                        { activity_id: minorAct.id, text: 'Attention to loose footsteps' },
-                        { activity_id: minorAct.id, text: 'Checking paint condition' },
-                        { activity_id: minorAct.id, text: 'Checking marking condition' },
-                    ]);
+                    // Create Questions and Reasons together
+                    const minorQuestions = [
+                        'Checking of boards for torn vinyl',
+                        'Application of Vinyl on the board',
+                        'Removal of boards from sick coaches',
+                        'Fitment of boards as per location',
+                        'Checking vinyl graphics (Plate)',
+                        'Application of vinyl (Plate)',
+                        'Removal from sick coaches (Plate)',
+                        'Checking hand rails',
+                        'Attention to loose handrails',
+                        'Checking corrosion (Steps)',
+                        'Attention to loose footsteps',
+                        'Checking paint condition',
+                        'Checking marking condition'
+                    ];
 
-                    await Question.bulkCreate([
-                        { activity_id: majorAct.id, text: 'Painting & lettering if vinyl unavailable' },
-                        { activity_id: majorAct.id, text: 'Painting & lettering (Plate)' },
-                        { activity_id: majorAct.id, text: 'Fitment of new handrail' },
-                        { activity_id: majorAct.id, text: 'Fitment of new footstep' },
-                        { activity_id: majorAct.id, text: 'Touch-up painting' },
-                        { activity_id: majorAct.id, text: 'Proper marking & lettering' },
-                    ]);
+                    const majorQuestions = [
+                        'Painting & lettering if vinyl unavailable',
+                        'Painting & lettering (Plate)',
+                        'Fitment of new handrail',
+                        'Fitment of new footstep',
+                        'Touch-up painting',
+                        'Proper marking & lettering'
+                    ];
+
+                    const defaultMinorReasons = ['Dirty', 'Broken', 'Missing', 'Loose', 'Worn Out', 'Damaged'];
+                    const defaultMajorReasons = ['Complete Failure', 'Structural Damage', 'Replacement Required', 'Safety Hazard', 'Beyond Repair'];
+
+                    // Seed Minor Questions & Reasons
+                    for (const qText of minorQuestions) {
+                        const q = await Question.create({ activity_id: minorAct.id, text: qText });
+                        const reasons = defaultMinorReasons.map(r => ({ question_id: q.id, text: r }));
+                        await Reason.bulkCreate(reasons);
+                    }
+
+                    // Seed Major Questions & Reasons
+                    for (const qText of majorQuestions) {
+                        const q = await Question.create({ activity_id: majorAct.id, text: qText });
+                        const reasons = defaultMajorReasons.map(r => ({ question_id: q.id, text: r }));
+                        await Reason.bulkCreate(reasons);
+                    }
                 }
             }
         }

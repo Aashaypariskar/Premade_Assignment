@@ -102,4 +102,26 @@ export const deleteQuestion = async (questionId) => {
     return res.data;
 };
 
+// Reason Management APIs
+export const getReasonsByQuestion = async (questionId) => {
+    const res = await api.get(`/reasons?question_id=${questionId}`);
+    return res.data;
+};
+
+export const createReason = async (reasonData) => {
+    // reasonData should contain { question_id, text }
+    const res = await api.post('/admin/reason', reasonData);
+    return res.data;
+};
+
+export const updateReason = async (reasonId, reasonData) => {
+    const res = await api.put(`/admin/reason/${reasonId}`, reasonData);
+    return res.data;
+};
+
+export const deleteReason = async (reasonId) => {
+    const res = await api.delete(`/admin/reason/${reasonId}`);
+    return res.data;
+};
+
 export default api;

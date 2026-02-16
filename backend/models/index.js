@@ -49,6 +49,8 @@ const Question = sequelize.define('Question', {
     text: { type: DataTypes.TEXT, allowNull: false }
 }, { tableName: 'questions', timestamps: false });
 
+const Reason = require('./Reason')(sequelize, DataTypes);
+
 const InspectionAnswer = sequelize.define('InspectionAnswer', {
     answer: { type: DataTypes.ENUM('YES', 'NO', 'NA'), allowNull: false },
     reasons: { type: DataTypes.JSON },
@@ -84,6 +86,9 @@ Activity.belongsTo(Category, { foreignKey: 'category_id' });
 Activity.hasMany(Question, { foreignKey: 'activity_id' });
 Question.belongsTo(Activity, { foreignKey: 'activity_id' });
 
+Question.hasMany(Reason, { foreignKey: 'question_id' });
+Reason.belongsTo(Question, { foreignKey: 'question_id' });
+
 // Inspection Answer links
 InspectionAnswer.belongsTo(Train, { foreignKey: 'train_id' });
 InspectionAnswer.belongsTo(Coach, { foreignKey: 'coach_id' });
@@ -92,7 +97,7 @@ InspectionAnswer.belongsTo(Question, { foreignKey: 'question_id' });
 InspectionAnswer.belongsTo(User, { foreignKey: 'user_id' });
 
 module.exports = {
-    Train, Coach, Category, Activity, Question, InspectionAnswer,
+    Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
     User, Role, CategoryMaster, UserCategory,
     sequelize
 };
