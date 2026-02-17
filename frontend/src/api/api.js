@@ -19,6 +19,20 @@ api.interceptors.request.use(async (config) => {
     return Promise.reject(error);
 });
 
+// Response Interceptor for handling 401 globally
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response?.status === 401) {
+            console.warn('Session expired or unauthorized. Logging out...');
+            await SecureStore.deleteItemAsync('user_token');
+            await SecureStore.deleteItemAsync('user_data');
+            // Root cause of 401 is usually expired session
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const getUserCategories = async () => {
     const res = await api.get('/user-categories');
     return res.data;

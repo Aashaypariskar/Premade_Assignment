@@ -115,14 +115,17 @@ exports.getQuestions = async (req, res) => {
 exports.submitInspection = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const { train_id, coach_id, activity_id, answers, submission_id } = req.body; // submission_id here
-        const userId = req.user.id;
-        const userName = req.user.name; // assuming verifyToken puts name on req.user
-        const roleName = req.user.role;
+        const { train_id, coach_id, activity_id, answers, submission_id } = req.body;
+        console.log(`[SUBMIT] Attempting: ${submission_id} (Train: ${train_id}, Coach: ${coach_id}, Activity: ${activity_id})`);
+        console.log(`[SUBMIT] Answers count: ${answers?.length}`);
 
         if (!answers || !Array.isArray(answers)) {
+            console.error('[SUBMIT] ERROR: Invalid answers format');
             return res.status(400).json({ error: 'Invalid submission format' });
         }
+
+        const userId = req.user.id;
+        const roleName = req.user.role;
 
         // 1. Fetch Master Data & Current User
         const [train, coach, activity, currentUser] = await Promise.all([
@@ -159,7 +162,7 @@ exports.submitInspection = async (req, res) => {
                 // Foreign Keys
                 train_id,
                 coach_id,
-                activity_id, // This might need to come from individual answer if multiple activities
+                activity_id,
                 question_id: ans.question_id,
                 user_id: userId,
 
@@ -167,10 +170,10 @@ exports.submitInspection = async (req, res) => {
                 submission_id: submission_id || `LEGACY-${Date.now()}`,
                 train_number: train.train_number,
                 coach_number: coach.coach_number,
-                // category_name? We need to fetch category name if we want snapshot.
-                // For now, let's skip category_name snapshot or fetch it.
-                user_name: userName,
-                role_snapshot: roleName
+                category_name: activity.Category?.name || 'Unknown',
+                activity_type: activity.type,
+                user_name: currentUser.name,
+                role_snapshot: currentUser.Role?.role_name || roleName
             };
         });
 
@@ -181,10 +184,11 @@ exports.submitInspection = async (req, res) => {
         res.status(201).json({
             success: true,
             recordsSaved: results.length,
-            audited_by: userName
+            audited_by: currentUser.name
         });
 
     } catch (err) {
+        console.error('[SUBMIT] CRITICAL ERROR:', err);
         if (transaction) await transaction.rollback();
         res.status(err.message.includes('Validation') ? 400 : 500).json({ error: err.message });
     }

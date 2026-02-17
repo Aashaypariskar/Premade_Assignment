@@ -5,6 +5,7 @@ exports.verifyToken = (req, res, next) => {
     const token = req.headers['authorization']?.split(' ')[1];
 
     if (!token) {
+        console.warn(`[AUTH] Unauthorized: No token provided for ${req.method} ${req.url}`);
         return res.status(401).json({ error: 'No token provided. Authorization denied.' });
     }
 
@@ -13,6 +14,7 @@ exports.verifyToken = (req, res, next) => {
         req.user = decoded; // { id, role }
         next();
     } catch (err) {
+        console.error(`[AUTH] Token rejection for ${req.method} ${req.url}:`, err.message);
         return res.status(401).json({ error: 'Token is invalid or expired' });
     }
 };

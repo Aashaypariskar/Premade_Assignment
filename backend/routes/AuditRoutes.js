@@ -11,6 +11,6 @@ router.get('/checklist', verifyToken, controller.getQuestions);
 router.get('/activity-types', verifyToken, controller.getActivities);
 
 // Restricted Routes
-router.post('/save-inspection', verifyToken, authorizeRoles('Admin', 'Engineer', 'Field User'), controller.submitInspection);
+router.post('/save-inspection', verifyToken, authorizeRoles('Admin', 'Engineer', 'Field User', 'Auditor'), controller.submitInspection);
 
 module.exports = router;

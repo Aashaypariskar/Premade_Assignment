@@ -8,7 +8,7 @@ import { useStore } from '../store/StoreContext';
  * Highly defensive code to prevent "Cannot read property of null" errors
  */
 const SummaryScreen = ({ navigation }) => {
-    const { draft, clearDraft } = useStore();
+    const { draft, clearDraft, user } = useStore();
     const [submitting, setSubmitting] = useState(false);
 
     // Defensive check for draft object
@@ -50,29 +50,22 @@ const SummaryScreen = ({ navigation }) => {
                         const submittedTrain = currentDraft.train?.train_number;
                         const submittedCoach = currentDraft.coach?.coach_number;
                         const now = new Date().toISOString().split('T')[0];
+                        const userId = user?.id;
 
                         clearDraft();
-                        // Navigate to Report Detail (we assume user_id is current user)
-                        // Ideally backend returns the report ID, but for our 'virtual' reporting:
-                        // We use the composite key data.
                         navigation.replace('ReportDetail', {
                             submission_id: payload.submission_id,
                             train_number: submittedTrain,
                             coach_number: submittedCoach,
                             date: now,
-                            user_name: 'You',
-                            user_id: payload.user_id
+                            user_name: user?.name || 'You',
+                            user_id: userId
                         });
-                        // Actually we need to pass user_id so ReportDetail can fetch. 
-                        // We don't have it easily here without context.
-                        // Let's just popToTop and let them go to History?
-                        // User asked: "it should go to a new page... report page"
-                        // So we MUST navigate there.
-                        // Let's get user from store
                     }
                 }
             ]);
         } catch (e) {
+            console.error('Submission Error:', e.response?.data || e.message);
             Alert.alert('Error', 'Failed to synchronize with backend. Check connection.');
         } finally {
             setSubmitting(false);
