@@ -139,8 +139,13 @@ export const deleteReason = async (reasonId) => {
 };
 
 // Report APIs
-export const getReports = async () => {
-    const res = await api.get('/reports');
+export const getReports = async (filters = {}) => {
+    const res = await api.get('/reports', { params: filters });
+    return res.data;
+};
+
+export const getReportFilterOptions = async () => {
+    const res = await api.get('/report-filters');
     return res.data;
 };
 

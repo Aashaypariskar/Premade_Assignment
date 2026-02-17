@@ -62,9 +62,10 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     coach_number: { type: DataTypes.STRING(50) },
     category_name: { type: DataTypes.STRING(100) },
     activity_type: { type: DataTypes.ENUM('Minor', 'Major') },
-    user_id: { type: DataTypes.INTEGER },
+    status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
+    role_snapshot: { type: DataTypes.STRING(100) },
     user_name: { type: DataTypes.STRING(100) },
-    role_snapshot: { type: DataTypes.STRING(50) }
+    user_id: { type: DataTypes.INTEGER }
 }, { tableName: 'inspection_answers', updatedAt: false });
 
 // Associations - RBAC

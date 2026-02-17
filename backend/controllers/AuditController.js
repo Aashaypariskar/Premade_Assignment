@@ -172,6 +172,7 @@ exports.submitInspection = async (req, res) => {
                 coach_number: coach.coach_number,
                 category_name: activity.Category?.name || 'Unknown',
                 activity_type: activity.type,
+                status: 'Completed',
                 user_name: currentUser.name,
                 role_snapshot: currentUser.Role?.role_name || roleName
             };

@@ -11,11 +11,12 @@ const sequelize = require('../config/db');
 const formatDate = (date) => new Date(date).toISOString().split('T')[0];
 
 // GET /api/reports
-// Returns a list of "Inspection Sessions" (grouped by Submission ID)
+// Returns a list of "Inspection Sessions" with aggregated incident counts
 exports.getAllReports = async (req, res) => {
     try {
-        console.log('--- FETCHING REPORTS (v4 - FORCED REFRESH) ---');
         const { role, id: userId } = req.user;
+        const { train_no, coach_no, inspection_type, start_date, end_date, status, page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
 
         let whereClause = {};
 
@@ -24,47 +25,101 @@ exports.getAllReports = async (req, res) => {
             whereClause.user_id = userId;
         }
 
-        const answers = await InspectionAnswer.findAll({
-            where: whereClause,
+        // Filters
+        if (train_no) whereClause.train_number = train_no;
+        if (coach_no) whereClause.coach_number = coach_no;
+        if (inspection_type) whereClause.category_name = inspection_type;
+        if (status) whereClause.status = status; // Assuming status is added or using a placeholder
+        if (start_date && end_date) {
+            whereClause.createdAt = { [Op.between]: [new Date(start_date), new Date(end_date)] };
+        }
+
+        // Aggregate by submission_id
+        const reports = await InspectionAnswer.findAll({
             attributes: [
-                'submission_id', 'train_number', 'coach_number', 'user_name', 'createdAt', 'user_id', 'id'
+                'submission_id',
+                'train_number',
+                'coach_number',
+                'user_name',
+                'category_name',
+                'status',
+                'createdAt',
+                'user_id',
+                [sequelize.fn('COUNT', sequelize.literal("CASE WHEN answer = 'NO' AND activity_type = 'Major' THEN 1 END")), 'major_incident_count'],
+                [sequelize.fn('COUNT', sequelize.literal("CASE WHEN answer = 'NO' AND activity_type = 'Minor' THEN 1 END")), 'minor_incident_count'],
+                [sequelize.fn('COUNT', sequelize.col('id')), 'total_items']
             ],
-            include: [
-                { model: Activity, attributes: ['type'], include: [{ model: Category, attributes: ['name'] }] }
-            ],
-            order: [['createdAt', 'DESC']]
+            where: whereClause,
+            group: ['submission_id', 'train_number', 'coach_number', 'user_name', 'category_name', 'status', 'createdAt', 'user_id'],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            raw: true
         });
 
-        // Grouping Logic
-        const reportsMap = new Map();
-
-        answers.forEach(ans => {
-            // Key: Submission ID (Fallback to old key if null)
-            const dateStr = formatDate(ans.createdAt);
-            const key = ans.submission_id || `${ans.train_number}-${ans.coach_number}-${ans.user_id}-${dateStr}`;
-
-            if (!reportsMap.has(key)) {
-                reportsMap.set(key, {
-                    id: key, // Submission ID is the ID
-                    train_number: ans.train_number,
-                    coach_number: ans.coach_number,
-                    user_name: ans.user_name,
-                    category_name: ans.Activity?.Category?.name || 'Inspection',
-                    date: dateStr,
-                    timestamp: ans.createdAt, // Keep most recent
-                    total_questions: 0,
-                    user_id: ans.user_id
-                });
-            }
-            reportsMap.get(key).total_questions++;
+        // Get total count for pagination
+        const totalCount = await InspectionAnswer.count({
+            distinct: true,
+            col: 'submission_id',
+            where: whereClause
         });
 
-        const reports = Array.from(reportsMap.values());
-        res.json(reports);
+        res.json({
+            total: totalCount,
+            pages: Math.ceil(totalCount / limit),
+            data: reports
+        });
 
     } catch (err) {
         console.error('Get Reports Error:', err);
         res.status(500).json({ error: 'Failed to fetch reports' });
+    }
+};
+
+// GET /api/report-filters
+// Returns distinct values for dropdown filtering
+exports.getFilterOptions = async (req, res) => {
+    try {
+        const { role, id: userId } = req.user;
+        let whereClause = {};
+
+        if (role !== 'Admin') {
+            whereClause.user_id = userId;
+        }
+
+        const [trains, coaches, types, statuses] = await Promise.all([
+            InspectionAnswer.findAll({
+                attributes: [[sequelize.fn('DISTINCT', sequelize.col('train_number')), 'train_number']],
+                where: whereClause,
+                raw: true
+            }),
+            InspectionAnswer.findAll({
+                attributes: [[sequelize.fn('DISTINCT', sequelize.col('coach_number')), 'coach_number']],
+                where: whereClause,
+                raw: true
+            }),
+            InspectionAnswer.findAll({
+                attributes: [[sequelize.fn('DISTINCT', sequelize.col('category_name')), 'category_name']],
+                where: whereClause,
+                raw: true
+            }),
+            InspectionAnswer.findAll({
+                attributes: [[sequelize.fn('DISTINCT', sequelize.col('status')), 'status']],
+                where: whereClause,
+                raw: true
+            })
+        ]);
+
+        res.json({
+            trains: trains.map(t => t.train_number).filter(Boolean),
+            coaches: coaches.map(c => c.coach_number).filter(Boolean),
+            types: types.map(t => t.category_name).filter(Boolean),
+            statuses: statuses.map(s => s.status).filter(Boolean)
+        });
+
+    } catch (err) {
+        console.error('Get Filter Options Error:', err);
+        res.status(500).json({ error: 'Failed to fetch filter options' });
     }
 };
 
