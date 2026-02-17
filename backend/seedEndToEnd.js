@@ -98,6 +98,29 @@ async function seedProductionData() {
                         'Proper marking & lettering'
                     ];
 
+                    const commissionaryMajorQuestions = [
+                        'CBC height (BB end / KYN end)',
+                        'Torquing',
+                        'WSP (Phonic wheel sensor face gap)',
+                        'WSP junction box modification',
+                        'Undergear painting',
+                        'FIBA Bellow air pressure testing',
+                        'Air spring elbow pipeline modification',
+                        'Drainpipe modification',
+                        'Condition of tough floor paint',
+                        'Bio-toilet condition',
+                        'Provision of garbage rings',
+                        'Linen room fittings',
+                        'ACP cover condition',
+                        'Toilet panel condition',
+                        'Mirror condition',
+                        'Berth & seats condition',
+                        'Fire extinguishers brackets',
+                        'Dustbins',
+                        'Emergency window fittings',
+                        'Exterior painting'
+                    ];
+
                     const defaultMinorReasons = ['Dirty', 'Broken', 'Missing', 'Loose', 'Worn Out', 'Damaged'];
                     const defaultMajorReasons = ['Complete Failure', 'Structural Damage', 'Replacement Required', 'Safety Hazard', 'Beyond Repair'];
 
@@ -109,7 +132,8 @@ async function seedProductionData() {
                     }
 
                     // Seed Major Questions & Reasons
-                    for (const qText of majorQuestions) {
+                    const questionsToSeed = masterCat.name === 'Coach Commissionary' ? commissionaryMajorQuestions : majorQuestions;
+                    for (const qText of questionsToSeed) {
                         const q = await Question.create({ activity_id: majorAct.id, text: qText });
                         const reasons = defaultMajorReasons.map(r => ({ question_id: q.id, text: r }));
                         await Reason.bulkCreate(reasons);

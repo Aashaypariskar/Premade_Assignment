@@ -142,8 +142,12 @@ exports.submitInspection = async (req, res) => {
             if (ans.answer === 'NO') {
                 const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                 const hasImage = !!ans.image_path;
+
                 if (!hasReasons || !hasImage) {
-                    throw new Error(`Validation Failed: Question ID ${ans.question_id} requires reasons and an image.`);
+                    const missing = [];
+                    if (!hasReasons) missing.push('reasons');
+                    if (!hasImage) missing.push('an image');
+                    throw new Error(`Validation Failed: Question ID ${ans.question_id} requires ${missing.join(' and ')} for "NO" answers.`);
                 }
             }
             return {

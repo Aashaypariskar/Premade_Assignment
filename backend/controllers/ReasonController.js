@@ -9,7 +9,7 @@ exports.getReasonsByQuestion = async (req, res) => {
     try {
         const { question_id } = req.query;
         if (!question_id) {
-            return res.status(400).json({ error: 'question_id is required' });
+            return res.status(400).json({ success: false, error: 'question_id is required' });
         }
 
         const reasons = await Reason.findAll({
@@ -17,10 +17,17 @@ exports.getReasonsByQuestion = async (req, res) => {
             order: [['id', 'ASC']]
         });
 
-        res.json(reasons);
+        if (reasons.length === 0) {
+            console.warn(`[WARNING] No reasons found for question ID: ${question_id}`);
+        }
+
+        res.json({
+            success: true,
+            reasons: reasons
+        });
     } catch (error) {
         console.error('Get Reasons Error:', error);
-        res.status(500).json({ error: 'Failed to fetch reasons' });
+        res.status(500).json({ success: false, error: 'Failed to fetch reasons' });
     }
 };
 

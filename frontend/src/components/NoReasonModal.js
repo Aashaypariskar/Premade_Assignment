@@ -1,21 +1,39 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, Alert, Image } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { getReasonsByQuestion } from '../api/api';
 
 // This modal opens up when student/engineer selects "NO" as an answer
 const NoReasonModal = ({ question, onDone, onCancel }) => {
+    const [reasons, setReasons] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [selectedReasons, setSelectedReasons] = useState([]);
     const [remarks, setRemarks] = useState('');
     const [image, setImage] = useState(null);
     const [error, setError] = useState('');
 
-    const REASONS = ['Dirty', 'Broken', 'Dented', 'Missing', 'Loose'];
+    React.useEffect(() => {
+        fetchReasons();
+    }, [question.id]);
 
-    const toggleReason = (reason) => {
-        if (selectedReasons.includes(reason)) {
-            setSelectedReasons(selectedReasons.filter(r => r !== reason));
+    const fetchReasons = async () => {
+        try {
+            setLoading(true);
+            const response = await getReasonsByQuestion(question.id);
+            // Handle new structured response { success: true, reasons: [...] }
+            const data = response.reasons || [];
+            setReasons(data);
+        } catch (err) {
+            console.error('Fetch reasons error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleReason = (reasonText) => {
+        if (selectedReasons.includes(reasonText)) {
+            setSelectedReasons(selectedReasons.filter(r => r !== reasonText));
         } else {
-            setSelectedReasons([...selectedReasons, reason]);
+            setSelectedReasons([...selectedReasons, reasonText]);
             setError(''); // clear error if user picked something
         }
     };
@@ -43,7 +61,7 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
     const handleDone = () => {
         // Simple validation
         if (selectedReasons.length === 0) {
-            setError('Select at least one reason boss');
+            setError('Select at least one reason');
             return;
         }
         if (!image) {
@@ -68,15 +86,25 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
 
                     <Text style={styles.label}>Select Reasons:</Text>
                     <View style={styles.row}>
-                        {REASONS.map(r => (
-                            <TouchableOpacity
-                                key={r}
-                                style={[styles.tag, selectedReasons.includes(r) && styles.tagActive]}
-                                onPress={() => toggleReason(r)}
-                            >
-                                <Text style={{ color: selectedReasons.includes(r) ? '#fff' : '#000' }}>{r}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {loading ? (
+                            <ActivityIndicator size="small" color="#2563eb" />
+                        ) : (
+                            reasons.map(r => (
+                                <TouchableOpacity
+                                    key={r.id}
+                                    style={[styles.tag, selectedReasons.includes(r.text) && styles.tagActive]}
+                                    onPress={() => toggleReason(r.text)}
+                                >
+                                    <Text style={{ color: selectedReasons.includes(r.text) ? '#fff' : '#000' }}>{r.text}</Text>
+                                </TouchableOpacity>
+                            ))
+                        )}
+                        {!loading && reasons.length === 0 && (
+                            <View style={styles.errorContainer}>
+                                <Text style={styles.emptyText}>⚠️ No reasons configured.</Text>
+                                <Text style={styles.contactAdmin}>Please contact Admin to add reasons.</Text>
+                            </View>
+                        )}
                     </View>
 
                     <TextInput
@@ -100,7 +128,11 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
                         <TouchableOpacity style={styles.btn1} onPress={onCancel}>
                             <Text>Cancel</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.btn2} onPress={handleDone}>
+                        <TouchableOpacity
+                            style={[styles.btn2, (reasons.length === 0 && !loading) && styles.btnDisabled]}
+                            onPress={handleDone}
+                            disabled={reasons.length === 0 && !loading}
+                        >
                             <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save</Text>
                         </TouchableOpacity>
                     </View>
@@ -124,7 +156,10 @@ const styles = StyleSheet.create({
     img: { width: 80, height: 80, marginTop: 10, borderRadius: 5 },
     btns: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
     btn1: { padding: 12, marginRight: 10 },
-    btn2: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 5 }
+    btn2: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 5 },
+    btnDisabled: { backgroundColor: '#cbd5e1' },
+    errorContainer: { padding: 10, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fecaca', width: '100%', alignItems: 'center' },
+    contactAdmin: { fontSize: 11, color: '#ef4444', marginTop: 4, fontWeight: '500' }
 });
 
 export default NoReasonModal;

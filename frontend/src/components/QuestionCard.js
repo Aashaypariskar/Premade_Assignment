@@ -21,7 +21,8 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
     const fetchReasons = async () => {
         try {
             setLoadingReasons(true);
-            const data = await getReasonsByQuestion(question.id);
+            const response = await getReasonsByQuestion(question.id);
+            const data = response.reasons || [];
             setReasonsList(data);
         } catch (err) {
             console.log('Error fetching reasons:', err);
@@ -83,7 +84,9 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
                             ))
                         )}
                         {!loadingReasons && reasonsList.length === 0 && (
-                            <Text style={styles.noReasonsText}>No reasons defined.</Text>
+                            <View style={styles.emptyReasonBox}>
+                                <Text style={styles.noReasonsText}>⚠️ No reasons configured. Contact Admin.</Text>
+                            </View>
                         )}
                     </View>
 
@@ -122,7 +125,8 @@ const styles = StyleSheet.create({
     chip: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#f1f5f9', borderRadius: 20, marginRight: 8, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' },
     chipActive: { backgroundColor: '#ef4444', borderColor: '#ef4444' },
     chipText: { fontSize: 12, color: '#475569', fontWeight: '600' },
-    noReasonsText: { fontSize: 12, color: '#94a3b8', fontStyle: 'italic' },
+    noReasonsText: { fontSize: 12, color: '#ef4444', fontStyle: 'italic', fontWeight: 'bold' },
+    emptyReasonBox: { padding: 8, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fecaca' },
     input: { backgroundColor: '#f8fafc', borderRadius: 8, padding: 12, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: '#e2e8f0', color: '#1e293b', marginBottom: 15 }
 });
 
