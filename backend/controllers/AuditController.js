@@ -1,6 +1,6 @@
 const {
     Train, Coach, Category, Activity, Question, InspectionAnswer,
-    User, Role, CategoryMaster, LtrSchedule, AmenitySubcategory, sequelize
+    User, Role, CategoryMaster, LtrSchedule, AmenitySubcategory, AmenityItem, sequelize
 } = require('../models');
 
 /**
@@ -125,11 +125,19 @@ exports.getLtrSchedules = async (req, res) => {
 // GET /amenity-subcategories?category_name=Amenity&coach_id=Y
 exports.getAmenitySubcategories = async (req, res) => {
     try {
-        const { category_name, coach_id } = req.query;
-        if (!category_name || !coach_id) return res.status(400).json({ error: 'coach_id and category_name required' });
+        const { category_name, coach_id, category_id } = req.query;
+        // Strict: We only need category identifier to find Master. Coach ID is irrelevant for Amenity Master.
 
-        const category = await Category.findOne({ where: { name: category_name, coach_id } });
-        if (!category) return res.status(404).json({ error: 'Amenity Category not found for this coach' });
+        let category;
+        if (category_id) {
+            category = await CategoryMaster.findByPk(category_id);
+        } else if (category_name) {
+            category = await CategoryMaster.findOne({ where: { name: category_name } });
+        } else {
+            return res.status(400).json({ error: 'category_id or category_name required' });
+        }
+
+        if (!category) return res.status(404).json({ error: 'Amenity Category Master not found' });
 
         const subs = await AmenitySubcategory.findAll({ where: { category_id: category.id } });
         res.json(subs);
@@ -172,6 +180,36 @@ exports.getQuestions = async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
+        if (categoryName === 'Amenity') {
+            // Strict Hierarchy: Subcategory -> Activity Type -> Items -> Questions
+            // If activity_type is not provided, try to derive from activity_id (legacy support)
+            let type = req.query.activity_type;
+            if (!type && activity_id) {
+                const act = await Activity.findByPk(activity_id);
+                type = act ? act.type : 'Minor';
+            }
+
+            if (!type) {
+                return res.status(400).json({ error: 'activity_type or activity_id is required for Amenity' });
+            }
+
+            const items = await AmenityItem.findAll({
+                where: { subcategory_id, activity_type: type },
+                include: [{
+                    model: Question,
+                    required: true,
+                    where: { subcategory_id } // Validation: Questions must match subcategory
+                }]
+            });
+
+            const grouped = items.map(item => ({
+                item_name: item.name,
+                questions: item.Questions
+            }));
+
+            return res.json(grouped);
+        }
+
         const questions = await Question.findAll({ where });
         res.json(questions);
     } catch (err) {
@@ -209,8 +247,23 @@ exports.submitInspection = async (req, res) => {
             return res.status(404).json({ error: 'Context not found' });
         }
 
+        // 1.5 Fetch Questions to get Item Names (for Amenity snapshots)
+        // Filter out any answers that are null/undefined (e.g. from toggled-off frontend state)
+        const validAnswers = answers.filter(a => a.answer === 'YES' || a.answer === 'NO');
+
+        if (validAnswers.length === 0) {
+            return res.status(400).json({ error: 'No valid answers to submit.' });
+        }
+
+        const questionIds = validAnswers.map(a => a.question_id);
+        const questionsList = await Question.findAll({
+            where: { id: questionIds },
+            include: [{ model: AmenityItem, required: false }]
+        });
+
         // 2. Prepare Payload with Audit Trail
-        const records = answers.map(ans => {
+        const records = validAnswers.map(ans => {
+            const questionData = questionsList.find(q => q.id === ans.question_id);
             if (ans.answer === 'NO') {
                 const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                 const hasImage = !!ans.image_path;
@@ -242,9 +295,10 @@ exports.submitInspection = async (req, res) => {
                 train_number: train.train_number,
                 coach_number: coach.coach_number,
                 category_name: activity?.Category?.name || (schedule ? 'Ltr to Railways' : (subcategory ? 'Amenity' : 'Unknown')),
-                subcategory_name: subcategory?.name || null,
+                subcategory_name: subcategory?.name || (questionData?.AmenitySubcategory?.name || null),
                 schedule_name: schedule?.name || null,
-                activity_type: activity?.type || null,
+                item_name: questionData?.AmenityItem?.name || null,
+                activity_type: activity?.type || questionData?.Activity?.type || null,
                 status: 'Completed',
                 user_name: currentUser.name,
                 role_snapshot: currentUser.Role?.role_name || roleName

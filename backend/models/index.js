@@ -49,12 +49,19 @@ const Activity = sequelize.define('Activity', {
 const LtrSchedule = require('./LtrSchedule')(sequelize);
 const AmenitySubcategory = require('./AmenitySubcategory')(sequelize);
 
+const AmenityItem = sequelize.define('AmenityItem', {
+    name: { type: DataTypes.STRING, allowNull: false },
+    subcategory_id: { type: DataTypes.INTEGER, allowNull: false },
+    activity_type: { type: DataTypes.ENUM('Minor', 'Major'), allowNull: false }
+}, { tableName: 'amenity_items', timestamps: false });
+
 const Question = sequelize.define('Question', {
     text: { type: DataTypes.TEXT, allowNull: false },
     activity_id: { type: DataTypes.INTEGER, allowNull: true },
     schedule_id: { type: DataTypes.INTEGER, allowNull: true },
     subcategory_id: { type: DataTypes.INTEGER, allowNull: true },
     category_id: { type: DataTypes.INTEGER, allowNull: true },
+    item_id: { type: DataTypes.INTEGER, allowNull: true }, // New for Amenity Hierarchy
     specified_value: { type: DataTypes.STRING, allowNull: true }
 }, { tableName: 'questions', timestamps: false });
 
@@ -72,6 +79,7 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     category_name: { type: DataTypes.STRING(100) },
     subcategory_name: { type: DataTypes.STRING(100) }, // New
     schedule_name: { type: DataTypes.STRING(100) }, // New
+    item_name: { type: DataTypes.STRING(255) }, // New for Amenity Hierarchy
     activity_type: { type: DataTypes.ENUM('Minor', 'Major') },
     status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
     role_snapshot: { type: DataTypes.STRING(100) },
@@ -118,6 +126,13 @@ AmenitySubcategory.hasMany(Question, { foreignKey: 'subcategory_id' });
 Question.hasMany(Reason, { foreignKey: 'question_id' });
 Reason.belongsTo(Question, { foreignKey: 'question_id' });
 
+// Amenity Item Associations
+AmenitySubcategory.hasMany(AmenityItem, { foreignKey: 'subcategory_id' });
+AmenityItem.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
+
+AmenityItem.hasMany(Question, { foreignKey: 'item_id' });
+Question.belongsTo(AmenityItem, { foreignKey: 'item_id' });
+
 // Inspection Answer links
 InspectionAnswer.belongsTo(Train, { foreignKey: 'train_id' });
 InspectionAnswer.belongsTo(Coach, { foreignKey: 'coach_id' });
@@ -129,7 +144,7 @@ InspectionAnswer.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' })
 
 module.exports = {
     Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
-    LtrSchedule, AmenitySubcategory,
+    LtrSchedule, AmenitySubcategory, AmenityItem,
     User, Role, CategoryMaster, UserCategory,
     sequelize
 };

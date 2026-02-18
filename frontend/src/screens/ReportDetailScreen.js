@@ -33,131 +33,127 @@ const ReportDetailScreen = ({ route, navigation }) => {
         navigation.navigate('Dashboard');
     };
 
-    // Extract Category Name from first item (assuming homogeneous report)
-    const categoryName = details.length > 0 && details[0]?.Activity?.Category?.name
-        ? details[0].Activity.Category.name
+    const categoryName = details.length > 0 && details[0]?.category_name
+        ? details[0].category_name
         : 'Inspection Report';
 
     const generateHtml = () => {
-        // Group details by Activity Type (Minor/Major)
         const grouped = details.reduce((acc, item) => {
-            let key = 'General';
-            if (item.LtrSchedule) key = `Schedule: ${item.LtrSchedule.name}`;
-            else if (item.AmenitySubcategory) key = `Area: ${item.AmenitySubcategory.name}`;
-            else if (item.Activity) key = `${item.Activity.type} Activities`;
+            let sectionKey = 'General';
+            if (item.schedule_name) sectionKey = `Schedule: ${item.schedule_name}`;
+            else if (item.subcategory_name) sectionKey = `Area: ${item.subcategory_name}`;
+            else if (item.activity_type) sectionKey = `${item.activity_type} Activities`;
 
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(item);
+            if (!acc[sectionKey]) acc[sectionKey] = {};
+            const itemKey = item.item_name || 'General';
+            if (!acc[sectionKey][itemKey]) acc[sectionKey][itemKey] = [];
+            acc[sectionKey][itemKey].push(item);
             return acc;
         }, {});
 
-        const sectionsHtml = Object.keys(grouped).map(type => {
-            const items = grouped[type];
-            const rows = items.map((item, index) => {
-                const reasonsStr = item.reasons
-                    ? (typeof item.reasons === 'string'
-                        ? JSON.parse(item.reasons).join(', ')
-                        : Array.isArray(item.reasons)
-                            ? item.reasons.join(', ')
-                            : '-')
-                    : '-';
+        const sectionsHtml = Object.keys(grouped).map(section => {
+            const itemsByItem = grouped[section];
+            const itemSectionsHtml = Object.keys(itemsByItem).map(itemName => {
+                const rows = itemsByItem[itemName].map((item, index) => {
+                    const reasonsStr = item.reasons
+                        ? (typeof item.reasons === 'string'
+                            ? JSON.parse(item.reasons).join(', ')
+                            : Array.isArray(item.reasons)
+                                ? item.reasons.join(', ')
+                                : '-')
+                        : '-';
+
+                    return `
+                        <tr>
+                            <td style="text-align: center;">${index + 1}</td>
+                            <td>
+                                ${item.Question?.text || 'N/A'}
+                                ${item.Question?.specified_value ? `<br/><small style="color: #64748b;">(Spec: ${item.Question.specified_value})</small>` : ''}
+                            </td>
+                            <td style="text-align: center; color: ${item.answer === 'NO' ? '#ef4444' : '#10b981'}; font-weight: bold;">${item.answer}</td>
+                            <td>${reasonsStr}</td>
+                            <td>${item.remarks || '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
 
                 return `
-                    <tr>
-                        <td style="text-align: center;">${index + 1}</td>
-                        <td>
-                            ${item.Question?.question_text || 'N/A'}
-                            ${item.Question?.specified_value ? `<br/><small style="color: #64748b;">(Spec: ${item.Question.specified_value})</small>` : ''}
-                        </td>
-                        <td style="text-align: center; color: ${item.answer === 'NO' ? '#ef4444' : '#10b981'}; font-weight: bold;">${item.answer}</td>
-                        <td>${reasonsStr}</td>
-                        <td>${item.remarks || '-'}</td>
-                    </tr>
+                    <div style="margin-top: 15px;">
+                        <div style="background-color: #f8fafc; padding: 6px 12px; border: 1px solid #cbd5e1; font-weight: bold; font-size: 11px; text-transform: uppercase; color: #334155; border-left: 4px solid #334155;">ITEM: ${itemName}</div>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 8%; border: 1px solid #94a3b8; padding: 10px; background-color: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #475569;">Sr No</th>
+                                    <th style="width: 45%; border: 1px solid #94a3b8; padding: 10px; background-color: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #475569;">Question</th>
+                                    <th style="width: 12%; border: 1px solid #94a3b8; padding: 10px; background-color: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #475569;">Obs.</th>
+                                    <th style="width: 15%; border: 1px solid #94a3b8; padding: 10px; background-color: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #475569;">Reasons</th>
+                                    <th style="width: 20%; border: 1px solid #94a3b8; padding: 10px; background-color: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #475569;">Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
                 `;
             }).join('');
 
             return `
                 <div class="activity-section">
-                    <h2 class="section-title">${type}</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 8%;">Sr No</th>
-                                <th style="width: 45%;">Description of Item</th>
-                                <th style="width: 12%;">Observation</th>
-                                <th style="width: 15%;">Reasons</th>
-                                <th style="width: 20%;">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
+                    <h2 style="font-size: 14px; background-color: #e2e8f0; padding: 8px 12px; border-left: 6px solid #2563eb; margin: 30px 0 10px 0;">${section}</h2>
+                    ${itemSectionsHtml}
                 </div>
             `;
         }).join('');
 
         return `
             <html>
-            <head>
-                <style>
-                    @page { margin: 20mm; }
-                    body { font-family: 'Helvetica', 'Arial', sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 12px; }
-                    .header { text-align: center; border-bottom: 2px solid #1e293b; padding-bottom: 10px; margin-bottom: 20px; }
-                    .header h1 { margin: 5px 0; font-size: 22px; text-transform: uppercase; color: #000; }
-                    .header p { margin: 2px 0; font-size: 14px; font-weight: bold; color: #475569; }
-
-                    .meta-table { width: 100%; margin-bottom: 20px; border: none; }
-                    .meta-table td { border: none; padding: 4px 0; font-size: 13px; }
-
-                    .section-title { font-size: 14px; background-color: #f1f5f9; padding: 6px 10px; border-left: 4px solid #2563eb; margin: 20px 0 10px 0; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
-                    
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }
-                    th, td { border: 1px solid #94a3b8; padding: 8px; text-align: left; word-wrap: break-word; }
-                    th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 11px; border-bottom: 2px solid #1e293b; }
-                    tr:nth-child(even) { background-color: #fbfcfd; }
-                    
-                    .footer { margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-                    .sig-table { width: 100%; margin-top: 30px; border: none; }
-                    .sig-table td { border: none; width: 50%; padding-top: 40px; }
-                    
-                    thead { display: table-header-group; }
-                    tr { page-break-inside: avoid; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1>Indian Railways - Inspection Report</h1>
-                    <p>Category: ${categoryName}</p>
-                </div>
-
-                <table class="meta-table">
-                    <tr>
-                        <td><strong>Train No:</strong> ${train_number}</td>
-                        <td style="text-align: right;"><strong>Coach No:</strong> ${coach_number}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Inspector:</strong> ${user_name}</td>
-                        <td style="text-align: right;"><strong>Date:</strong> ${date}</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2"><strong>Submission ID:</strong> #${submission_id || 'N/A'}</td>
-                    </tr>
-                </table>
-
-                ${sectionsHtml}
-
-                <div class="footer">
-                    <p style="font-style: italic; color: #64748b;">* This is an electronically generated report. Any discrepancies should be reported to the IT division.</p>
-                    <table class="sig-table">
+                <head>
+                    <style>
+                        @page { margin: 15mm; }
+                        body { font-family: 'Helvetica', 'Arial', sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 12px; }
+                        .header { text-align: center; border-bottom: 3px solid #1e293b; padding-bottom: 10px; margin-bottom: 25px; }
+                        .header h1 { margin: 5px 0; font-size: 24px; text-transform: uppercase; color: #000; letter-spacing: 1px; }
+                        .header p { margin: 2px 0; font-size: 14px; font-weight: bold; color: #475569; }
+                        .meta-table { width: 100%; margin-bottom: 20px; border: none; }
+                        .meta-table td { border: none; padding: 5px 0; font-size: 13px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #94a3b8; padding: 10px; text-align: left; word-wrap: break-word; }
+                        .footer { margin-top: 60px; border-top: 1px solid #94a3b8; padding-top: 20px; font-size: 10px; color: #64748b; }
+                        .sig-table { width: 100%; margin-top: 40px; border: none; }
+                        .sig-table td { border: none; width: 45%; padding-top: 50px; text-align: center; border-top: 1px solid #000; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>Indian Railways</h1>
+                        <p>Inspection Report - ${categoryName}</p>
+                    </div>
+                    <table class="meta-table">
                         <tr>
-                            <td style="border-top: 1px solid #000; text-align: center;">Inspector Signature</td>
-                            <td style="width: 10%;"></td>
-                            <td style="border-top: 1px solid #000; text-align: center;">Authorized Supervisor</td>
+                            <td><strong>Train No:</strong> ${train_number}</td>
+                            <td style="text-align: right;"><strong>Coach No:</strong> ${coach_number}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Inspector:</strong> ${user_name}</td>
+                            <td style="text-align: right;"><strong>Date:</strong> ${date}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"><strong>Submission ID:</strong> #${submission_id}</td>
                         </tr>
                     </table>
-                </div>
-            </body>
+                    ${sectionsHtml}
+                    <div class="footer">
+                        <p>* This is an electronically generated report. Authenticity can be verified via the QR/Submission ID.</p>
+                        <table class="sig-table" style="margin-top: 80px;">
+                            <tr>
+                                <td>Inspector Signature</td>
+                                <td style="width: 10%; border-top: none;"></td>
+                                <td>Supervisor Signature</td>
+                            </tr>
+                        </table>
+                    </div>
+                </body>
             </html>
         `;
     };
@@ -167,7 +163,6 @@ const ReportDetailScreen = ({ route, navigation }) => {
             setIsExporting(true);
             const html = generateHtml();
             const { uri } = await Print.printToFileAsync({ html });
-            // Share/Export Intent
             await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
         } catch (err) {
             Alert.alert('Error', 'Failed to export PDF');
@@ -180,53 +175,45 @@ const ReportDetailScreen = ({ route, navigation }) => {
         try {
             setIsDownloading(true);
             const html = generateHtml();
-
-            // 1. Generate PDF
             const { uri } = await Print.printToFileAsync({ html });
-
-            // 2. Request Directory Permission (Storage Access Framework)
             const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
-
             if (!permissions.granted) {
                 Alert.alert('Permission Denied', 'Unable to save to device storage without permission.');
                 return;
             }
-
-            // 3. Read PDF Content as Base64 (Using fetch + FileReader to avoid deprecated API)
             const response = await fetch(uri);
             const blob = await response.blob();
-
             const reader = new FileReader();
             reader.readAsDataURL(blob);
             await new Promise((resolve) => {
                 reader.onloadend = () => resolve(reader.result);
             });
             const base64data = reader.result.replace(/^data:.+;base64,/, '');
-
-            // 4. Create File in Selected Directory
             const safeTrain = train_number.replace(/[^a-zA-Z0-9]/g, '_');
             const safeCoach = coach_number.replace(/[^a-zA-Z0-9]/g, '_');
-            const formattedDate = date ? date.split(' ')[0] : 'Report';
-            const fileName = `Inspection_Report_${safeTrain}_${safeCoach}_${formattedDate}.pdf`;
-            const mimeType = 'application/pdf';
-
-            const safUri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, mimeType);
-
-            // 5. Write Content to New File
-            // Write base64 content to the SAF URI
+            const fileName = `Report_${safeTrain}_${safeCoach}_${submission_id.substring(0, 8)}.pdf`;
+            const safUri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/pdf');
             await StorageAccessFramework.writeAsStringAsync(safUri, base64data, { encoding: FileSystem.EncodingType.Base64 });
-
-            Alert.alert('Download Complete', 'PDF saved successfully to selected folder.');
-
+            Alert.alert('Download Complete', 'PDF saved successfully.');
         } catch (err) {
-            console.error('Download error:', err);
-            Alert.alert('Error', 'Failed to download PDF to device storage.');
+            Alert.alert('Error', 'Failed to download PDF.');
         } finally {
             setIsDownloading(false);
         }
     };
 
-    if (loading) return <ActivityIndicator style={styles.center} color="#2563eb" />;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+
+    const groupedData = details.reduce((acc, item) => {
+        const sKey = item.schedule_name ? `Schedule: ${item.schedule_name}` :
+            item.subcategory_name ? `Area: ${item.subcategory_name}` :
+                `${item.activity_type || 'General'} Activities`;
+        if (!acc[sKey]) acc[sKey] = {};
+        const iKey = item.item_name || 'General';
+        if (!acc[sKey][iKey]) acc[sKey][iKey] = [];
+        acc[sKey][iKey].push(item);
+        return acc;
+    }, {});
 
     return (
         <View style={styles.container}>
@@ -234,7 +221,7 @@ const ReportDetailScreen = ({ route, navigation }) => {
                 <View style={{ flex: 1 }}>
                     <Text style={styles.title}>{categoryName}</Text>
                     <Text style={styles.sub}>{train_number} - {coach_number}</Text>
-                    <Text style={styles.sub}>{date} • {user_name || 'Inspector'}</Text>
+                    <Text style={styles.sub}>{date} • {user_name}</Text>
                 </View>
                 <TouchableOpacity style={styles.homeBtn} onPress={handleHome}>
                     <Ionicons name="home" size={20} color="#64748b" />
@@ -242,114 +229,51 @@ const ReportDetailScreen = ({ route, navigation }) => {
             </View>
 
             <View style={styles.actionsContainer}>
-                <TouchableOpacity
-                    style={[styles.actionBtn, styles.exportBtn, isExporting && { opacity: 0.7 }]}
-                    onPress={handleExport}
-                    disabled={isExporting}
-                >
+                <TouchableOpacity style={[styles.actionBtn, styles.exportBtn]} onPress={handleExport} disabled={isExporting}>
                     {isExporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnText}>Export PDF</Text>}
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.actionBtn, styles.downloadBtn, isDownloading && { opacity: 0.7 }]}
-                    onPress={handleDownload}
-                    disabled={isDownloading}
-                >
-                    {isDownloading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnText}>Download PDF (Save As)</Text>}
+                <TouchableOpacity style={[styles.actionBtn, styles.downloadBtn]} onPress={handleDownload} disabled={isDownloading}>
+                    {isDownloading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnText}>Save to Device</Text>}
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} horizontal={false}>
-                {/* Official Format Header for Screen */}
+            <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.officialHeader}>
                     <Text style={styles.headerOrg}>Indian Railways</Text>
-                    <Text style={styles.railwayText}>Train Coach Inspection Report</Text>
+                    <Text style={styles.railwayText}>Inspection Report</Text>
                     <View style={styles.thickDivider} />
                 </View>
 
-                {/* Metadata Grid */}
-                <View style={styles.metaGrid}>
-                    <View style={styles.metaRow}>
-                        <View style={styles.metaCol}><Text style={styles.metaLabel}>Category:</Text><Text style={styles.metaValue}>{categoryName}</Text></View>
-                        <View style={styles.metaCol}><Text style={styles.metaLabel}>Train No:</Text><Text style={styles.metaValue}>{train_number}</Text></View>
-                    </View>
-                    <View style={styles.metaRow}>
-                        <View style={styles.metaCol}><Text style={styles.metaLabel}>Coach No:</Text><Text style={styles.metaValue}>{coach_number}</Text></View>
-                        <View style={styles.metaCol}><Text style={styles.metaLabel}>Date:</Text><Text style={styles.metaValue}>{date}</Text></View>
-                    </View>
-                    <View style={styles.metaRow}>
-                        <View style={styles.metaCol}><Text style={styles.metaLabel}>Inspector Name/Role:</Text><Text style={styles.metaValue}>{user_name}</Text></View>
-                    </View>
-                </View>
-
-                {Object.keys(details.reduce((acc, item) => {
-                    const type = item.Activity?.type || 'General';
-                    if (!acc[type]) acc[type] = [];
-                    acc[type].push(item);
-                    return acc;
-                }, {})).map(type => {
-                    const items = details.filter(i => (i.Activity?.type || 'General') === type);
-                    return (
-                        <View key={type} style={styles.activityContainer}>
-                            <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionHeaderText}>Activity: {type}</Text>
-                            </View>
-
-                            {/* TABLE START */}
-                            <View style={styles.table}>
-                                {/* Table Header - 5 Columns */}
-                                <View style={styles.tableHeaderRow}>
-                                    <View style={[styles.cell, { flex: 0.1, justifyContent: 'center' }]}><Text style={styles.tableHeaderText}>Sr No</Text></View>
-                                    <View style={[styles.cell, { flex: 0.35 }]}><Text style={styles.tableHeaderText}>Description of Item</Text></View>
-                                    <View style={[styles.cell, { flex: 0.15, justifyContent: 'center' }]}><Text style={styles.tableHeaderText}>Obs.</Text></View>
-                                    <View style={[styles.cell, { flex: 0.2 }]}><Text style={styles.tableHeaderText}>Reasons</Text></View>
-                                    <View style={[styles.cell, { flex: 0.2, borderRightWidth: 0 }]}><Text style={styles.tableHeaderText}>Remarks</Text></View>
-                                </View>
-
-                                {/* Table Rows */}
-                                {items.map((item, index) => {
-                                    const reasonsStr = item.reasons
-                                        ? (typeof item.reasons === 'string'
-                                            ? JSON.parse(item.reasons).join(', ')
-                                            : Array.isArray(item.reasons)
-                                                ? item.reasons.join(', ')
-                                                : '-')
-                                        : '';
-
-                                    return (
-                                        <View key={item.id} style={[styles.tableRow, index % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
-                                            <View style={[styles.cell, { flex: 0.1, justifyContent: 'center' }]}><Text style={styles.cellTextCenter}>{index + 1}</Text></View>
-                                            <View style={[styles.cell, { flex: 0.35 }]}><Text style={styles.cellText}>{item.Question?.question_text || 'N/A'}</Text></View>
-                                            <View style={[styles.cell, { flex: 0.15, justifyContent: 'center' }]}>
-                                                <Text style={[styles.cellTextCenter, { fontWeight: 'bold', color: item.answer === 'NO' ? '#ef4444' : '#10b981' }]}>{item.answer}</Text>
-                                            </View>
-                                            <View style={[styles.cell, { flex: 0.2 }]}>
-                                                <Text style={styles.cellReasonText}>{reasonsStr || '-'}</Text>
-                                            </View>
-                                            <View style={[styles.cell, { flex: 0.2, borderRightWidth: 0 }]}>
-                                                <Text style={styles.cellRemarkText}>{item.remarks || '-'}</Text>
-                                            </View>
-                                        </View>
-                                    );
-                                })}
-                            </View>
+                {Object.keys(groupedData).map(sectionKey => (
+                    <View key={sectionKey} style={styles.activityContainer}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionHeaderText}>{sectionKey}</Text>
                         </View>
-                    );
-                })}
-
-                {/* Signature Placeholders Match PDF Footer */}
-                <View style={styles.signatureSection}>
-                    <View style={styles.sigLine}>
-                        <View style={styles.line} />
-                        <Text style={styles.sigLabel}>Inspector Signature</Text>
-                        <Text style={styles.sigDate}>Date: __________</Text>
+                        {Object.keys(groupedData[sectionKey]).map(itemName => (
+                            <View key={itemName} style={styles.itemRefContainer}>
+                                <View style={styles.itemRefHeader}>
+                                    <Text style={styles.itemRefHeaderText}>ITEM: {itemName}</Text>
+                                </View>
+                                <View style={styles.table}>
+                                    <View style={styles.tableHeaderRow}>
+                                        <View style={[styles.cell, { flex: 0.1 }]}><Text style={styles.tableHeaderText}>#</Text></View>
+                                        <View style={[styles.cell, { flex: 0.45 }]}><Text style={styles.tableHeaderText}>Question</Text></View>
+                                        <View style={[styles.cell, { flex: 0.15 }]}><Text style={styles.tableHeaderText}>Obs.</Text></View>
+                                        <View style={[styles.cell, { flex: 0.3 }]}><Text style={styles.tableHeaderText}>Remarks</Text></View>
+                                    </View>
+                                    {groupedData[sectionKey][itemName].map((item, idx) => (
+                                        <View key={item.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+                                            <View style={[styles.cell, { flex: 0.1 }]}><Text style={styles.cellTextCenter}>{idx + 1}</Text></View>
+                                            <View style={[styles.cell, { flex: 0.45 }]}><Text style={styles.cellText}>{item.Question?.text || 'N/A'}</Text></View>
+                                            <View style={[styles.cell, { flex: 0.15 }]}><Text style={[styles.cellTextCenter, { fontWeight: 'bold', color: item.answer === 'NO' ? '#ef4444' : '#10b981' }]}>{item.answer}</Text></View>
+                                            <View style={[styles.cell, { flex: 0.3 }]}><Text style={styles.cellRemarkText}>{item.remarks || item.reasons || '-'}</Text></View>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        ))}
                     </View>
-                    <View style={styles.sigLine}>
-                        <View style={styles.line} />
-                        <Text style={styles.sigLabel}>Supervisor Signature</Text>
-                        <Text style={styles.sigDate}>Official Stamp</Text>
-                    </View>
-                </View>
+                ))}
             </ScrollView>
         </View>
     );
@@ -357,67 +281,35 @@ const ReportDetailScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    center: { flex: 1, justifyContent: 'center' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: { flexDirection: 'row', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', alignItems: 'center' },
     title: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    sub: { color: '#64748b', fontSize: 13 },
-
-    actionsContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 12, marginBottom: 8 },
-    actionBtn: { flex: 1, marginHorizontal: 5, borderRadius: 8, paddingVertical: 12, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
-    exportBtn: { backgroundColor: '#2563EB' },
-    downloadBtn: { backgroundColor: '#16A34A' },
-    btnText: { color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center' }, // Center text for wrapping
-
-    homeBtn: { padding: 8, borderRadius: 8, backgroundColor: '#f1f5f9' },
-
+    sub: { color: '#64748b', fontSize: 12 },
+    homeBtn: { padding: 8, backgroundColor: '#f1f5f9', borderRadius: 8 },
+    actionsContainer: { flexDirection: 'row', padding: 12, gap: 10 },
+    actionBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+    exportBtn: { backgroundColor: '#2563eb' },
+    downloadBtn: { backgroundColor: '#16a34a' },
+    btnText: { color: '#fff', fontWeight: 'bold' },
     content: { padding: 16 },
-    row: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12 },
-    rowHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    qNum: { fontWeight: 'bold', color: '#94a3b8', fontSize: 12 },
-    questionText: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 10 },
-    badge: { fontSize: 12, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
-    major: { backgroundColor: '#fef2f2', color: '#ef4444' },
-    minor: { backgroundColor: '#fff7ed', color: '#f97316' },
-    rowBody: { gap: 4 },
-    answerLabel: { fontSize: 14, color: '#475569' },
-    answer: { fontWeight: 'bold' },
-    pass: { color: '#10b981' },
-    fail: { color: '#ef4444' },
-    reasons: { color: '#ef4444', fontStyle: 'italic', fontSize: 13 },
-    remarks: { color: '#64748b', fontSize: 13 },
-
-    // Official Format Styles
-    officialHeader: { alignItems: 'center', marginBottom: 20, paddingHorizontal: 10 },
-    headerOrg: { fontSize: 14, color: '#475569', fontWeight: 'bold', textTransform: 'uppercase' },
-    railwayText: { fontSize: 22, fontWeight: 'bold', color: '#000', textAlign: 'center' },
-    categoryBadge: { backgroundColor: '#2563eb', color: '#fff', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, fontSize: 12, fontWeight: 'bold', marginTop: 10 },
-    thickDivider: { height: 3, backgroundColor: '#1e293b', width: '100%', marginTop: 15 },
-
-    metaGrid: { backgroundColor: '#fff', borderRadius: 8, padding: 15, marginBottom: 20, borderWidth: 1, borderColor: '#e2e8f0' },
-    metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    metaCol: { flex: 1 },
-    metaLabel: { fontSize: 12, color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase' },
-    metaValue: { fontSize: 14, color: '#1e293b', fontWeight: '600' },
-
-    activityContainer: { marginBottom: 30 },
-    sectionHeader: { backgroundColor: '#f1f5f9', padding: 8, borderLeftWidth: 5, borderLeftColor: '#2563eb', marginBottom: 0 },
-    sectionHeaderText: { fontWeight: 'bold', fontSize: 13, color: '#1e293b' },
-
-    table: { borderWidth: 1, borderColor: '#94a3b8', backgroundColor: '#fff' },
-    tableHeaderRow: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 2, borderBottomColor: '#1e293b' },
-    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', minHeight: 45 },
-    tableHeaderText: { fontSize: 10, fontWeight: 'bold', color: '#1e293b', textTransform: 'uppercase', textAlign: 'center' },
-    cell: { padding: 6, borderRightWidth: 1, borderRightColor: '#94a3b8', justifyContent: 'center' },
+    officialHeader: { alignItems: 'center', marginBottom: 20 },
+    headerOrg: { fontSize: 12, color: '#64748b', fontWeight: 'bold' },
+    railwayText: { fontSize: 22, fontWeight: 'bold', color: '#000' },
+    thickDivider: { height: 3, backgroundColor: '#1e293b', width: '100%', marginTop: 10 },
+    activityContainer: { marginBottom: 25 },
+    sectionHeader: { backgroundColor: '#f1f5f9', padding: 10, borderLeftWidth: 4, borderLeftColor: '#2563eb', marginBottom: 5 },
+    sectionHeaderText: { fontWeight: 'bold', color: '#1e293b', fontSize: 14 },
+    itemRefContainer: { marginTop: 15, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' },
+    itemRefHeader: { backgroundColor: '#334155', padding: 6, paddingHorizontal: 12 },
+    itemRefHeaderText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
+    table: { backgroundColor: '#fff' },
+    tableHeaderRow: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', minHeight: 40 },
+    tableHeaderText: { fontSize: 10, fontWeight: 'bold', color: '#64748b', textAlign: 'center' },
+    cell: { padding: 8, justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#f1f5f9' },
     cellText: { fontSize: 11, color: '#1e293b' },
     cellTextCenter: { fontSize: 11, color: '#1e293b', textAlign: 'center' },
-    cellReasonText: { fontSize: 10, color: '#ef4444', fontStyle: 'italic' },
-    cellRemarkText: { fontSize: 10, color: '#64748b' },
-
-    signatureSection: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 40, paddingBottom: 60 },
-    sigLine: { width: '45%', alignItems: 'center' },
-    line: { height: 1.5, backgroundColor: '#000', width: '100%', marginBottom: 8 },
-    sigLabel: { fontSize: 12, color: '#000', fontWeight: 'bold' },
-    sigDate: { fontSize: 10, color: '#94a3b8', marginTop: 4 }
+    cellRemarkText: { fontSize: 10, color: '#64748b' }
 });
 
 export default ReportDetailScreen;

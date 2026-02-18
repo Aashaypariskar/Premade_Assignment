@@ -22,8 +22,12 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
         try {
             setLoadingReasons(true);
             const response = await getReasonsByQuestion(question.id);
-            const data = response.reasons || [];
-            setReasonsList(data);
+            const data = response.reasons || response || [];
+            if (Array.isArray(data)) {
+                setReasonsList(data);
+            } else {
+                setReasonsList([]);
+            }
         } catch (err) {
             console.log('Error fetching reasons:', err);
         } finally {

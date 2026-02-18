@@ -19,7 +19,8 @@ const QuestionsScreen = ({ route, navigation }) => {
         try {
             setLoading(true);
             const data = await getQuestions(params.activityId, params.scheduleId, params.subcategoryId || params.subcategory_id);
-            setQuestions(Array.isArray(data) ? data : []);
+            // Unified data handling
+            setQuestions(data || []);
         } catch (error) {
             console.log("Fetch Error:", error);
             Alert.alert('Network Error', 'Check if backend is running');
@@ -44,16 +45,22 @@ const QuestionsScreen = ({ route, navigation }) => {
     };
 
     const currentAnswers = draft?.answers || {};
-    // Only count as completed if the 'answer' property is actually set (YES or NO)
-    const countCompleted = (questions || []).filter(q => q && currentAnswers[q.id]?.answer).length;
-    const totalQs = (questions || []).length;
+
+    // Flatten questions for logic/progress if they are grouped
+    const isGrouped = questions.length > 0 && (questions[0].item || questions[0].item_name) && questions[0].questions;
+    const flatQuestions = isGrouped
+        ? questions.reduce((acc, curr) => [...acc, ...curr.questions], [])
+        : questions;
+
+    const countCompleted = (flatQuestions || []).filter(q => q && currentAnswers[q.id]?.answer).length;
+    const totalQs = (flatQuestions || []).length;
     const progress = totalQs > 0 ? (countCompleted / totalQs) * 100 : 0;
     const isDone = totalQs > 0 && countCompleted === totalQs;
 
     const goSummary = () => {
         console.log('Running validation check for answers...');
 
-        const qList = questions || [];
+        const qList = flatQuestions || [];
         const ansMap = currentAnswers || {};
 
         const currentQIds = qList.map(q => q?.id?.toString()).filter(Boolean);
@@ -138,14 +145,32 @@ const QuestionsScreen = ({ route, navigation }) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-                {(questions || []).map((q, idx) => q && (
-                    <QuestionCard
-                        key={q.id || idx}
-                        question={q}
-                        answerData={currentAnswers[q.id]}
-                        onUpdate={(data) => updateAnswer(q.id, data)}
-                    />
-                ))}
+                {isGrouped ? (
+                    (questions || []).map((group, gIdx) => (
+                        <View key={`group-${gIdx}`} style={styles.groupContainer}>
+                            <View style={styles.itemHeader}>
+                                <Text style={styles.itemHeaderText}>{group.item_name || group.item}</Text>
+                            </View>
+                            {(group.questions || []).map((q, idx) => (
+                                <QuestionCard
+                                    key={q.id || `q-${idx}`}
+                                    question={q}
+                                    answerData={currentAnswers[q.id]}
+                                    onUpdate={(data) => updateAnswer(q.id, data)}
+                                />
+                            ))}
+                        </View>
+                    ))
+                ) : (
+                    (questions || []).map((q, idx) => q && (
+                        <QuestionCard
+                            key={q.id || idx}
+                            question={q}
+                            answerData={currentAnswers[q.id]}
+                            onUpdate={(data) => updateAnswer(q.id, data)}
+                        />
+                    ))
+                )}
             </ScrollView>
 
             <TouchableOpacity
@@ -178,7 +203,10 @@ const styles = StyleSheet.create({
     separator: { fontSize: 11, color: '#94a3b8', marginHorizontal: 4 },
     activeBreadcrumb: { color: '#2563eb', fontWeight: 'bold' },
     editQuestionsBtn: { backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#2563eb' },
-    editQuestionsBtnText: { fontSize: 11, fontWeight: 'bold', color: '#2563eb' }
+    editQuestionsBtnText: { fontSize: 11, fontWeight: 'bold', color: '#2563eb' },
+    groupContainer: { marginBottom: 20 },
+    itemHeader: { backgroundColor: '#f8fafc', paddingVertical: 8, paddingHorizontal: 12, borderLeftWidth: 4, borderLeftColor: '#334155', marginBottom: 10, borderRadius: 4 },
+    itemHeaderText: { fontSize: 14, fontWeight: 'bold', color: '#334155', textTransform: 'uppercase' }
 });
 
 export default QuestionsScreen;
