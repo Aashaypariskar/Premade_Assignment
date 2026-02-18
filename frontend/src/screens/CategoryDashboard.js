@@ -8,14 +8,17 @@ const CategoryDashboard = ({ navigation }) => {
     const { user, logout, setDraft } = useStore();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchCategories = async () => {
             try {
                 const data = await getUserCategories();
                 setCategories(data);
+                setError(null);
             } catch (err) {
                 console.error('Dash Error:', err);
+                setError('Could not connect to the server. Please check your connection or IP configuration.');
             } finally {
                 setLoading(false);
             }
@@ -74,28 +77,37 @@ const CategoryDashboard = ({ navigation }) => {
                 <Text style={styles.sectionTitle}>Inspection Focus</Text>
                 <Text style={styles.sectionSubtitle}>Select an assigned category to begin</Text>
 
-                <FlatList
-                    data={categories}
-                    keyExtractor={(item) => item.id.toString()}
-                    numColumns={2}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={styles.card}
-                            onPress={() => handleSelectCategory(item.name)}
-                        >
-                            <View style={styles.iconCircle}>
-                                <Text style={styles.icon}>{item.name[0]}</Text>
-                            </View>
-                            <Text style={styles.cardText}>{item.name}</Text>
+                {error ? (
+                    <View style={styles.errorContainer}>
+                        <Text style={styles.errorText}>⚠️ {error}</Text>
+                        <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); fetchCategories(); }}>
+                            <Text style={styles.retryText}>Retry Connection</Text>
                         </TouchableOpacity>
-                    )}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No categories assigned.</Text>
-                            <Text style={styles.emptySub}>Please contact your administrator.</Text>
-                        </View>
-                    }
-                />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={categories}
+                        keyExtractor={(item) => item.id.toString()}
+                        numColumns={2}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                style={styles.card}
+                                onPress={() => handleSelectCategory(item.name)}
+                            >
+                                <View style={styles.iconCircle}>
+                                    <Text style={styles.icon}>{item.name[0]}</Text>
+                                </View>
+                                <Text style={styles.cardText}>{item.name}</Text>
+                            </TouchableOpacity>
+                        )}
+                        ListEmptyComponent={
+                            <View style={styles.emptyContainer}>
+                                <Text style={styles.emptyText}>No categories assigned.</Text>
+                                <Text style={styles.emptySub}>Please contact your administrator.</Text>
+                            </View>
+                        }
+                    />
+                )}
             </View>
         </SafeAreaView >
     );
@@ -167,7 +179,11 @@ const styles = StyleSheet.create({
     cardText: { fontSize: 15, fontWeight: 'bold', color: '#334155', textAlign: 'center' },
     emptyContainer: { alignItems: 'center', marginTop: 100 },
     emptyText: { fontSize: 18, fontWeight: 'bold', color: '#64748b' },
-    emptySub: { fontSize: 14, color: '#94a3b8', marginTop: 4 }
+    emptySub: { fontSize: 14, color: '#94a3b8', marginTop: 4 },
+    errorContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 30 },
+    errorText: { fontSize: 16, color: '#ef4444', textAlign: 'center', fontWeight: '600', marginBottom: 20 },
+    retryBtn: { backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 },
+    retryText: { color: '#fff', fontWeight: 'bold', fontSize: 14 }
 });
 
 export default CategoryDashboard;

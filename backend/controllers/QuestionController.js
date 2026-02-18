@@ -8,13 +8,17 @@ const { Question, Activity, Category, Reason } = require('../models');
 // GET /api/questions?activity_id=X (All authenticated users)
 exports.getQuestionsByActivity = async (req, res) => {
     try {
-        const { activity_id } = req.query;
-        if (!activity_id) {
-            return res.status(400).json({ error: 'activity_id is required' });
+        const { activity_id, schedule_id } = req.query;
+        if (!activity_id && !schedule_id) {
+            return res.status(400).json({ error: 'activity_id or schedule_id is required' });
         }
 
+        const where = {};
+        if (activity_id) where.activity_id = activity_id;
+        if (schedule_id) where.schedule_id = schedule_id;
+
         const questions = await Question.findAll({
-            where: { activity_id },
+            where,
             order: [['id', 'ASC']]
         });
 
@@ -28,34 +32,34 @@ exports.getQuestionsByActivity = async (req, res) => {
 // POST /api/admin/question (Admin only)
 exports.createQuestion = async (req, res) => {
     try {
-        const { activity_id, text } = req.body;
+        const { activity_id, schedule_id, subcategory_id, text, specified_value } = req.body;
 
-        if (!activity_id || !text) {
-            return res.status(400).json({ error: 'activity_id and text are required' });
+        if (!text) {
+            return res.status(400).json({ error: 'text is required' });
         }
 
-        // Verify activity exists and get type
-        const activity = await Activity.findByPk(activity_id);
-        if (!activity) {
-            return res.status(404).json({ error: 'Activity not found' });
+        const questionData = { text, specified_value };
+        if (activity_id) questionData.activity_id = activity_id;
+        if (schedule_id) questionData.schedule_id = schedule_id;
+        if (subcategory_id) questionData.subcategory_id = subcategory_id;
+
+        const question = await Question.create(questionData);
+
+        // Auto-seed default reasons ONLY if activity_id is provided
+        if (activity_id) {
+            const activity = await Activity.findByPk(activity_id);
+            if (activity) {
+                const defaultMinorReasons = ['Dirty', 'Broken', 'Missing', 'Loose', 'Worn Out', 'Damaged'];
+                const defaultMajorReasons = ['Complete Failure', 'Structural Damage', 'Replacement Required', 'Safety Hazard', 'Beyond Repair'];
+                const reasonsToSeed = activity.type === 'Major' ? defaultMajorReasons : defaultMinorReasons;
+
+                const reasonObjects = reasonsToSeed.map(rText => ({
+                    question_id: question.id,
+                    text: rText
+                }));
+                await Reason.bulkCreate(reasonObjects);
+            }
         }
-
-        const question = await Question.create({ activity_id, text });
-
-        // Auto-seed default reasons based on activity type
-        const defaultMinorReasons = ['Dirty', 'Broken', 'Missing', 'Loose', 'Worn Out', 'Damaged'];
-        const defaultMajorReasons = ['Complete Failure', 'Structural Damage', 'Replacement Required', 'Safety Hazard', 'Beyond Repair'];
-
-        // Default to Minor if type allows, or just a merge?
-        // Logic from seedEndToEnd.js uses exact sets.
-        const reasonsToSeed = activity.type === 'Major' ? defaultMajorReasons : defaultMinorReasons;
-
-        const reasonObjects = reasonsToSeed.map(rText => ({
-            question_id: question.id,
-            text: rText
-        }));
-
-        await Reason.bulkCreate(reasonObjects);
 
         res.status(201).json({
             success: true,
@@ -72,10 +76,10 @@ exports.createQuestion = async (req, res) => {
 exports.updateQuestion = async (req, res) => {
     try {
         const { id } = req.params;
-        const { text } = req.body;
+        const { text, specified_value } = req.body;
 
-        if (!text) {
-            return res.status(400).json({ error: 'text is required' });
+        if (!text && specified_value === undefined) {
+            return res.status(400).json({ error: 'Nothing to update' });
         }
 
         const question = await Question.findByPk(id);
@@ -83,7 +87,8 @@ exports.updateQuestion = async (req, res) => {
             return res.status(404).json({ error: 'Question not found' });
         }
 
-        question.text = text;
+        if (text) question.text = text;
+        if (specified_value !== undefined) question.specified_value = specified_value;
         await question.save();
 
         res.json({

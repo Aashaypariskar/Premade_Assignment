@@ -15,6 +15,8 @@ import CreateUserScreen from '../screens/CreateUserScreen';
 import QuestionManagementScreen from '../screens/QuestionManagementScreen';
 import ReportListScreen from '../screens/ReportListScreen';
 import ReportDetailScreen from '../screens/ReportDetailScreen';
+import ScheduleSelectionScreen from '../screens/ScheduleSelectionScreen';
+import AmenitySubcategoryScreen from '../screens/AmenitySubcategoryScreen';
 
 const Stack = createStackNavigator();
 
@@ -84,6 +86,16 @@ const AppNavigator = () => {
                         name="ReportDetail"
                         component={ReportDetailScreen}
                         options={{ title: 'Report Details' }}
+                    />
+                    <Stack.Screen
+                        name="ScheduleSelection"
+                        component={ScheduleSelectionScreen}
+                        options={{ title: 'Select Schedule' }}
+                    />
+                    <Stack.Screen
+                        name="AmenitySubcategory"
+                        component={AmenitySubcategoryScreen}
+                        options={{ title: 'Select Area' }}
                     />
 
                     {user.role === 'Admin' && (

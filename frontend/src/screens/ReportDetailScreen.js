@@ -41,9 +41,13 @@ const ReportDetailScreen = ({ route, navigation }) => {
     const generateHtml = () => {
         // Group details by Activity Type (Minor/Major)
         const grouped = details.reduce((acc, item) => {
-            const type = item.Activity?.type || 'General';
-            if (!acc[type]) acc[type] = [];
-            acc[type].push(item);
+            let key = 'General';
+            if (item.LtrSchedule) key = `Schedule: ${item.LtrSchedule.name}`;
+            else if (item.AmenitySubcategory) key = `Area: ${item.AmenitySubcategory.name}`;
+            else if (item.Activity) key = `${item.Activity.type} Activities`;
+
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(item);
             return acc;
         }, {});
 
@@ -61,7 +65,10 @@ const ReportDetailScreen = ({ route, navigation }) => {
                 return `
                     <tr>
                         <td style="text-align: center;">${index + 1}</td>
-                        <td>${item.Question?.question_text || 'N/A'}</td>
+                        <td>
+                            ${item.Question?.question_text || 'N/A'}
+                            ${item.Question?.specified_value ? `<br/><small style="color: #64748b;">(Spec: ${item.Question.specified_value})</small>` : ''}
+                        </td>
                         <td style="text-align: center; color: ${item.answer === 'NO' ? '#ef4444' : '#10b981'}; font-weight: bold;">${item.answer}</td>
                         <td>${reasonsStr}</td>
                         <td>${item.remarks || '-'}</td>
@@ -71,7 +78,7 @@ const ReportDetailScreen = ({ route, navigation }) => {
 
             return `
                 <div class="activity-section">
-                    <h2 class="section-title">Activity: ${type} Activities</h2>
+                    <h2 class="section-title">${type}</h2>
                     <table>
                         <thead>
                             <tr>

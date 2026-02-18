@@ -50,6 +50,13 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
         <View style={styles.card}>
             <Text style={styles.qText}>{question.text}</Text>
 
+            {question.specified_value && (
+                <View style={styles.specBox}>
+                    <Text style={styles.specLabel}>Specified Value:</Text>
+                    <Text style={styles.specValue}>{question.specified_value}</Text>
+                </View>
+            )}
+
             <View style={styles.toggleRow}>
                 <TouchableOpacity
                     style={[styles.toggleBtn, answerData?.answer === 'YES' && styles.btnYes]}
@@ -127,7 +134,27 @@ const styles = StyleSheet.create({
     chipText: { fontSize: 12, color: '#475569', fontWeight: '600' },
     noReasonsText: { fontSize: 12, color: '#ef4444', fontStyle: 'italic', fontWeight: 'bold' },
     emptyReasonBox: { padding: 8, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fecaca' },
-    input: { backgroundColor: '#f8fafc', borderRadius: 8, padding: 12, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: '#e2e8f0', color: '#1e293b', marginBottom: 15 }
+    input: { backgroundColor: '#f8fafc', borderRadius: 8, padding: 12, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: '#e2e8f0', color: '#1e293b', marginBottom: 15 },
+    specBox: {
+        backgroundColor: '#f1f5f9',
+        padding: 10,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#2563eb',
+        marginBottom: 15
+    },
+    specLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#64748b',
+        textTransform: 'uppercase',
+        marginBottom: 2
+    },
+    specValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1e293b'
+    }
 });
 
 export default QuestionCard;

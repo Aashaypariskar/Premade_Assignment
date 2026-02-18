@@ -32,6 +32,8 @@ const SummaryScreen = ({ navigation }) => {
             train_id: currentDraft.train?.id,
             coach_id: currentDraft.coach?.id,
             activity_id: currentDraft.activity?.id,
+            schedule_id: currentDraft.schedule_id,
+            subcategory_id: currentDraft.subcategory_id,
             submission_id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
             answers: answersList.map(([qId, data]) => ({
                 question_id: parseInt(qId),
@@ -79,6 +81,9 @@ const SummaryScreen = ({ navigation }) => {
                     <Text style={styles.title}>Inspection Review</Text>
                     <Text style={styles.sub}>
                         {currentDraft.train?.name || 'Unknown Train'} - Coach {currentDraft.coach?.coach_number || 'N/A'}
+                    </Text>
+                    <Text style={styles.frameworkSub}>
+                        {currentDraft.category} › {currentDraft.schedule_name || currentDraft.subcategory_name || currentDraft.activity?.type}
                     </Text>
 
                     <View style={styles.stats}>
@@ -143,7 +148,8 @@ const styles = StyleSheet.create({
     scroll: { padding: 20 },
     headerCard: { backgroundColor: '#fff', borderRadius: 24, padding: 25, elevation: 4 },
     title: { fontSize: 24, fontWeight: 'bold', color: '#1e293b' },
-    sub: { color: '#64748b', marginTop: 5 },
+    sub: { color: '#64748b', marginTop: 5, fontSize: 13 },
+    frameworkSub: { color: '#2563eb', fontWeight: 'bold', fontSize: 12, marginTop: 2 },
     stats: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 20, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 20 },
     statBox: { alignItems: 'center' },
     statNum: { fontSize: 20, fontWeight: 'bold' },

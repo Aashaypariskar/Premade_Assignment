@@ -15,7 +15,7 @@ const formatDate = (date) => new Date(date).toISOString().split('T')[0];
 exports.getAllReports = async (req, res) => {
     try {
         const { role, id: userId } = req.user;
-        const { train_no, coach_no, inspection_type, start_date, end_date, status, page = 1, limit = 10 } = req.query;
+        const { train_no, coach_no, inspection_type, start_date, end_date, activity_type, status, page = 1, limit = 10 } = req.query;
         const offset = (page - 1) * limit;
 
         let whereClause = {};
@@ -29,32 +29,49 @@ exports.getAllReports = async (req, res) => {
         if (train_no) whereClause.train_number = train_no;
         if (coach_no) whereClause.coach_number = coach_no;
         if (inspection_type) whereClause.category_name = inspection_type;
+        if (activity_type) whereClause.activity_type = activity_type;
         if (status) whereClause.status = status; // Assuming status is added or using a placeholder
         if (start_date && end_date) {
             whereClause.createdAt = { [Op.between]: [new Date(start_date), new Date(end_date)] };
         }
 
-        // Aggregate by submission_id
-        const reports = await InspectionAnswer.findAll({
-            attributes: [
-                'submission_id',
-                'train_number',
-                'coach_number',
-                'user_name',
-                'category_name',
-                'status',
-                'createdAt',
-                'user_id',
-                [sequelize.fn('COUNT', sequelize.literal("CASE WHEN answer = 'NO' AND activity_type = 'Major' THEN 1 END")), 'major_incident_count'],
-                [sequelize.fn('COUNT', sequelize.literal("CASE WHEN answer = 'NO' AND activity_type = 'Minor' THEN 1 END")), 'minor_incident_count'],
-                [sequelize.fn('COUNT', sequelize.col('id')), 'total_items']
-            ],
-            where: whereClause,
-            group: ['submission_id', 'train_number', 'coach_number', 'user_name', 'category_name', 'status', 'createdAt', 'user_id'],
-            order: [['createdAt', 'DESC']],
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            raw: true
+        // Build dynamic WHERE clause for raw SQL
+        let sqlWhere = '1=1';
+        let replacements = { limit: parseInt(limit), offset: parseInt(offset) };
+
+        if (train_no) { sqlWhere += ' AND train_number LIKE :train_no'; replacements.train_no = `%${train_no}%`; }
+        if (coach_no) { sqlWhere += ' AND coach_number LIKE :coach_no'; replacements.coach_no = `%${coach_no}%`; }
+        if (inspection_type) { sqlWhere += ' AND category_name = :inspection_type'; replacements.inspection_type = inspection_type; }
+        if (activity_type) { sqlWhere += ' AND activity_type = :activity_type'; replacements.activity_type = activity_type; }
+        if (whereClause.user_id) { sqlWhere += ' AND user_id = :user_id'; replacements.user_id = whereClause.user_id; }
+        if (start_date && end_date) {
+            sqlWhere += ' AND createdAt BETWEEN :start_date AND :end_date';
+            replacements.start_date = new Date(start_date);
+            replacements.end_date = new Date(end_date);
+        }
+
+        const sql = `
+            SELECT 
+                submission_id,
+                MAX(train_number) as train_number,
+                MAX(coach_number) as coach_number,
+                MAX(user_name) as user_name,
+                MAX(category_name) as category_name,
+                MAX(subcategory_name) as subcategory_name,
+                MAX(schedule_name) as schedule_name,
+                MAX(activity_type) as severity,
+                MAX(createdAt) as createdAt,
+                MAX(user_id) as user_id
+            FROM inspection_answers
+            WHERE ${sqlWhere}
+            GROUP BY submission_id
+            ORDER BY MAX(createdAt) DESC
+            LIMIT :limit OFFSET :offset
+        `;
+
+        const reports = await sequelize.query(sql, {
+            replacements,
+            type: sequelize.QueryTypes.SELECT
         });
 
         // Get total count for pagination
@@ -114,7 +131,8 @@ exports.getFilterOptions = async (req, res) => {
             trains: trains.map(t => t.train_number).filter(Boolean),
             coaches: coaches.map(c => c.coach_number).filter(Boolean),
             types: types.map(t => t.category_name).filter(Boolean),
-            statuses: statuses.map(s => s.status).filter(Boolean)
+            statuses: statuses.map(s => s.status).filter(Boolean),
+            activityTypes: ['Major', 'Minor']
         });
 
     } catch (err) {
@@ -167,7 +185,9 @@ exports.getReportDetails = async (req, res) => {
             where: whereClause,
             include: [
                 { model: Activity, attributes: ['type'], include: [{ model: Category, attributes: ['name'] }] },
-                { model: Question, attributes: [['text', 'question_text']] }
+                { model: Question, attributes: [['text', 'question_text'], 'specified_value'] },
+                { model: require('../models').LtrSchedule, attributes: ['name'] },
+                { model: require('../models').AmenitySubcategory, attributes: ['name'] }
             ],
             order: [['id', 'ASC']]
         });

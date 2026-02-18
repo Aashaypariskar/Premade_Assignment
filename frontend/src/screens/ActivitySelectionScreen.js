@@ -19,7 +19,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     const loadActivities = async () => {
         try {
-            const data = await getActivities(params.coachId, params.categoryName);
+            const data = await getActivities(params.coachId, params.categoryName, params.subcategoryId || params.subcategory_id);
             setActivities(data);
         } catch (err) {
             Alert.alert('Error', 'Could not get activities');

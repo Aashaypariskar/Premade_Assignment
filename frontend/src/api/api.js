@@ -48,13 +48,32 @@ export const getCoaches = async (trainId, categoryName) => {
     return res.data;
 };
 
-export const getActivities = async (coachId, categoryName) => {
-    const res = await api.get(`/activity-types?coach_id=${coachId}&category_name=${encodeURIComponent(categoryName)}`);
+export const getActivities = async (coachId, categoryName, subcategoryId = null) => {
+    let url = `/activity-types?coach_id=${coachId}&category_name=${encodeURIComponent(categoryName)}`;
+    if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
+    const res = await api.get(url);
     return res.data;
 };
 
-export const getQuestions = async (activityId) => {
-    const res = await api.get(`/checklist?activity_id=${activityId}`);
+export const getLtrSchedules = async (categoryName, coachId) => {
+    const res = await api.get(`/ltr-schedules?category_name=${encodeURIComponent(categoryName)}&coach_id=${coachId}`);
+    return res.data;
+};
+
+export const getAmenitySubcategories = async (categoryName, coachId) => {
+    const res = await api.get(`/amenity-subcategories?category_name=${encodeURIComponent(categoryName)}&coach_id=${coachId}`);
+    return res.data;
+};
+
+export const getQuestions = async (activityId, scheduleId = null, subcategoryId = null) => {
+    let url = `/checklist?`;
+    if (scheduleId) {
+        url += `schedule_id=${scheduleId}`;
+    } else {
+        url += `activity_id=${activityId}`;
+        if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
+    }
+    const res = await api.get(url);
     return res.data;
 };
 

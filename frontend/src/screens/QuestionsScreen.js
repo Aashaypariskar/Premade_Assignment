@@ -18,7 +18,7 @@ const QuestionsScreen = ({ route, navigation }) => {
     const fetchQuestions = async () => {
         try {
             setLoading(true);
-            const data = await getQuestions(params.activityId);
+            const data = await getQuestions(params.activityId, params.scheduleId, params.subcategoryId || params.subcategory_id);
             setQuestions(Array.isArray(data) ? data : []);
         } catch (error) {
             console.log("Fetch Error:", error);
@@ -111,7 +111,9 @@ const QuestionsScreen = ({ route, navigation }) => {
                         <Text style={styles.separator}>›</Text>
                         <Text style={styles.breadcrumb}>{params.categoryName}</Text>
                         <Text style={styles.separator}>›</Text>
-                        <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>{params.activityType}</Text>
+                        <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
+                            {params.scheduleName || params.activityType}
+                        </Text>
                     </View>
                     {user?.role === 'Admin' && (
                         <TouchableOpacity

@@ -42,11 +42,20 @@ const Category = sequelize.define('Category', {
 }, { tableName: 'categories', timestamps: false });
 
 const Activity = sequelize.define('Activity', {
-    type: { type: DataTypes.ENUM('Minor', 'Major'), allowNull: false }
+    type: { type: DataTypes.ENUM('Minor', 'Major'), allowNull: false },
+    subcategory_id: { type: DataTypes.INTEGER, allowNull: true } // New: for Amenity subcategories
 }, { tableName: 'activities', timestamps: false });
 
+const LtrSchedule = require('./LtrSchedule')(sequelize);
+const AmenitySubcategory = require('./AmenitySubcategory')(sequelize);
+
 const Question = sequelize.define('Question', {
-    text: { type: DataTypes.TEXT, allowNull: false }
+    text: { type: DataTypes.TEXT, allowNull: false },
+    activity_id: { type: DataTypes.INTEGER, allowNull: true },
+    schedule_id: { type: DataTypes.INTEGER, allowNull: true },
+    subcategory_id: { type: DataTypes.INTEGER, allowNull: true },
+    category_id: { type: DataTypes.INTEGER, allowNull: true },
+    specified_value: { type: DataTypes.STRING, allowNull: true }
 }, { tableName: 'questions', timestamps: false });
 
 const Reason = require('./Reason')(sequelize, DataTypes);
@@ -61,6 +70,8 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     train_number: { type: DataTypes.STRING(50) },
     coach_number: { type: DataTypes.STRING(50) },
     category_name: { type: DataTypes.STRING(100) },
+    subcategory_name: { type: DataTypes.STRING(100) }, // New
+    schedule_name: { type: DataTypes.STRING(100) }, // New
     activity_type: { type: DataTypes.ENUM('Minor', 'Major') },
     status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
     role_snapshot: { type: DataTypes.STRING(100) },
@@ -88,6 +99,22 @@ Activity.belongsTo(Category, { foreignKey: 'category_id' });
 Activity.hasMany(Question, { foreignKey: 'activity_id' });
 Question.belongsTo(Activity, { foreignKey: 'activity_id' });
 
+// New Framework Associations
+LtrSchedule.belongsTo(Category, { foreignKey: 'category_id' });
+Category.hasMany(LtrSchedule, { foreignKey: 'category_id' });
+
+AmenitySubcategory.belongsTo(Category, { foreignKey: 'category_id' });
+Category.hasMany(AmenitySubcategory, { foreignKey: 'category_id' });
+
+Activity.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
+AmenitySubcategory.hasMany(Activity, { foreignKey: 'subcategory_id' });
+
+Question.belongsTo(LtrSchedule, { foreignKey: 'schedule_id' });
+LtrSchedule.hasMany(Question, { foreignKey: 'schedule_id' });
+
+Question.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
+AmenitySubcategory.hasMany(Question, { foreignKey: 'subcategory_id' });
+
 Question.hasMany(Reason, { foreignKey: 'question_id' });
 Reason.belongsTo(Question, { foreignKey: 'question_id' });
 
@@ -97,9 +124,12 @@ InspectionAnswer.belongsTo(Coach, { foreignKey: 'coach_id' });
 InspectionAnswer.belongsTo(Activity, { foreignKey: 'activity_id' });
 InspectionAnswer.belongsTo(Question, { foreignKey: 'question_id' });
 InspectionAnswer.belongsTo(User, { foreignKey: 'user_id' });
+InspectionAnswer.belongsTo(LtrSchedule, { foreignKey: 'schedule_id' });
+InspectionAnswer.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
 
 module.exports = {
     Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
+    LtrSchedule, AmenitySubcategory,
     User, Role, CategoryMaster, UserCategory,
     sequelize
 };

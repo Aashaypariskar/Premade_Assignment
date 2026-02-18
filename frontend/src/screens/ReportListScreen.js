@@ -79,13 +79,15 @@ const ReportListScreen = ({ navigation }) => {
         trains: [],
         coaches: [],
         types: [],
-        statuses: []
+        statuses: [],
+        activityTypes: []
     });
 
     const [tempFilters, setTempFilters] = useState({
         train_no: '',
         coach_no: '',
         inspection_type: '',
+        activity_type: '',
         start_date: '',
         end_date: ''
     });
@@ -94,6 +96,7 @@ const ReportListScreen = ({ navigation }) => {
         train_no: '',
         coach_no: '',
         inspection_type: '',
+        activity_type: '',
         start_date: '',
         end_date: ''
     });
@@ -124,7 +127,7 @@ const ReportListScreen = ({ navigation }) => {
     const loadFilterOptions = async () => {
         try {
             const data = await getReportFilterOptions();
-            setFilterOptions(data || { trains: [], coaches: [], types: [], statuses: [] });
+            setFilterOptions(data || { trains: [], coaches: [], types: [], statuses: [], activityTypes: [] });
         } catch (err) {
             console.error('Load Filter Options Error:', err);
         }
@@ -153,7 +156,7 @@ const ReportListScreen = ({ navigation }) => {
     };
 
     const handleResetFilters = () => {
-        const empty = { train_no: '', coach_no: '', inspection_type: '', status: '', start_date: '', end_date: '' };
+        const empty = { train_no: '', coach_no: '', inspection_type: '', activity_type: '', status: '', start_date: '', end_date: '' };
         setTempFilters(empty);
         setAppliedFilters(empty);
         setIsFilterModalVisible(false);
@@ -165,8 +168,7 @@ const ReportListScreen = ({ navigation }) => {
             <Text style={[styles.headerCell, { width: 100 }]}>Train Number</Text>
             <Text style={[styles.headerCell, { width: 80 }]}>Coach</Text>
             <Text style={[styles.headerCell, { width: 140 }]}>Inspection Type</Text>
-            <Text style={[styles.headerCell, { width: 80 }]}>Major</Text>
-            <Text style={[styles.headerCell, { width: 80 }]}>Minor</Text>
+            <Text style={[styles.headerCell, { width: 120 }]}>Activity Type</Text>
             <Text style={[styles.headerCell, { width: 110 }]}>Date</Text>
             <Text style={[styles.headerCell, { width: 130 }]}>Inspector</Text>
             <Text style={[styles.headerCell, { width: 100 }]}>Action</Text>
@@ -185,9 +187,22 @@ const ReportListScreen = ({ navigation }) => {
                 <Text style={[styles.cell, { width: 120 }]} numberOfLines={1}>{displayId}...</Text>
                 <Text style={[styles.cell, { width: 100, fontWeight: '600' }]}>{item.train_number}</Text>
                 <Text style={[styles.cell, { width: 80 }]}>{item.coach_number}</Text>
-                <Text style={[styles.cell, { width: 140 }]} numberOfLines={2}>{item.category_name}</Text>
-                <Text style={[styles.cell, { width: 80, color: '#dc2626', fontWeight: '700' }]}>{item.major_incident_count}</Text>
-                <Text style={[styles.cell, { width: 80, color: '#d97706', fontWeight: '700' }]}>{item.minor_incident_count}</Text>
+                <View style={[styles.cell, { width: 140 }]}>
+                    <Text style={{ fontWeight: '600', color: '#1e293b' }} numberOfLines={1}>{item.category_name}</Text>
+                    {(item.subcategory_name || item.schedule_name) && (
+                        <Text style={{ fontSize: 10, color: '#64748b' }} numberOfLines={1}>
+                            {item.subcategory_name || item.schedule_name}
+                        </Text>
+                    )}
+                </View>
+                <View style={[styles.typeContainer, { width: 120 }]}>
+                    <Text style={[
+                        styles.typeText,
+                        item.severity === 'Major' ? styles.majorText : (item.severity === 'Minor' ? styles.minorText : { color: '#94a3b8' })
+                    ]}>
+                        {item.severity || 'N/A'}
+                    </Text>
+                </View>
                 <Text style={[styles.cell, { width: 110 }]}>{new Date(item.createdAt).toLocaleDateString()}</Text>
                 <Text style={[styles.cell, { width: 130 }]} numberOfLines={1}>{item.user_name}</Text>
                 <View style={{ width: 100, alignItems: 'center' }}>
@@ -307,6 +322,15 @@ const ReportListScreen = ({ navigation }) => {
                                         isOpen={activeDropdown === 'type'}
                                         onToggle={(open) => setActiveDropdown(open ? 'type' : null)}
                                     />
+                                    <SearchableInput
+                                        label="Activity Type"
+                                        placeholder="Major/Minor..."
+                                        value={tempFilters.activity_type}
+                                        onChangeText={(val) => setTempFilters(prev => ({ ...prev, activity_type: val }))}
+                                        options={filterOptions.activityTypes}
+                                        isOpen={activeDropdown === 'activity'}
+                                        onToggle={(open) => setActiveDropdown(open ? 'activity' : null)}
+                                    />
                                 </View>
 
                                 <View style={styles.gridRow}>
@@ -363,6 +387,13 @@ const styles = StyleSheet.create({
     tableRow: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
     tableRowAlternate: { backgroundColor: '#fcfdfe' },
     cell: { fontSize: 13, color: '#334155', textAlign: 'center', paddingHorizontal: 6 },
+
+    // Type Column Styling
+    typeContainer: { alignItems: 'center', justifyContent: 'center' },
+    typeText: { fontSize: 13, fontWeight: '700' },
+    majorText: { color: '#dc2626' },
+    minorText: { color: '#d97706' },
+
     statusBadge: { backgroundColor: '#f0fdf4', paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#dcfce7', alignItems: 'center', justifyContent: 'center' },
     statusBadgeText: { fontSize: 10, color: '#16a34a', fontWeight: '800', textTransform: 'uppercase' },
     viewBtn: { backgroundColor: '#2563eb', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, width: 90, alignItems: 'center' },

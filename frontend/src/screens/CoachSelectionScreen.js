@@ -30,11 +30,22 @@ const CoachSelectionScreen = ({ route, navigation }) => {
 
     const handleSelect = (item) => {
         setDraft(prev => ({ ...prev, coach: item, category: categoryName }));
-        navigation.navigate('ActivitySelection', {
+
+        const nextParams = {
             coachId: item.id,
             coachNumber: item.coach_number,
+            trainId: trainId,
+            trainName: trainName,
             categoryName
-        });
+        };
+
+        if (categoryName === 'Ltr to Railways') {
+            navigation.navigate('ScheduleSelection', nextParams);
+        } else if (categoryName === 'Amenity') {
+            navigation.navigate('AmenitySubcategory', nextParams);
+        } else {
+            navigation.navigate('ActivitySelection', nextParams);
+        }
     };
 
     const renderItem = ({ item }) => (

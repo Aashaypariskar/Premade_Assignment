@@ -1,6 +1,6 @@
 const {
     Train, Coach, Category, Activity, Question, InspectionAnswer,
-    User, Role, CategoryMaster, sequelize
+    User, Role, CategoryMaster, LtrSchedule, AmenitySubcategory, sequelize
 } = require('../models');
 
 /**
@@ -11,11 +11,28 @@ const {
 // GET /user-categories (Dashboard)
 exports.getUserCategories = async (req, res) => {
     try {
+        console.log(`[DEBUG] Fetching categories for User ID: ${req.user?.id}`);
         const user = await User.findByPk(req.user.id, {
-            include: [{ model: CategoryMaster, through: { attributes: [] } }]
+            include: [{ model: Role }, { model: CategoryMaster, through: { attributes: [] } }]
         });
-        res.json(user.CategoryMasters);
+
+        if (!user) {
+            console.error(`[DEBUG] User not found for ID: ${req.user?.id}`);
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let categories = user.CategoryMasters || [];
+
+        // Admin Fallback: If admin has no categories, show all master categories
+        if (user.Role?.role_name === 'Admin' && categories.length === 0) {
+            console.log('[DEBUG] Admin has no assigned categories. Returning all masters.');
+            categories = await CategoryMaster.findAll();
+        }
+
+        console.log(`[DEBUG] Total Categories for response: ${categories.length}`);
+        res.json(categories);
     } catch (err) {
+        console.error('Dash Error:', err);
         res.status(500).json({ error: 'Failed to fetch assigned categories' });
     }
 };
@@ -64,50 +81,102 @@ exports.getCoaches = async (req, res) => {
     }
 };
 
-// GET /activity-types?category_name=X&coach_id=Y
+// GET /activity-types?category_name=X&coach_id=Y&subcategory_id=Z
 exports.getActivities = async (req, res) => {
     try {
-        const { category_name, coach_id } = req.query;
-        if (!category_name || !coach_id) return res.status(400).json({ error: 'Missing parameters' });
+        const { category_name, coach_id, subcategory_id } = req.query;
 
-        const category = await Category.findOne({
-            where: { name: category_name, coach_id }
-        });
+        let where = {};
+        if (subcategory_id) {
+            // Rule #12: Fetch via subcategory_id ONLY
+            where = { subcategory_id };
+        } else {
+            if (!category_name || !coach_id) return res.status(400).json({ error: 'Missing parameters' });
+            const category = await Category.findOne({
+                where: { name: category_name, coach_id }
+            });
+            if (!category) return res.status(404).json({ error: 'Category not found for this coach' });
+            where.category_id = category.id;
+        }
 
-        if (!category) return res.status(404).json({ error: 'Category not found for this coach' });
-
-        const activities = await Activity.findAll({ where: { category_id: category.id } });
+        const activities = await Activity.findAll({ where });
         res.json(activities);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to retrieve activities' });
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-// GET /checklist?activity_id=X
+// GET /ltr-schedules?category_name=Ltr to Railways&coach_id=Y
+exports.getLtrSchedules = async (req, res) => {
+    try {
+        const { category_name, coach_id } = req.query;
+        if (!category_name || !coach_id) return res.status(400).json({ error: 'coach_id and category_name required' });
+
+        const category = await Category.findOne({ where: { name: category_name, coach_id } });
+        if (!category) return res.status(404).json({ error: 'LTR Category not found for this coach' });
+
+        const schedules = await LtrSchedule.findAll({ where: { category_id: category.id } });
+        res.json(schedules);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// GET /amenity-subcategories?category_name=Amenity&coach_id=Y
+exports.getAmenitySubcategories = async (req, res) => {
+    try {
+        const { category_name, coach_id } = req.query;
+        if (!category_name || !coach_id) return res.status(400).json({ error: 'coach_id and category_name required' });
+
+        const category = await Category.findOne({ where: { name: category_name, coach_id } });
+        if (!category) return res.status(404).json({ error: 'Amenity Category not found for this coach' });
+
+        const subs = await AmenitySubcategory.findAll({ where: { category_id: category.id } });
+        res.json(subs);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// GET /checklist?activity_id=X&schedule_id=Y&subcategory_id=Z
 exports.getQuestions = async (req, res) => {
     try {
-        const { activity_id } = req.query;
-        if (!activity_id) return res.status(400).json({ error: 'Activity ID is mandatory' });
+        const { activity_id, schedule_id, subcategory_id } = req.query;
 
-        // Security: Validate user has access to the category this activity belongs to
-        const activity = await Activity.findByPk(activity_id, {
-            include: [{ model: Category }]
-        });
+        let where = {};
+        let categoryName = '';
 
-        if (!activity) return res.status(404).json({ error: 'Activity not found' });
-
-        const user = await User.findByPk(req.user.id, {
-            include: [{ model: CategoryMaster, where: { name: activity.Category.name } }]
-        });
-
-        if (!user && req.user.role !== 'Admin') {
-            return res.status(403).json({ error: 'Access denied: You are not assigned to this category' });
+        // Rule #14: Final Questions Fetch Logic
+        if (schedule_id) {
+            where.schedule_id = schedule_id;
+            categoryName = 'Ltr to Railways';
+        } else if (activity_id && subcategory_id) {
+            where.activity_id = activity_id;
+            where.subcategory_id = subcategory_id;
+            categoryName = 'Amenity';
+        } else if (activity_id) {
+            // Standard
+            where.activity_id = activity_id;
+            where.subcategory_id = null; // Enforce standard
+            const act = await Activity.findByPk(activity_id, { include: [Category] });
+            categoryName = act?.Category?.name || 'Standard';
+        } else {
+            return res.status(400).json({ error: 'Ambiguous framework parameters' });
         }
 
-        const questions = await Question.findAll({ where: { activity_id } });
+        // RBAC Check
+        const user = await User.findByPk(req.user.id, {
+            include: [{ model: CategoryMaster, where: { name: categoryName } }]
+        });
+        if (!user && req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const questions = await Question.findAll({ where });
         res.json(questions);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch checklist' });
+        console.error('Checklist Error:', err);
+        res.status(500).json({ error: 'Internal failure' });
     }
 };
 
@@ -115,29 +184,29 @@ exports.getQuestions = async (req, res) => {
 exports.submitInspection = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const { train_id, coach_id, activity_id, answers, submission_id } = req.body;
-        console.log(`[SUBMIT] Attempting: ${submission_id} (Train: ${train_id}, Coach: ${coach_id}, Activity: ${activity_id})`);
-        console.log(`[SUBMIT] Answers count: ${answers?.length}`);
+        const { train_id, coach_id, activity_id, schedule_id, subcategory_id, answers, submission_id } = req.body;
+        console.log(`[SUBMIT] Attempting: ${submission_id} (Train: ${train_id}, Coach: ${coach_id}, Act: ${activity_id}, Sch: ${schedule_id}, Sub: ${subcategory_id})`);
 
         if (!answers || !Array.isArray(answers)) {
-            console.error('[SUBMIT] ERROR: Invalid answers format');
             return res.status(400).json({ error: 'Invalid submission format' });
         }
 
         const userId = req.user.id;
         const roleName = req.user.role;
 
-        // 1. Fetch Master Data & Current User
-        const [train, coach, activity, currentUser] = await Promise.all([
+        // 1. Fetch Master Data & Snapshots
+        const [train, coach, activity, schedule, subcategory, currentUser] = await Promise.all([
             Train.findByPk(train_id),
             Coach.findByPk(coach_id),
-            Activity.findByPk(activity_id, { include: [Category] }),
+            activity_id ? Activity.findByPk(activity_id, { include: [Category] }) : Promise.resolve(null),
+            schedule_id ? LtrSchedule.findByPk(schedule_id) : Promise.resolve(null),
+            subcategory_id ? AmenitySubcategory.findByPk(subcategory_id) : Promise.resolve(null),
             User.findByPk(req.user.id, { include: [Role] })
         ]);
 
-        if (!train || !coach || !activity || !currentUser) {
+        if (!train || !coach || !currentUser) {
             await transaction.rollback();
-            return res.status(404).json({ error: 'Train or Coach not found' });
+            return res.status(404).json({ error: 'Context not found' });
         }
 
         // 2. Prepare Payload with Audit Trail
@@ -163,6 +232,8 @@ exports.submitInspection = async (req, res) => {
                 train_id,
                 coach_id,
                 activity_id,
+                schedule_id,
+                subcategory_id,
                 question_id: ans.question_id,
                 user_id: userId,
 
@@ -170,8 +241,10 @@ exports.submitInspection = async (req, res) => {
                 submission_id: submission_id || `LEGACY-${Date.now()}`,
                 train_number: train.train_number,
                 coach_number: coach.coach_number,
-                category_name: activity.Category?.name || 'Unknown',
-                activity_type: activity.type,
+                category_name: activity?.Category?.name || (schedule ? 'Ltr to Railways' : (subcategory ? 'Amenity' : 'Unknown')),
+                subcategory_name: subcategory?.name || null,
+                schedule_name: schedule?.name || null,
+                activity_type: activity?.type || null,
                 status: 'Completed',
                 user_name: currentUser.name,
                 role_snapshot: currentUser.Role?.role_name || roleName
