@@ -67,7 +67,7 @@ const ReportDetailScreen = ({ route, navigation }) => {
                         <tr>
                             <td style="text-align: center;">${index + 1}</td>
                             <td>
-                                ${item.Question?.text || 'N/A'}
+                                ${item.question_text_snapshot || item.Question?.text || 'N/A'}
                                 ${item.Question?.specified_value ? `<br/><small style="color: #64748b;">(Spec: ${item.Question.specified_value})</small>` : ''}
                             </td>
                             <td style="text-align: center; color: ${item.answer === 'NO' ? '#ef4444' : '#10b981'}; font-weight: bold;">${item.answer}</td>
@@ -264,7 +264,7 @@ const ReportDetailScreen = ({ route, navigation }) => {
                                     {groupedData[sectionKey][itemName].map((item, idx) => (
                                         <View key={item.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
                                             <View style={[styles.cell, { flex: 0.1 }]}><Text style={styles.cellTextCenter}>{idx + 1}</Text></View>
-                                            <View style={[styles.cell, { flex: 0.45 }]}><Text style={styles.cellText}>{item.Question?.text || 'N/A'}</Text></View>
+                                            <View style={[styles.cell, { flex: 0.45 }]}><Text style={styles.cellText}>{item.question_text_snapshot || item.Question?.text || 'N/A'}</Text></View>
                                             <View style={[styles.cell, { flex: 0.15 }]}><Text style={[styles.cellTextCenter, { fontWeight: 'bold', color: item.answer === 'NO' ? '#ef4444' : '#10b981' }]}>{item.answer}</Text></View>
                                             <View style={[styles.cell, { flex: 0.3 }]}><Text style={styles.cellRemarkText}>{item.remarks || item.reasons || '-'}</Text></View>
                                         </View>

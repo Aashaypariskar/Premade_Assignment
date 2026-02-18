@@ -80,6 +80,7 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     subcategory_name: { type: DataTypes.STRING(100) }, // New
     schedule_name: { type: DataTypes.STRING(100) }, // New
     item_name: { type: DataTypes.STRING(255) }, // New for Amenity Hierarchy
+    question_text_snapshot: { type: DataTypes.TEXT }, // New: Persistent Reporting
     activity_type: { type: DataTypes.ENUM('Minor', 'Major') },
     status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
     role_snapshot: { type: DataTypes.STRING(100) },

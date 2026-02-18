@@ -298,6 +298,7 @@ exports.submitInspection = async (req, res) => {
                 subcategory_name: subcategory?.name || (questionData?.AmenitySubcategory?.name || null),
                 schedule_name: schedule?.name || null,
                 item_name: questionData?.AmenityItem?.name || null,
+                question_text_snapshot: questionData?.text || 'Standard Question', // Snapshot text
                 activity_type: activity?.type || questionData?.Activity?.type || null,
                 status: 'Completed',
                 user_name: currentUser.name,
