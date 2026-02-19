@@ -1,6 +1,6 @@
 const {
     Train, Coach, Category, Activity, Question, InspectionAnswer,
-    User, Role, CategoryMaster, LtrSchedule, AmenitySubcategory, AmenityItem, sequelize
+    User, Role, CategoryMaster, LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem, sequelize
 } = require('../models');
 
 /**
@@ -156,8 +156,25 @@ exports.getQuestions = async (req, res) => {
 
         // Rule #14: Final Questions Fetch Logic
         if (schedule_id) {
-            where.schedule_id = schedule_id;
-            categoryName = 'Ltr to Railways';
+            // LTR Digital Twin Logic: Return grouped by "Item"
+            const items = await LtrItem.findAll({
+                where: { schedule_id },
+                include: [{
+                    model: Question,
+                    required: true, // Only items with questions
+                }],
+                order: [
+                    ['display_order', 'ASC'],
+                    [{ model: Question }, 'display_order', 'ASC']
+                ]
+            });
+
+            const grouped = items.map(item => ({
+                item_name: item.name,
+                questions: item.Questions
+            }));
+
+            return res.json(grouped);
         } else if (activity_id && subcategory_id) {
             where.activity_id = activity_id;
             where.subcategory_id = subcategory_id;
@@ -248,8 +265,11 @@ exports.submitInspection = async (req, res) => {
         }
 
         // 1.5 Fetch Questions to get Item Names (for Amenity snapshots)
-        // Filter out any answers that are null/undefined (e.g. from toggled-off frontend state)
-        const validAnswers = answers.filter(a => a.answer === 'YES' || a.answer === 'NO');
+        // Filter out invalid entries (must have either answer or observed_value)
+        const validAnswers = answers.filter(a =>
+            (a.answer === 'YES' || a.answer === 'NO') ||
+            (a.observed_value && a.observed_value.trim().length > 0)
+        );
 
         if (validAnswers.length === 0) {
             return res.status(400).json({ error: 'No valid answers to submit.' });
@@ -258,25 +278,39 @@ exports.submitInspection = async (req, res) => {
         const questionIds = validAnswers.map(a => a.question_id);
         const questionsList = await Question.findAll({
             where: { id: questionIds },
-            include: [{ model: AmenityItem, required: false }]
+            include: [
+                { model: AmenityItem, required: false },
+                { model: LtrItem, required: false } // Include LTR Item
+            ]
         });
 
         // 2. Prepare Payload with Audit Trail
         const records = validAnswers.map(ans => {
             const questionData = questionsList.find(q => q.id === ans.question_id);
-            if (ans.answer === 'NO') {
-                const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
-                const hasImage = !!ans.image_path;
+            if (!questionData) throw new Error(`Question ID ${ans.question_id} not found`);
 
-                if (!hasReasons || !hasImage) {
-                    const missing = [];
-                    if (!hasReasons) missing.push('reasons');
-                    if (!hasImage) missing.push('an image');
-                    throw new Error(`Validation Failed: Question ID ${ans.question_id} requires ${missing.join(' and ')} for "NO" answers.`);
+            // Dynamic Validation Rule
+            if (questionData.answer_type === 'VALUE') {
+                if (!ans.observed_value) throw new Error(`Measurement value required for: "${questionData.text}"`);
+            } else {
+                // Default BOOLEAN
+                if (!ans.answer) throw new Error(`YES/NO required for: "${questionData.text}"`);
+
+                if (ans.answer === 'NO') {
+                    const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
+                    const hasImage = !!ans.image_path;
+
+                    if (!hasReasons || !hasImage) {
+                        const missing = [];
+                        if (!hasReasons) missing.push('reasons');
+                        if (!hasImage) missing.push('an image');
+                        throw new Error(`Validation Failed: Question ID ${ans.question_id} requires ${missing.join(' and ')} for "NO" answers.`);
+                    }
                 }
             }
             return {
                 answer: ans.answer,
+                observed_value: ans.observed_value, // New: Save measurement
                 reasons: ans.reasons, // JSON array
                 remarks: ans.remarks,
                 image_path: ans.image_path,
@@ -297,7 +331,7 @@ exports.submitInspection = async (req, res) => {
                 category_name: activity?.Category?.name || (schedule ? 'Ltr to Railways' : (subcategory ? 'Amenity' : 'Unknown')),
                 subcategory_name: subcategory?.name || (questionData?.AmenitySubcategory?.name || null),
                 schedule_name: schedule?.name || null,
-                item_name: questionData?.AmenityItem?.name || null,
+                item_name: questionData?.AmenityItem?.name || questionData?.LtrItem?.name || null, // Snapshot Item Name (Amenity or LTR)
                 question_text_snapshot: questionData?.text || 'Standard Question', // Snapshot text
                 activity_type: activity?.type || questionData?.Activity?.type || null,
                 status: 'Completed',

@@ -47,6 +47,7 @@ const Activity = sequelize.define('Activity', {
 }, { tableName: 'activities', timestamps: false });
 
 const LtrSchedule = require('./LtrSchedule')(sequelize);
+const LtrItem = require('./LtrItem')(sequelize); // New: LTR Hierarchy
 const AmenitySubcategory = require('./AmenitySubcategory')(sequelize);
 
 const AmenityItem = sequelize.define('AmenityItem', {
@@ -61,26 +62,30 @@ const Question = sequelize.define('Question', {
     schedule_id: { type: DataTypes.INTEGER, allowNull: true },
     subcategory_id: { type: DataTypes.INTEGER, allowNull: true },
     category_id: { type: DataTypes.INTEGER, allowNull: true },
-    item_id: { type: DataTypes.INTEGER, allowNull: true }, // New for Amenity Hierarchy
-    specified_value: { type: DataTypes.STRING, allowNull: true }
+    item_id: { type: DataTypes.INTEGER, allowNull: true }, // Shared for Amenity & LTR Items
+    specified_value: { type: DataTypes.STRING, allowNull: true },
+    answer_type: { type: DataTypes.ENUM('BOOLEAN', 'VALUE'), defaultValue: 'BOOLEAN' },
+    unit: { type: DataTypes.STRING(50) },
+    display_order: { type: DataTypes.INTEGER, defaultValue: 0 } // New: Strict Ordering
 }, { tableName: 'questions', timestamps: false });
 
 const Reason = require('./Reason')(sequelize, DataTypes);
 
 const InspectionAnswer = sequelize.define('InspectionAnswer', {
-    answer: { type: DataTypes.ENUM('YES', 'NO', 'NA'), allowNull: false },
+    answer: { type: DataTypes.ENUM('YES', 'NO', 'NA'), allowNull: true },
+    answer_type: { type: DataTypes.ENUM('BOOLEAN', 'VALUE'), defaultValue: 'BOOLEAN' },
+    observed_value: { type: DataTypes.TEXT },
     reasons: { type: DataTypes.JSON },
     remarks: { type: DataTypes.TEXT },
     image_path: { type: DataTypes.STRING },
-    // Enterprise Snapshots & Audit Trail
     submission_id: { type: DataTypes.STRING(100), allowNull: true },
     train_number: { type: DataTypes.STRING(50) },
     coach_number: { type: DataTypes.STRING(50) },
     category_name: { type: DataTypes.STRING(100) },
-    subcategory_name: { type: DataTypes.STRING(100) }, // New
-    schedule_name: { type: DataTypes.STRING(100) }, // New
-    item_name: { type: DataTypes.STRING(255) }, // New for Amenity Hierarchy
-    question_text_snapshot: { type: DataTypes.TEXT }, // New: Persistent Reporting
+    subcategory_name: { type: DataTypes.STRING(100) },
+    schedule_name: { type: DataTypes.STRING(100) },
+    item_name: { type: DataTypes.STRING(255) }, // Snapshot
+    question_text_snapshot: { type: DataTypes.TEXT },
     activity_type: { type: DataTypes.ENUM('Minor', 'Major') },
     status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
     role_snapshot: { type: DataTypes.STRING(100) },
@@ -112,6 +117,14 @@ Question.belongsTo(Activity, { foreignKey: 'activity_id' });
 LtrSchedule.belongsTo(Category, { foreignKey: 'category_id' });
 Category.hasMany(LtrSchedule, { foreignKey: 'category_id' });
 
+// LTR Item Hierarchy
+LtrSchedule.hasMany(LtrItem, { foreignKey: 'schedule_id' });
+LtrItem.belongsTo(LtrSchedule, { foreignKey: 'schedule_id' });
+
+LtrItem.hasMany(Question, { foreignKey: 'item_id' });
+Question.belongsTo(LtrItem, { foreignKey: 'item_id' });
+
+// Amenity Associations
 AmenitySubcategory.belongsTo(Category, { foreignKey: 'category_id' });
 Category.hasMany(AmenitySubcategory, { foreignKey: 'category_id' });
 
@@ -145,7 +158,7 @@ InspectionAnswer.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' })
 
 module.exports = {
     Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
-    LtrSchedule, AmenitySubcategory, AmenityItem,
+    LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem,
     User, Role, CategoryMaster, UserCategory,
     sequelize
 };

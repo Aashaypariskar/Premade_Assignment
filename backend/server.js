@@ -47,7 +47,8 @@ sequelize.authenticate()
     .then(() => {
         console.log('--- DATABASE CONNECTED ---');
         // Sync models to update schema (create submission_id column)
-        return sequelize.sync({ alter: true });
+        // Sync models (Disabled alter to stop index bloat)
+        return sequelize.sync();
     })
     .then(() => {
         console.log('--- SCHEMA SYNCED ---');

@@ -61,7 +61,11 @@ exports.getAllReports = async (req, res) => {
                 MAX(schedule_name) as schedule_name,
                 MAX(activity_type) as severity,
                 MAX(createdAt) as createdAt,
-                MAX(user_id) as user_id
+                MAX(user_id) as user_id,
+                SUM(CASE WHEN answer = 'YES' THEN 1 ELSE 0 END) as yes_count,
+                SUM(CASE WHEN answer = 'NO' THEN 1 ELSE 0 END) as no_count,
+                SUM(CASE WHEN answer_type = 'VALUE' AND observed_value IS NOT NULL AND observed_value != '' THEN 1 ELSE 0 END) as value_count,
+                ROUND((SUM(CASE WHEN answer = 'YES' THEN 1 ELSE 0 END) * 100.0) / NULLIF(SUM(CASE WHEN answer IN ('YES', 'NO') THEN 1 ELSE 0 END), 0), 1) as compliance_score
             FROM inspection_answers
             WHERE ${sqlWhere}
             GROUP BY submission_id
@@ -185,7 +189,7 @@ exports.getReportDetails = async (req, res) => {
             where: whereClause,
             include: [
                 { model: Activity, attributes: ['type'], include: [{ model: Category, attributes: ['name'] }] },
-                { model: Question, attributes: [['text', 'question_text'], 'specified_value'] },
+                { model: Question, attributes: [['text', 'question_text'], 'specified_value', 'unit', 'answer_type'] },
                 { model: require('../models').LtrSchedule, attributes: ['name'] },
                 { model: require('../models').AmenitySubcategory, attributes: ['name'] }
             ],

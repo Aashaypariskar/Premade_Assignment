@@ -52,7 +52,7 @@ const QuestionsScreen = ({ route, navigation }) => {
         ? questions.reduce((acc, curr) => [...acc, ...curr.questions], [])
         : questions;
 
-    const countCompleted = (flatQuestions || []).filter(q => q && currentAnswers[q.id]?.answer).length;
+    const countCompleted = (flatQuestions || []).filter(q => q && currentAnswers[q.id] && (currentAnswers[q.id].answer || currentAnswers[q.id].observed_value)).length;
     const totalQs = (flatQuestions || []).length;
     const progress = totalQs > 0 ? (countCompleted / totalQs) * 100 : 0;
     const isDone = totalQs > 0 && countCompleted === totalQs;
@@ -66,7 +66,7 @@ const QuestionsScreen = ({ route, navigation }) => {
         const currentQIds = qList.map(q => q?.id?.toString()).filter(Boolean);
         // Only validate answers that belong to this screen AND have been answered (YES/NO)
         const relevantAnswers = Object.entries(ansMap).filter(([id, ans]) =>
-            currentQIds.includes(id) && ans?.answer
+            currentQIds.includes(id) && (ans?.answer || ans?.observed_value)
         );
 
         const invalidNo = relevantAnswers.find(([id, ans]) => {

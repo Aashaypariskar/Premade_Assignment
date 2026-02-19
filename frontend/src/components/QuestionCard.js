@@ -61,21 +61,33 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
                 </View>
             )}
 
-            <View style={styles.toggleRow}>
-                <TouchableOpacity
-                    style={[styles.toggleBtn, answerData?.answer === 'YES' && styles.btnYes]}
-                    onPress={() => setAnswer('YES')}
-                >
-                    <Text style={[styles.toggleText, answerData?.answer === 'YES' && styles.textActive]}>YES</Text>
-                </TouchableOpacity>
+            {question.answer_type === 'VALUE' ? (
+                <View>
+                    <TextInput
+                        style={styles.input}
+                        placeholder={`Enter value ${question.unit ? `(${question.unit})` : ''}`}
+                        value={answerData?.observed_value || ''}
+                        onChangeText={(val) => onUpdate({ ...answerData, observed_value: val, answer: null })}
+                        keyboardType="numeric"
+                    />
+                </View>
+            ) : (
+                <View style={styles.toggleRow}>
+                    <TouchableOpacity
+                        style={[styles.toggleBtn, answerData?.answer === 'YES' && styles.btnYes]}
+                        onPress={() => setAnswer('YES')}
+                    >
+                        <Text style={[styles.toggleText, answerData?.answer === 'YES' && styles.textActive]}>YES</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.toggleBtn, answerData?.answer === 'NO' && styles.btnNo]}
-                    onPress={() => setAnswer('NO')}
-                >
-                    <Text style={[styles.toggleText, answerData?.answer === 'NO' && styles.textActive]}>NO</Text>
-                </TouchableOpacity>
-            </View>
+                    <TouchableOpacity
+                        style={[styles.toggleBtn, answerData?.answer === 'NO' && styles.btnNo]}
+                        onPress={() => setAnswer('NO')}
+                    >
+                        <Text style={[styles.toggleText, answerData?.answer === 'NO' && styles.textActive]}>NO</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {isNo && (
                 <View style={styles.noSection}>

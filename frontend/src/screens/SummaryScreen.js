@@ -19,6 +19,7 @@ const SummaryScreen = ({ navigation }) => {
         total: answersList.length,
         yes: answersList.filter(([_, a]) => a?.answer === 'YES').length,
         no: answersList.filter(([_, a]) => a?.answer === 'NO').length,
+        value: answersList.filter(([_, a]) => a?.observed_value).length,
     };
 
     const finalSubmit = async () => {
@@ -38,6 +39,7 @@ const SummaryScreen = ({ navigation }) => {
             answers: answersList.map(([qId, data]) => ({
                 question_id: parseInt(qId),
                 answer: data?.answer,
+                observed_value: data?.observed_value, // Pass observed value
                 reasons: data?.reasons || [],
                 remarks: data?.remarks || '',
                 image_path: data?.image_path || null
@@ -94,6 +96,10 @@ const SummaryScreen = ({ navigation }) => {
                         <View style={styles.statBox}>
                             <Text style={[styles.statNum, { color: '#ef4444' }]}>{counts.no}</Text>
                             <Text style={styles.statLabel}>NO</Text>
+                        </View>
+                        <View style={styles.statBox}>
+                            <Text style={[styles.statNum, { color: '#3b82f6' }]}>{counts.value}</Text>
+                            <Text style={styles.statLabel}>MEASURED</Text>
                         </View>
                         <View style={styles.statBox}>
                             <Text style={styles.statNum}>{counts.total}</Text>
