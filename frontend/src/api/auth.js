@@ -1,7 +1,11 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
+<<<<<<< HEAD
 const AUTH_URL = 'http://192.168.1.11:3000/api';
+=======
+const AUTH_URL = 'http://192.168.1.7:3000/api';
+>>>>>>> 6f900c78fe02d08361315b1c5ba8e0e86acf9047
 
 export const login = async (email, password) => {
     try {

@@ -47,11 +47,15 @@ exports.login = async (req, res) => {
                 role: user.Role.role_name,
                 assigned_categories: user.CategoryMasters.map(c => c.name)
             }
+<<<<<<< HEAD
 
         });
 
         console.log(res);
         
+=======
+        });
+>>>>>>> 6f900c78fe02d08361315b1c5ba8e0e86acf9047
     } catch (err) {
         console.error('Login Error:', err);
         res.status(500).json({ error: 'Internal server failure during authentication' });

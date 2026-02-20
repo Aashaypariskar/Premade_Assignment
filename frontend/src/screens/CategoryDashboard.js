@@ -10,107 +10,110 @@ const CategoryDashboard = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const data = await getUserCategories();
-                setCategories(data);
-                setError(null);
-            } catch (err) {
-                console.error('Dash Error:', err);
-                setError('Could not connect to the server. Please check your connection or IP configuration.');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCategories();
-    }, []);
-
-    const handleSelectCategory = (categoryName) => {
-        // Clear previous draft and start fresh focus
-        setDraft({
-            train: null,
-            coach: null,
-            category: categoryName,
-            activity: null,
-            answers: {}
-        });
-        navigation.navigate('TrainSelection', { categoryName });
+    const fetchCategories = async () => {
+        try {
+            const data = await getUserCategories();
+            setCategories(data);
+            setError(null);
+        } catch (err) {
+            console.error('Dash Error:', err);
+            setError('Could not connect to the server. Please check your connection or IP configuration.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    if (loading) {
-        return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#2563eb" />
-                <Text style={styles.loadingText}>Initializing Dashboard...</Text>
-            </View>
-        );
-    }
+    useEffect(() => {
+        fetchCategories();
+    }, []);
+    fetchCategories();
+}, []);
 
+const handleSelectCategory = (categoryName) => {
+    // Clear previous draft and start fresh focus
+    setDraft({
+        train: null,
+        coach: null,
+        category: categoryName,
+        activity: null,
+        answers: {}
+    });
+    navigation.navigate('TrainSelection', { categoryName });
+};
+
+if (loading) {
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.welcomeText}>Welcome back,</Text>
-                <Text style={styles.userName}>{user?.name} 👋</Text>
-                <View style={styles.actionRow}>
+        <View style={styles.center}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Initializing Dashboard...</Text>
+        </View>
+    );
+}
+
+return (
+    <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+            <Text style={styles.welcomeText}>Welcome back,</Text>
+            <Text style={styles.userName}>{user?.name} 👋</Text>
+            <View style={styles.actionRow}>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('ReportList')}
+                    style={styles.historyBtn}
+                >
+                    <Text style={styles.btnText}>📜 History</Text>
+                </TouchableOpacity>
+                {user?.role === 'Admin' && (
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('ReportList')}
-                        style={styles.historyBtn}
+                        onPress={() => navigation.navigate('UserManagement')}
+                        style={styles.adminBtn}
                     >
-                        <Text style={styles.btnText}>📜 History</Text>
+                        <Text style={styles.btnText}>Admin</Text>
                     </TouchableOpacity>
-                    {user?.role === 'Admin' && (
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('UserManagement')}
-                            style={styles.adminBtn}
-                        >
-                            <Text style={styles.btnText}>Admin</Text>
-                        </TouchableOpacity>
-                    )}
-                    <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-                        <Text style={styles.btnText}>Logout</Text>
+                )}
+                <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+                    <Text style={styles.btnText}>Logout</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+
+        <View style={styles.content}>
+            <Text style={styles.sectionTitle}>Inspection Focus</Text>
+            <Text style={styles.sectionSubtitle}>Select an assigned category to begin</Text>
+
+            {error ? (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>⚠️ {error}</Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); fetchCategories(); }}>
+                        <Text style={styles.retryText}>Retry Connection</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
-
-            <View style={styles.content}>
-                <Text style={styles.sectionTitle}>Inspection Focus</Text>
-                <Text style={styles.sectionSubtitle}>Select an assigned category to begin</Text>
-
-                {error ? (
-                    <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>⚠️ {error}</Text>
-                        <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); fetchCategories(); }}>
-                            <Text style={styles.retryText}>Retry Connection</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={categories}
-                        keyExtractor={(item) => item.id.toString()}
-                        numColumns={2}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.card}
-                                onPress={() => handleSelectCategory(item.name)}
-                            >
-                                <View style={styles.iconCircle}>
-                                    <Text style={styles.icon}>{item.name[0]}</Text>
-                                </View>
-                                <Text style={styles.cardText}>{item.name}</Text>
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <Text style={styles.emptyText}>No categories assigned.</Text>
-                                <Text style={styles.emptySub}>Please contact your administrator.</Text>
+            ) : (
+                <FlatList
+                    data={categories}
+                    keyExtractor={(item) => item.id.toString()}
+                    numColumns={2}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.card}
+                            onPress={() => handleSelectCategory(item.name)}
+                        >
+                            <View style={styles.iconCircle}>
+                                <Text style={styles.icon}>{item.name[0]}</Text>
                             </View>
-                        }
-                    />
-                )}
-            </View>
-        </SafeAreaView >
-    );
+                            <Text style={styles.cardText}>{item.name}</Text>
+                        </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No categories assigned.</Text>
+                            <Text style={styles.emptySub}>Please contact your administrator.</Text>
+                        </View>
+                    }
+                />
+            )}
+        </View>
+    </SafeAreaView >
+);
 };
 
 const styles = StyleSheet.create({
