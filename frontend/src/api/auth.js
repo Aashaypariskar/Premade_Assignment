@@ -1,0 +1,32 @@
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const AUTH_URL = 'http://192.168.1.11:3000/api';
+
+export const login = async (email, password) => {
+    try {
+        const response = await axios.post(`${AUTH_URL}/login`, { email, password });
+        if (response.data.token) {
+            await SecureStore.setItemAsync('user_token', response.data.token);
+            await SecureStore.setItemAsync('user_data', JSON.stringify(response.data.user));
+        }
+        return response.data;
+    } catch (error) {
+        console.error('Login Service Error:', error.response?.data || error.message);
+        throw error.response?.data || { error: 'Connection failed' };
+    }
+};
+
+export const logout = async () => {
+    await SecureStore.deleteItemAsync('user_token');
+    await SecureStore.deleteItemAsync('user_data');
+};
+
+export const getStoredToken = async () => {
+    return await SecureStore.getItemAsync('user_token');
+};
+
+export const getStoredUser = async () => {
+    const data = await SecureStore.getItemAsync('user_data');
+    return data ? JSON.parse(data) : null;
+};
