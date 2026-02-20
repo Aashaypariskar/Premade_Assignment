@@ -69,13 +69,17 @@ const SummaryScreen = ({ route, navigation }) => {
                         const userId = user?.id;
 
                         clearDraft();
-                        navigation.replace('ReportDetail', {
+                        navigation.replace('ReportSuccess', {
                             submission_id: payload.submission_id,
+                            train_id: currentDraft.train?.id,
                             train_number: submittedTrain,
+                            coach_id: currentDraft.coach?.id,
                             coach_number: submittedCoach,
-                            date: now,
-                            user_name: user?.name || 'You',
-                            user_id: userId
+                            category_name: currentDraft.category,
+                            subcategory_id: currentDraft.subcategory_id,
+                            subcategory_name: currentDraft.subcategory_name,
+                            activity_type: currentDraft.activity?.type || 'Standard',
+                            compartment: params.compartment
                         });
                     }
                 }

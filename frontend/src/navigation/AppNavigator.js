@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/StoreContext';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -20,6 +21,7 @@ import AmenitySubcategoryScreen from '../screens/AmenitySubcategoryScreen';
 import CompartmentSelectionScreen from '../screens/CompartmentSelectionScreen';
 import CombinedSummaryScreen from '../screens/CombinedSummaryScreen';
 import CombinedReportScreen from '../screens/CombinedReportScreen';
+import ReportSuccessScreen from '../screens/ReportSuccessScreen';
 
 const Stack = createStackNavigator();
 
@@ -30,13 +32,26 @@ const AppNavigator = () => {
 
     return (
         <Stack.Navigator
-            screenOptions={{
+            screenOptions={({ navigation, route }) => ({
                 headerStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
                 headerTintColor: '#1e293b',
                 headerTitleStyle: { fontWeight: 'bold', fontSize: 18 },
                 headerTitleAlign: 'center',
-                headerBackTitleVisible: false
-            }}
+                headerBackTitleVisible: false,
+                headerRight: () => (
+                    route.name !== 'Dashboard' && route.name !== 'Login' ? (
+                        <TouchableOpacity
+                            onPress={() => navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Dashboard' }],
+                            })}
+                            style={{ marginRight: 15 }}
+                        >
+                            <Ionicons name="home-outline" size={24} color="#1e293b" />
+                        </TouchableOpacity>
+                    ) : null
+                )
+            })}
         >
             {!user ? (
                 // Auth Stack
@@ -54,6 +69,11 @@ const AppNavigator = () => {
                         name="Dashboard"
                         component={CategoryDashboard}
                         options={{ title: 'Audit Dashboard' }}
+                    />
+                    <Stack.Screen
+                        name="ReportSuccess"
+                        component={ReportSuccessScreen}
+                        options={{ title: 'Success', headerLeft: () => null }}
                     />
                     <Stack.Screen
                         name="TrainSelection"
