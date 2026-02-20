@@ -63,11 +63,25 @@ const CombinedReportScreen = ({ route, navigation }) => {
                         <tbody>
                             ${data.matrix.map(row => `
                                 <tr>
-                                    <td>${row.question}</td>
+                                    <td>
+                                        ${row.item ? `<div style="font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;">${row.item}</div>` : ''}
+                                        <div>${row.question}</div>
+                                    </td>
                                     ${data.compartments.map(comp => {
-                const val = row.values[comp];
-                const cls = val === 'NO' ? 'text-red' : (val === 'Not Inspected' ? 'text-grey' : '');
-                return `<td class="${cls}">${val}</td>`;
+                const cell = row.values[comp];
+                if (!cell) return `<td class="text-grey">Not Inspected</td>`;
+
+                const isNo = cell.answer === 'NO';
+                const isValue = cell.answer_type === 'VALUE';
+                const display = isValue ? `${cell.observed_value} ${cell.unit}`.trim() : cell.answer;
+                const remark = cell.remarks || (cell.reasons && cell.reasons.length > 0 ? cell.reasons.join(', ') : '');
+
+                let html = `<div class="${isNo ? 'text-red' : ''}">${display}</div>`;
+                if ((isNo || (isValue && remark)) && remark) {
+                    html += `<div style="font-size: 10px; color: #64748b; font-style: italic; margin-top: 2px;">${remark}</div>`;
+                }
+
+                return `<td>${html}</td>`;
             }).join('')}
                                 </tr>
                             `).join('')}
@@ -90,6 +104,60 @@ const CombinedReportScreen = ({ route, navigation }) => {
         } catch (err) {
             Alert.alert('Error', 'Failed to generate PDF');
         }
+    };
+
+    const renderCell = (cell) => {
+        if (!cell) {
+            return (
+                <Text style={styles.notInspected}>
+                    Not Inspected
+                </Text>
+            );
+        }
+
+        // DEBUG LOG FOR STEP 5
+        console.log("Rendering Cell:", cell);
+
+        // Map backend keys to expected frontend 'reason' key for the requirement
+        const reasonText = cell.remarks || (Array.isArray(cell.reasons) && cell.reasons.length > 0 ? cell.reasons.join(', ') : null);
+
+        if (cell.answer === "YES") {
+            return (
+                <Text style={styles.yes}>
+                    YES
+                </Text>
+            );
+        }
+
+        if (cell.answer === "NO") {
+            return (
+                <View>
+                    <Text style={styles.no}>
+                        NO
+                    </Text>
+                    {reasonText && (
+                        <Text style={styles.reason}>
+                            {reasonText}
+                        </Text>
+                    )}
+                </View>
+            );
+        }
+
+        if (cell.answer === "NA") {
+            return (
+                <Text style={styles.notInspected}>
+                    NA
+                </Text>
+            );
+        }
+
+        // Handle VALUE types or other answers
+        return (
+            <Text style={styles.rowText}>
+                {cell.answer_type === 'VALUE' ? `${cell.observed_value} ${cell.unit}`.trim() : cell.answer}
+            </Text>
+        );
     };
 
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
@@ -130,25 +198,14 @@ const CombinedReportScreen = ({ route, navigation }) => {
                         {data.matrix.map((row, idx) => (
                             <View key={idx} style={[styles.row, idx % 2 === 1 && styles.alternateRow]}>
                                 <View style={[styles.cell, styles.questionCell]}>
+                                    {row.item && <Text style={styles.itemText}>{row.item}</Text>}
                                     <Text style={styles.rowText}>{row.question}</Text>
                                 </View>
-                                {data.compartments.map(comp => {
-                                    const val = row.values[comp];
-                                    const isNo = val === 'NO';
-                                    const isNotInspected = val === 'Not Inspected';
-
-                                    return (
-                                        <View key={comp} style={[styles.cell, styles.compCell]}>
-                                            <Text style={[
-                                                styles.rowText,
-                                                isNo && styles.textRed,
-                                                isNotInspected && styles.textGrey
-                                            ]}>
-                                                {val}
-                                            </Text>
-                                        </View>
-                                    );
-                                })}
+                                {data.compartments.map(comp => (
+                                    <View key={comp} style={[styles.cell, styles.compCell]}>
+                                        {renderCell(row.values[comp])}
+                                    </View>
+                                ))}
                             </View>
                         ))}
                     </ScrollView>
@@ -203,10 +260,16 @@ const styles = StyleSheet.create({
     alternateRow: { backgroundColor: '#fdfdfd' },
     questionCell: { width: 300 },
     compCell: { width: 100, alignItems: 'center' },
+    itemText: { fontSize: 10, fontWeight: 'bold', color: '#64748b', marginBottom: 2, textTransform: 'uppercase' },
     rowText: { fontSize: 12, color: '#334155' },
     textRed: { color: '#ef4444', fontWeight: 'bold' },
     textGreen: { color: '#22c55e', fontWeight: 'bold' },
     textGrey: { color: '#94a3b8', fontStyle: 'italic' },
+    remarkText: { fontSize: 9, color: '#64748b', marginTop: 2, fontStyle: 'italic' },
+    yes: { color: "green", fontWeight: "600", fontSize: 12 },
+    no: { color: "red", fontWeight: "700", fontSize: 12 },
+    reason: { fontSize: 10, color: "#666", marginTop: 2, fontStyle: 'italic' },
+    notInspected: { color: "#999", fontStyle: "italic", fontSize: 11 },
     footer: { padding: 20, backgroundColor: '#fff', borderTopWidth: 2, borderTopColor: '#e2e8f0' },
     footerTitle: { fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginBottom: 15 },
     compGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },

@@ -228,29 +228,45 @@ exports.getCombinedReport = async (req, res) => {
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
 
-        // Step 1: Find all submission IDs for this group
-        const submissions = await InspectionAnswer.findAll({
-            attributes: ['submission_id', 'subcategory_name'],
+        // Step 1: Find all submission IDs for this group, then filter for LATEST per compartment
+        const allSubmissions = await InspectionAnswer.findAll({
+            attributes: ['submission_id', 'subcategory_name', 'createdAt'],
             where: {
                 coach_id,
                 subcategory_id,
                 activity_type,
                 createdAt: { [Op.between]: [startOfDay, endOfDay] }
             },
-            group: ['submission_id', 'subcategory_name']
+            order: [['createdAt', 'DESC']]
         });
 
-        if (submissions.length <= 1) {
-            return res.status(400).json({ error: 'Combined report not available for single/zero submissions' });
+        if (allSubmissions.length === 0) {
+            return res.status(404).json({ error: 'No reports found for this date' });
         }
 
-        const submissionIds = submissions.map(s => s.submission_id);
-
-        // Identify compartments from subcategory_name snapshots
-        const compartments = [...new Set(submissions.map(s => {
+        // Map to hold only the latest submission_id for each compartment
+        const latestSubMap = new Map();
+        allSubmissions.forEach(s => {
             const match = s.subcategory_name.match(/\[(.*?)\]/);
-            return match ? match[1] : null;
-        }).filter(Boolean))].sort();
+            const comp = match ? match[1] : 'Main';
+            if (!latestSubMap.has(comp)) {
+                latestSubMap.set(comp, s.submission_id);
+            }
+        });
+
+        const submissionIds = Array.from(latestSubMap.values());
+
+        if (submissionIds.length === 0) {
+            return res.status(400).json({ error: 'Combined report not available' });
+        }
+
+        // Identify compartments from the latest submission list
+        const compartments = [...new Set(allSubmissions
+            .filter(s => submissionIds.includes(s.submission_id))
+            .map(s => {
+                const match = s.subcategory_name.match(/\[(.*?)\]/);
+                return match ? match[1] : null;
+            }).filter(Boolean))].sort();
 
         // Step 2 & 3: Fetch answers and build pivot matrix
         const answers = await InspectionAnswer.findAll({
@@ -268,6 +284,7 @@ exports.getCombinedReport = async (req, res) => {
 
         answers.forEach(ans => {
             const qText = ans.question_text_snapshot;
+            const itemName = ans.item_name || 'General';
             const ansSubBase = ans.subcategory_name?.split(' [')[0].toLowerCase();
 
             // Only process if it belongs to this subcategory area (case-insensitive)
@@ -276,8 +293,12 @@ exports.getCombinedReport = async (req, res) => {
             const match = ans.subcategory_name.match(/\[(.*?)\]/);
             const comp = match ? match[1] : 'Unknown';
 
-            if (!questionsMap.has(qText)) {
-                questionsMap.set(qText, {
+            // UNIQUE KEY: ITEM + QUESTION
+            const key = `${itemName}_${qText}`;
+
+            if (!questionsMap.has(key)) {
+                questionsMap.set(key, {
+                    item: itemName,
                     question: qText,
                     answer_type: ans.answer_type,
                     unit: ans.unit || '',
@@ -285,32 +306,69 @@ exports.getCombinedReport = async (req, res) => {
                 });
             }
 
-            const qEntry = questionsMap.get(qText);
-            const displayValue = ans.answer_type === 'BOOLEAN'
-                ? ans.answer
-                : `${ans.observed_value || ''} ${ans.unit || ''}`.trim();
+            const qEntry = questionsMap.get(key);
 
-            qEntry.values[comp] = displayValue;
+            // STRICT ANSWER HANDLING
+            let finalAnswer = null;
+            if (ans.answer === 'YES') finalAnswer = 'YES';
+            else if (ans.answer === 'NO') finalAnswer = 'NO';
+            else if (ans.answer === 'NA') finalAnswer = 'NA';
 
-            // Step 4: Compliance logic
+            if (comp === 'L3' && finalAnswer === 'NO') {
+                console.log(`[DEBUG] Found NO answer for L3: ${qText}`);
+            }
+
+            // Structured data for each cell
+            const existingCell = qEntry.values[comp];
+            const newCell = {
+                answer: finalAnswer,
+                observed_value: ans.observed_value,
+                unit: ans.unit || '',
+                reasons: ans.reasons || [],
+                remarks: ans.remarks || '',
+                answer_type: ans.answer_type
+            };
+
+            // PRIORITIZE NO: If we already have a NO, don't let a YES/NA overwrite it
+            if (!existingCell || (existingCell.answer !== 'NO' && finalAnswer === 'NO')) {
+                qEntry.values[comp] = newCell;
+            }
+
+            // Step 4: Compliance logic (only count if not already counted for this question/comp)
+            // Note: In an ideal world, we'd only have one submission per comp. 
+            // If there are multiple, this logic counts the last one (since qEntry.values[comp] was just set).
             if (ans.answer_type === 'BOOLEAN' && compartments.includes(comp)) {
-                if (ans.answer === 'YES') compStats[comp].yes++;
-                if (ans.answer === 'NO') compStats[comp].no++;
+                // We'll calculate stats later from the final matrix to avoid double-counting
             }
         });
 
         // Convert Map to ordered array and fill missing values
         const matrix = Array.from(questionsMap.values()).map(q => {
             compartments.forEach(c => {
-                if (!q.values[c]) q.values[c] = 'Not Inspected';
+                if (!q.values[c]) q.values[c] = null;
             });
             return q;
         });
 
-        // Calculate final percentages
+        // Calculate final percentages from the matrix (correct way)
         const perCompartmentCompliance = {};
         let totalYes = 0;
         let totalTotal = 0;
+
+        matrix.forEach(row => {
+            if (row.answer_type === 'BOOLEAN') {
+                compartments.forEach(comp => {
+                    const cell = row.values[comp];
+                    if (cell) {
+                        if (cell.answer === 'YES') {
+                            compStats[comp].yes++;
+                        } else if (cell.answer === 'NO') {
+                            compStats[comp].no++;
+                        }
+                    }
+                });
+            }
+        });
 
         compartments.forEach(c => {
             const { yes, no } = compStats[c];
