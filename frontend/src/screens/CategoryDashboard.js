@@ -10,19 +10,20 @@ const CategoryDashboard = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const fetchCategories = async () => {
+        try {
+            const data = await getUserCategories();
+            setCategories(data);
+            setError(null);
+        } catch (err) {
+            console.error('Dash Error:', err);
+            setError('Could not connect to the server. Please check your connection or IP configuration.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const data = await getUserCategories();
-                setCategories(data);
-                setError(null);
-            } catch (err) {
-                console.error('Dash Error:', err);
-                setError('Could not connect to the server. Please check your connection or IP configuration.');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchCategories();
     }, []);
 

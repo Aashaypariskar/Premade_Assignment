@@ -4,7 +4,8 @@ const { Sequelize } = require('sequelize');
 const sequelize = new Sequelize('inspection_db', 'root', 'root', {
     host: 'localhost',
     dialect: 'mysql',
-    logging: false
+    logging: false,
+    port: 3307
 });
 
 module.exports = sequelize;
