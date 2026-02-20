@@ -61,9 +61,28 @@ export const getLtrSchedules = async (categoryName, coachId) => {
 };
 
 export const getAmenitySubcategories = async (categoryName, coachId) => {
-    const res = await api.get(`/amenity-subcategories?category_name=${encodeURIComponent(categoryName)}&coach_id=${coachId}`);
+    const res = await api.get(`/amenity-subcategories`, { params: { category_name: categoryName, coach_id: coachId } });
     return res.data;
 };
+
+// --- COMMISSIONARY ENDPOINTS ---
+export const getCommissionarySession = (coach_number) => api.get(`/commissionary/session?coach_number=${coach_number}`).then(res => res.data);
+export const getCommissionaryCoaches = () => api.get('/commissionary-coaches').then(res => res.data);
+export const createCommissionaryCoach = (data) => api.post('/commissionary-coaches', data).then(res => res.data);
+
+export const getCommissionaryQuestions = (subId, actType) =>
+    api.get('/commissionary/questions', { params: { subcategory_id: subId, activity_type: actType } }).then(r => r.data);
+
+export const saveCommissionaryAnswers = (payload) =>
+    api.post('/commissionary/save', payload).then(r => r.data);
+
+export const getCommissionaryProgress = (coachNumber) =>
+    api.get('/commissionary/progress', { params: { coach_number: coachNumber } }).then(r => r.data);
+
+export const completeCommissionarySession = (coach_number) => api.post('/commissionary/complete', { coach_number }).then(res => res.data);
+
+export const getCommissionaryCombinedReport = (sessionId) =>
+    api.get('/commissionary/combined-report', { params: { session_id: sessionId } }).then(r => r.data);
 
 export const getQuestions = async (activityId, scheduleId = null, subcategoryId = null) => {
     let url = `/checklist?`;

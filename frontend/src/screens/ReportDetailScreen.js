@@ -55,13 +55,17 @@ const ReportDetailScreen = ({ route, navigation }) => {
             const itemsByItem = grouped[section];
             const itemSectionsHtml = Object.keys(itemsByItem).map(itemName => {
                 const rows = itemsByItem[itemName].map((item, index) => {
+                    const status = item.status || item.answer;
                     const reasonsStr = item.reasons
                         ? (typeof item.reasons === 'string'
                             ? JSON.parse(item.reasons).join(', ')
                             : Array.isArray(item.reasons)
                                 ? item.reasons.join(', ')
                                 : '-')
-                        : '-';
+                        : (item.reason || '-');
+
+                    const isDeficiency = status === 'DEFICIENCY' || status === 'NO';
+                    const isOk = status === 'OK' || status === 'YES';
 
                     return `
                         <tr>
@@ -70,8 +74,8 @@ const ReportDetailScreen = ({ route, navigation }) => {
                                 ${item.question_text_snapshot || item.Question?.text || 'N/A'}
                                 ${item.Question?.specified_value ? `<br/><small style="color: #64748b;">(Spec: ${item.Question.specified_value})</small>` : ''}
                             </td>
-                            <td style="text-align: center; color: ${item.answer === 'NO' ? '#ef4444' : '#10b981'}; font-weight: bold;">
-                                ${item.Question?.answer_type === 'VALUE' ? `<span style="color: #2563eb">${item.observed_value || '-'} ${item.Question?.unit || ''}</span>` : item.answer}
+                            <td style="text-align: center; color: ${isDeficiency ? '#ef4444' : (isOk ? '#10b981' : '#64748b')}; font-weight: bold;">
+                                ${item.Question?.answer_type === 'VALUE' ? `<span style="color: #2563eb">${item.observed_value || '-'} ${item.Question?.unit || ''}</span>` : status}
                             </td>
                             <td>${reasonsStr}</td>
                             <td>${item.remarks || '-'}</td>
@@ -267,14 +271,21 @@ const ReportDetailScreen = ({ route, navigation }) => {
                                         <View key={item.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
                                             <View style={[styles.cell, { flex: 0.1 }]}><Text style={styles.cellTextCenter}>{idx + 1}</Text></View>
                                             <View style={[styles.cell, { flex: 0.45 }]}><Text style={styles.cellText}>{item.question_text_snapshot || item.Question?.text || 'N/A'}</Text></View>
-                                            <View style={[styles.cell, { flex: 0.15 }]}><Text style={[styles.cellTextCenter, { fontWeight: 'bold', color: item.answer === 'NO' ? '#ef4444' : '#10b981' }]}>
+                                            <View style={[styles.cell, { flex: 0.15 }]}><Text style={[
+                                                styles.cellTextCenter,
+                                                {
+                                                    fontWeight: 'bold',
+                                                    color: (item.status === 'DEFICIENCY' || item.answer === 'NO') ? '#ef4444' :
+                                                        (item.status === 'OK' || item.answer === 'YES') ? '#10b981' : '#64748b'
+                                                }
+                                            ]}>
                                                 {item.Question?.answer_type === 'VALUE' ? (
                                                     <Text style={{ color: '#2563eb' }}>{item.observed_value || '-'} {item.Question?.unit || ''}</Text>
                                                 ) : (
-                                                    item.answer
+                                                    item.status || item.answer
                                                 )}
                                             </Text></View>
-                                            <View style={[styles.cell, { flex: 0.3 }]}><Text style={styles.cellRemarkText}>{item.remarks || item.reasons || '-'}</Text></View>
+                                            <View style={[styles.cell, { flex: 0.3 }]}><Text style={styles.cellRemarkText}>{item.remarks || item.reasons || item.reason || '-'}</Text></View>
                                         </View>
                                     ))}
                                 </View>

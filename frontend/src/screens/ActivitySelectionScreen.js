@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { getActivities } from '../api/api';
 import { useStore } from '../store/StoreContext';
+import { Ionicons } from '@expo/vector-icons';
 
 /**
  * Activity Selection Screen
@@ -30,10 +31,14 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     const handleSelect = (act) => {
         setDraft(prev => ({ ...prev, activity: act, category: params.categoryName }));
-        navigation.navigate('QuestionsScreen', {
+
+        const screen = params.categoryName === 'Coach Commissionary' ? 'CommissionaryQuestions' : 'QuestionsScreen';
+
+        navigation.navigate(screen, {
             ...params,
             activityId: act.id,
-            activityType: act.type
+            activityType: act.type,
+            compartmentId: params.compartmentId || 'NA' // Default to NA if no compartment selected
         });
     };
 
@@ -41,9 +46,15 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.pills}>
-                <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
-                <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
+                    <Ionicons name="home-outline" size={26} color="#1e293b" />
+                </TouchableOpacity>
+                <View style={styles.pills}>
+                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
+                    <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+                </View>
+                <View style={{ width: 26 }} />
             </View>
 
             <Text style={styles.title}>Select Activity Type</Text>
@@ -92,7 +103,8 @@ const styles = StyleSheet.create({
     tabText: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
     tabMajorText: { color: '#fff' }, // added logic for colors
     subText: { fontSize: 12, color: '#64748b', marginTop: 5 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
 });
 
 // Fix for text colors in dynamic map

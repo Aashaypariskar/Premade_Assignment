@@ -59,7 +59,7 @@ const QuestionsScreen = ({ route, navigation }) => {
     const countCompleted = (flatQuestions || []).filter(q => {
         if (!q) return false;
         const ans = currentAnswers[getAnswerKey(q.id)];
-        return ans && (ans.answer || ans.observed_value);
+        return ans && (ans.status || ans.observed_value);
     }).length;
 
     const totalQs = (flatQuestions || []).length;
@@ -81,20 +81,21 @@ const QuestionsScreen = ({ route, navigation }) => {
 
             return currentQIds.includes(qId) &&
                 comp === (params.compartment || null) &&
-                (ans?.answer || ans?.observed_value);
+                (ans?.status || ans?.observed_value);
         });
 
-        const invalidNo = relevantAnswers.find(([key, ans]) => {
+        const invalidDeficiency = relevantAnswers.find(([key, ans]) => {
             if (!ans) return false;
             const missingReason = !ans.reasons || ans.reasons.length === 0;
             const missingImage = !ans.image_path;
+            const missingRemark = !ans.remarks;
 
-            const hasProblem = ans.answer === 'NO' && (missingReason || missingImage);
+            const hasProblem = ans.status === 'DEFICIENCY' && (missingReason || missingImage || missingRemark);
             return hasProblem;
         });
 
-        if (invalidNo) {
-            const [key, ans] = invalidNo;
+        if (invalidDeficiency) {
+            const [key, ans] = invalidDeficiency;
             const parts = key.split('_');
             const qId = parts.length > 1 ? parts[1] : parts[0];
             const qObj = qList.find(q => q?.id?.toString() === qId);
@@ -102,11 +103,12 @@ const QuestionsScreen = ({ route, navigation }) => {
 
             let missing = [];
             if (!ans?.reasons || ans.reasons.length === 0) missing.push('Reasons');
+            if (!ans?.remarks) missing.push('Remarks');
             if (!ans?.image_path) missing.push('a Photo');
 
             Alert.alert(
                 'Missing Information',
-                `Question: "${qText.substring(0, 40)}..."\n\nRequires: ${missing.join(' and ')}.`
+                `Question: "${qText.substring(0, 40)}..."\n\nRequires: ${missing.join(', ')}.`
             );
             return;
         }

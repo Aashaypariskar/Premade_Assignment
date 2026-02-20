@@ -325,7 +325,7 @@ exports.submitInspection = async (req, res) => {
         // 1.5 Fetch Questions to get Item Names (for Amenity snapshots)
         // Filter out invalid entries (must have either answer or observed_value)
         const validAnswers = answers.filter(a =>
-            (a.answer === 'YES' || a.answer === 'NO') ||
+            (a.status === 'OK' || a.status === 'DEFICIENCY' || a.status === 'NA') ||
             (a.observed_value && a.observed_value.trim().length > 0)
         );
 
@@ -350,26 +350,30 @@ exports.submitInspection = async (req, res) => {
             // Dynamic Validation Rule
             if (questionData.answer_type === 'VALUE') {
                 if (!ans.observed_value) throw new Error(`Measurement value required for: "${questionData.text}"`);
+                // For VALUE types, we assume OK unless specified otherwise, but standard audit uses BOOLEAN statuses
+                ans.status = ans.status || 'OK';
             } else {
-                // Default BOOLEAN
-                if (!ans.answer) throw new Error(`YES/NO required for: "${questionData.text}"`);
+                // Default STATUS-based
+                if (!ans.status) throw new Error(`Status (OK/DEFICIENCY/NA) required for: "${questionData.text}"`);
 
-                if (ans.answer === 'NO') {
+                if (ans.status === 'DEFICIENCY') {
                     const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                     const hasImage = !!ans.image_path;
+                    const hasRemark = !!ans.remarks;
 
-                    if (!hasReasons || !hasImage) {
+                    if (!hasReasons || !hasImage || !hasRemark) {
                         const missing = [];
                         if (!hasReasons) missing.push('reasons');
                         if (!hasImage) missing.push('an image');
-                        throw new Error(`Validation Failed: Question ID ${ans.question_id} requires ${missing.join(' and ')} for "NO" answers.`);
+                        if (!hasRemark) missing.push('remarks');
+                        throw new Error(`Validation Failed: Question ID ${ans.question_id} requires ${missing.join(', ')} for "DEFICIENCY" answers.`);
                     }
                 }
             }
             return {
-                answer: ans.answer,
-                observed_value: ans.observed_value, // New: Save measurement
-                reasons: ans.reasons, // JSON array
+                status: ans.status,
+                observed_value: ans.observed_value,
+                reasons: ans.reasons,
                 remarks: ans.remarks,
                 image_path: ans.image_path,
 
@@ -392,7 +396,7 @@ exports.submitInspection = async (req, res) => {
                 item_name: questionData?.AmenityItem?.name || questionData?.LtrItem?.name || null, // Snapshot Item Name (Amenity or LTR)
                 question_text_snapshot: questionData?.text || 'Standard Question', // Snapshot text
                 activity_type: activity?.type || questionData?.Activity?.type || null,
-                status: 'Completed',
+                inspection_status: 'Completed',
                 user_name: currentUser.name,
                 role_snapshot: currentUser.Role?.role_name || roleName
             };

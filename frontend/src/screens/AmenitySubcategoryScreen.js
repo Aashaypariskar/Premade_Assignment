@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Alert } from 'react-native';
-import { getAmenitySubcategories } from '../api/api';
+import { getAmenitySubcategories, getCommissionaryProgress, completeCommissionarySession } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -8,6 +8,8 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
     const params = route.params;
     const [subcategories, setSubcategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const { setDraft } = useStore();
 
     useEffect(() => {
@@ -16,13 +18,46 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
 
     const loadSubcategories = async () => {
         try {
-            const data = await getAmenitySubcategories(params.categoryName, params.coachId);
+            const catName = params.categoryName === 'Coach Commissionary' ? 'Amenity' : params.categoryName;
+            const data = await getAmenitySubcategories(catName, params.coachId);
             setSubcategories(data);
+
+            if (params.categoryName === 'Coach Commissionary') {
+                const prog = await getCommissionaryProgress(params.coachNumber);
+                setProgress(prog);
+            }
         } catch (err) {
-            Alert.alert('Error', 'Could not fetch subcategories');
+            Alert.alert('Error', 'Could not fetch data');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleFinalSubmit = async () => {
+        if (!progress?.fully_complete) {
+            Alert.alert('Incomplete', 'Please complete all areas and compartments (Major & Minor) before subitting.');
+            return;
+        }
+
+        Alert.alert('Final Submission', 'Are you sure you want to complete this coach inspection? This will lock all records.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Submit',
+                onPress: async () => {
+                    try {
+                        setSubmitting(true);
+                        await completeCommissionarySession(params.coachNumber);
+                        Alert.alert('Success', 'Coach Commissionary Inspection COMPLETED!', [
+                            { text: 'OK', onPress: () => navigation.navigate('Dashboard') }
+                        ]);
+                    } catch (err) {
+                        Alert.alert('Error', 'Submission failed');
+                    } finally {
+                        setSubmitting(false);
+                    }
+                }
+            }
+        ]);
     };
 
     const handleSelect = (sub) => {
@@ -32,8 +67,7 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
             subcategory_name: sub.name
         }));
 
-        const subNameLower = sub.name.toLowerCase();
-        if (subNameLower.includes('lavatory') || subNameLower.includes('door area')) {
+        if (sub.requires_compartment) {
             navigation.navigate('CompartmentSelection', {
                 ...params,
                 subcategoryId: sub.id,
@@ -52,9 +86,15 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.pills}>
-                <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
-                <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
+                    <Ionicons name="home-outline" size={26} color="#1e293b" />
+                </TouchableOpacity>
+                <View style={styles.pills}>
+                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
+                    <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+                </View>
+                <View style={{ width: 26 }} />
             </View>
 
             <Text style={styles.title}>Select Area</Text>
@@ -76,6 +116,39 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                     </TouchableOpacity>
                 )}
                 contentContainerStyle={styles.list}
+                ListFooterComponent={() => (
+                    params.categoryName === 'Coach Commissionary' && progress ? (
+                        <View style={styles.footer}>
+                            <View style={styles.progressCard}>
+                                <Text style={styles.progressTitle}>Global Progress</Text>
+                                <View style={styles.progressBar}>
+                                    <View style={[styles.progressFill, { width: `${progress.overall_compliance * 100}%` }]} />
+                                </View>
+                                <Text style={styles.progressText}>
+                                    {progress.completed_count} / {progress.total_expected} Activities Finished
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.submitBtn,
+                                    (!progress.fully_complete || submitting) && { backgroundColor: '#94a3b8' }
+                                ]}
+                                onPress={handleFinalSubmit}
+                                disabled={!progress.fully_complete || submitting}
+                            >
+                                {submitting ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Ionicons name="checkmark-done-circle-outline" size={24} color="#fff" />
+                                        <Text style={styles.submitBtnText}>Final Session Submit</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ) : null
+                )}
             />
         </View>
     );
@@ -107,7 +180,16 @@ const styles = StyleSheet.create({
     },
     iconBox: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
     subName: { fontSize: 13, fontWeight: 'bold', color: '#334155', textAlign: 'center' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+    footer: { marginTop: 20, paddingBottom: 40 },
+    progressCard: { backgroundColor: '#fff', padding: 20, borderRadius: 16, marginBottom: 15, elevation: 2 },
+    progressTitle: { fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginBottom: 10 },
+    progressBar: { height: 8, backgroundColor: '#f1f5f9', borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
+    progressFill: { height: '100%', backgroundColor: '#10b981' },
+    progressText: { fontSize: 12, color: '#64748b' },
+    submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#10b981', padding: 18, borderRadius: 16, elevation: 4 },
+    submitBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
 });
 
 export default AmenitySubcategoryScreen;

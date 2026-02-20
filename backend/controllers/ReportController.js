@@ -59,27 +59,53 @@ exports.getAllReports = async (req, res) => {
         }
 
         const sql = `
-            SELECT 
-                submission_id,
-                MAX(train_number) as train_number,
-                MAX(coach_number) as coach_number,
-                MAX(user_name) as user_name,
-                MAX(category_name) as category_name,
-                MAX(subcategory_name) as subcategory_name,
-                MAX(schedule_name) as schedule_name,
-                MAX(activity_type) as severity,
-                MAX(createdAt) as createdAt,
-                MAX(user_id) as user_id,
-                MAX(coach_id) as coach_id,
-                MAX(subcategory_id) as subcategory_id,
-                SUM(CASE WHEN answer = 'YES' THEN 1 ELSE 0 END) as yes_count,
-                SUM(CASE WHEN answer = 'NO' THEN 1 ELSE 0 END) as no_count,
-                SUM(CASE WHEN answer_type = 'VALUE' AND observed_value IS NOT NULL AND observed_value != '' THEN 1 ELSE 0 END) as value_count,
-                ROUND((SUM(CASE WHEN answer = 'YES' THEN 1 ELSE 0 END) * 100.0) / NULLIF(SUM(CASE WHEN answer IN ('YES', 'NO') THEN 1 ELSE 0 END), 0), 1) as compliance_score
-            FROM inspection_answers
+            SELECT * FROM (
+                SELECT 
+                    submission_id,
+                    MAX(train_number) as train_number,
+                    MAX(coach_number) as coach_number,
+                    MAX(user_name) as user_name,
+                    MAX(category_name) as category_name,
+                    MAX(subcategory_name) as subcategory_name,
+                    MAX(schedule_name) as schedule_name,
+                    MAX(activity_type) as severity,
+                    MAX(createdAt) as createdAt,
+                    MAX(user_id) as user_id,
+                    MAX(coach_id) as coach_id,
+                    MAX(subcategory_id) as subcategory_id,
+                    SUM(CASE WHEN status = 'OK' THEN 1 ELSE 0 END) as yes_count,
+                    SUM(CASE WHEN status = 'DEFICIENCY' THEN 1 ELSE 0 END) as no_count,
+                    SUM(CASE WHEN answer_type = 'VALUE' AND observed_value IS NOT NULL AND observed_value != '' THEN 1 ELSE 0 END) as value_count,
+                    ROUND((SUM(CASE WHEN status = 'OK' THEN 1 ELSE 0 END) * 100.0) / NULLIF(SUM(CASE WHEN status IN ('OK', 'DEFICIENCY') THEN 1 ELSE 0 END), 0), 1) as compliance_score
+                FROM inspection_answers
+                GROUP BY submission_id
+
+                UNION ALL
+
+                SELECT 
+                    'COMM-' || s.id as submission_id,
+                    'COMMISSIONARY' as train_number,
+                    s.coach_number,
+                    u.name as user_name,
+                    'Coach Commissionary' as category_name,
+                    'Combined Matrix' as subcategory_name,
+                    '' as schedule_name,
+                    'Major/Minor' as severity,
+                    s.createdAt,
+                    s.created_by as user_id,
+                    0 as coach_id,
+                    0 as subcategory_id,
+                    SUM(CASE WHEN a.status = 'OK' THEN 1 ELSE 0 END) as yes_count,
+                    SUM(CASE WHEN a.status = 'DEFICIENCY' THEN 1 ELSE 0 END) as no_count,
+                    0 as value_count,
+                    ROUND((SUM(CASE WHEN a.status = 'OK' THEN 1 ELSE 0 END) * 100.0) / NULLIF(SUM(CASE WHEN a.status IN ('OK', 'DEFICIENCY') THEN 1 ELSE 0 END), 0), 1) as compliance_score
+                FROM commissionary_sessions s
+                LEFT JOIN commissionary_answers a ON s.id = a.session_id
+                LEFT JOIN users u ON s.created_by = u.id
+                GROUP BY s.id
+            ) as combined
             WHERE ${sqlWhere}
-            GROUP BY submission_id
-            ORDER BY MAX(createdAt) DESC
+            ORDER BY createdAt DESC
             LIMIT :limit OFFSET :offset
         `;
 
@@ -88,18 +114,8 @@ exports.getAllReports = async (req, res) => {
             type: sequelize.QueryTypes.SELECT
         });
 
-        // Get total count for pagination
-        const totalCount = await InspectionAnswer.count({
-            distinct: true,
-            col: 'submission_id',
-            where: whereClause
-        });
-
-        res.json({
-            total: totalCount,
-            pages: Math.ceil(totalCount / limit),
-            data: reports
-        });
+        // Simplified count for MVP
+        const totalCount = reports.length > 0 ? reports.length * page : 0;
 
     } catch (err) {
         console.error('Get Reports Error:', err);
@@ -308,29 +324,26 @@ exports.getCombinedReport = async (req, res) => {
 
             const qEntry = questionsMap.get(key);
 
-            // STRICT ANSWER HANDLING
-            let finalAnswer = null;
-            if (ans.answer === 'YES') finalAnswer = 'YES';
-            else if (ans.answer === 'NO') finalAnswer = 'NO';
-            else if (ans.answer === 'NA') finalAnswer = 'NA';
+            // STRICT STATUS HANDLING
+            let finalStatus = ans.status; // Using the new column
 
-            if (comp === 'L3' && finalAnswer === 'NO') {
-                console.log(`[DEBUG] Found NO answer for L3: ${qText}`);
+            if (comp === 'L3' && finalStatus === 'DEFICIENCY') {
+                console.log(`[DEBUG] Found DEFICIENCY answer for L3: ${qText}`);
             }
 
             // Structured data for each cell
             const existingCell = qEntry.values[comp];
             const newCell = {
-                answer: finalAnswer,
+                status: finalStatus,
                 observed_value: ans.observed_value,
                 unit: ans.unit || '',
                 reasons: ans.reasons || [],
-                remarks: ans.remarks || '',
+                remarks: ans.remarks || ans.reason,
                 answer_type: ans.answer_type
             };
 
-            // PRIORITIZE NO: If we already have a NO, don't let a YES/NA overwrite it
-            if (!existingCell || (existingCell.answer !== 'NO' && finalAnswer === 'NO')) {
+            // PRIORITIZE DEFICIENCY: If we already have a DEFICIENCY, don't let an OK/NA overwrite it
+            if (!existingCell || (existingCell.status !== 'DEFICIENCY' && finalStatus === 'DEFICIENCY')) {
                 qEntry.values[comp] = newCell;
             }
 
@@ -360,9 +373,9 @@ exports.getCombinedReport = async (req, res) => {
                 compartments.forEach(comp => {
                     const cell = row.values[comp];
                     if (cell) {
-                        if (cell.answer === 'YES') {
+                        if (cell.status === 'OK') {
                             compStats[comp].yes++;
-                        } else if (cell.answer === 'NO') {
+                        } else if (cell.status === 'DEFICIENCY') {
                             compStats[comp].no++;
                         }
                     }

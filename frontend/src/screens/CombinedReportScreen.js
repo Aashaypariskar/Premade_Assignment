@@ -41,6 +41,7 @@ const CombinedReportScreen = ({ route, navigation }) => {
                         th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 12px; }
                         th { background-color: #f1f5f9; color: #475569; font-weight: bold; text-transform: uppercase; }
                         .text-red { color: #ef4444; font-weight: bold; }
+                        .text-green { color: #22c55e; font-weight: bold; }
                         .text-grey { color: #94a3b8; font-style: italic; }
                         .footer { margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 20px; }
                         .overall { font-size: 24px; font-weight: bold; margin-top: 10px; }
@@ -71,13 +72,20 @@ const CombinedReportScreen = ({ route, navigation }) => {
                 const cell = row.values[comp];
                 if (!cell) return `<td class="text-grey">Not Inspected</td>`;
 
-                const isNo = cell.answer === 'NO';
+                const status = cell.status || cell.answer; // Fallback for old data
+                const isDeficiency = status === 'DEFICIENCY' || status === 'NO';
+                const isOk = status === 'OK' || status === 'YES';
                 const isValue = cell.answer_type === 'VALUE';
-                const display = isValue ? `${cell.observed_value} ${cell.unit}`.trim() : cell.answer;
-                const remark = cell.remarks || (cell.reasons && cell.reasons.length > 0 ? cell.reasons.join(', ') : '');
+                const display = isValue ? `${cell.observed_value} ${cell.unit}`.trim() : status;
+                const remark = cell.remarks || cell.reason || (cell.reasons && cell.reasons.length > 0 ? cell.reasons.join(', ') : '');
 
-                let html = `<div class="${isNo ? 'text-red' : ''}">${display}</div>`;
-                if ((isNo || (isValue && remark)) && remark) {
+                let cssClass = '';
+                if (isDeficiency) cssClass = 'text-red';
+                else if (isOk) cssClass = 'text-green';
+                else if (status === 'NA') cssClass = 'text-grey';
+
+                let html = `<div class="${cssClass}">${display}</div>`;
+                if ((isDeficiency || (isValue && remark)) && remark) {
                     html += `<div style="font-size: 10px; color: #64748b; font-style: italic; margin-top: 2px;">${remark}</div>`;
                 }
 
@@ -118,25 +126,25 @@ const CombinedReportScreen = ({ route, navigation }) => {
         // DEBUG LOG FOR STEP 5
         console.log("Rendering Cell:", cell);
 
-        // Map backend keys to expected frontend 'reason' key for the requirement
-        const reasonText = cell.remarks || (Array.isArray(cell.reasons) && cell.reasons.length > 0 ? cell.reasons.join(', ') : null);
+        const status = cell.status || cell.answer; // Backward compatibility
+        const reasonText = cell.remarks || cell.reason || (Array.isArray(cell.reasons) && cell.reasons.length > 0 ? cell.reasons.join(', ') : null);
 
-        if (cell.answer === "YES") {
+        if (status === "OK" || status === "YES") {
             return (
                 <Text style={styles.yes}>
-                    YES
+                    {status}
                 </Text>
             );
         }
 
-        if (cell.answer === "NO") {
+        if (status === "DEFICIENCY" || status === "NO") {
             return (
                 <View>
                     <Text style={styles.no}>
-                        NO
+                        {status}
                     </Text>
                     {reasonText && (
-                        <Text style={styles.reason}>
+                        <Text style={styles.remarkText}>
                             {reasonText}
                         </Text>
                     )}
@@ -144,7 +152,7 @@ const CombinedReportScreen = ({ route, navigation }) => {
             );
         }
 
-        if (cell.answer === "NA") {
+        if (status === "NA") {
             return (
                 <Text style={styles.notInspected}>
                     NA

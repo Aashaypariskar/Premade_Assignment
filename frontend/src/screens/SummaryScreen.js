@@ -24,8 +24,9 @@ const SummaryScreen = ({ route, navigation }) => {
 
     const counts = {
         total: answersList.length,
-        yes: answersList.filter(([_, a]) => a?.answer === 'YES').length,
-        no: answersList.filter(([_, a]) => a?.answer === 'NO').length,
+        ok: answersList.filter(([_, a]) => a?.status === 'OK').length,
+        deficiency: answersList.filter(([_, a]) => a?.status === 'DEFICIENCY').length,
+        na: answersList.filter(([_, a]) => a?.status === 'NA').length,
         value: answersList.filter(([_, a]) => a?.observed_value).length,
     };
 
@@ -49,7 +50,7 @@ const SummaryScreen = ({ route, navigation }) => {
                 const qId = parts.length > 1 ? parts[1] : parts[0];
                 return {
                     question_id: parseInt(qId),
-                    answer: data?.answer,
+                    status: data?.status,
                     observed_value: data?.observed_value,
                     reasons: data?.reasons || [],
                     remarks: data?.remarks || '',
@@ -106,12 +107,16 @@ const SummaryScreen = ({ route, navigation }) => {
 
                     <View style={styles.stats}>
                         <View style={styles.statBox}>
-                            <Text style={[styles.statNum, { color: '#10b981' }]}>{counts.yes}</Text>
-                            <Text style={styles.statLabel}>YES</Text>
+                            <Text style={[styles.statNum, { color: '#10b981' }]}>{counts.ok}</Text>
+                            <Text style={styles.statLabel}>OK</Text>
                         </View>
                         <View style={styles.statBox}>
-                            <Text style={[styles.statNum, { color: '#ef4444' }]}>{counts.no}</Text>
-                            <Text style={styles.statLabel}>NO</Text>
+                            <Text style={[styles.statNum, { color: '#ef4444' }]}>{counts.deficiency}</Text>
+                            <Text style={styles.statLabel}>DEFICIENCY</Text>
+                        </View>
+                        <View style={styles.statBox}>
+                            <Text style={[styles.statNum, { color: '#64748b' }]}>{counts.na}</Text>
+                            <Text style={styles.statLabel}>NA</Text>
                         </View>
                         <View style={styles.statBox}>
                             <Text style={[styles.statNum, { color: '#3b82f6' }]}>{counts.value}</Text>
@@ -124,11 +129,11 @@ const SummaryScreen = ({ route, navigation }) => {
                     </View>
                 </View>
 
-                <Text style={styles.sectionTitle}>Negative Findings</Text>
-                {counts.no === 0 ? (
+                <Text style={styles.sectionTitle}>Deficiencies Found</Text>
+                {counts.deficiency === 0 ? (
                     <Text style={styles.emptyText}>All checks passed successfully! ✨</Text>
                 ) : (
-                    answersList.map(([id, ans]) => ans?.answer === 'NO' && (
+                    answersList.map(([id, ans]) => ans?.status === 'DEFICIENCY' && (
                         <View key={id} style={styles.findingCard}>
                             <Text style={styles.remarks}>{ans.remarks || 'No remarks provided'}</Text>
                             <View style={styles.chips}>

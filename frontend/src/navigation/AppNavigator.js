@@ -22,6 +22,11 @@ import CompartmentSelectionScreen from '../screens/CompartmentSelectionScreen';
 import CombinedSummaryScreen from '../screens/CombinedSummaryScreen';
 import CombinedReportScreen from '../screens/CombinedReportScreen';
 import ReportSuccessScreen from '../screens/ReportSuccessScreen';
+import CommissionaryCoachScreen from '../screens/CommissionaryCoachScreen';
+import CommissionaryCompartmentScreen from '../screens/CommissionaryCompartmentScreen';
+import CommissionaryDashboardScreen from '../screens/CommissionaryDashboardScreen';
+import CommissionaryQuestionsScreen from '../screens/CommissionaryQuestionsScreen';
+import CommissionaryCombinedReport from '../screens/CommissionaryCombinedReport';
 
 const Stack = createStackNavigator();
 
@@ -134,6 +139,32 @@ const AppNavigator = () => {
                         name="CombinedReport"
                         component={CombinedReportScreen}
                         options={{ title: 'Combined Compartment Report' }}
+                    />
+
+                    <Stack.Screen
+                        name="CommissionaryCoach"
+                        component={CommissionaryCoachScreen}
+                        options={{ title: 'Coach Commissionary' }}
+                    />
+                    <Stack.Screen
+                        name="CommissionaryCompartment"
+                        component={CommissionaryCompartmentScreen}
+                        options={{ title: 'Compartments' }}
+                    />
+                    <Stack.Screen
+                        name="CommissionaryDashboard"
+                        component={CommissionaryDashboardScreen}
+                        options={{ title: 'Area Selection' }}
+                    />
+                    <Stack.Screen
+                        name="CommissionaryQuestions"
+                        component={CommissionaryQuestionsScreen}
+                        options={{ title: 'Inspection Form' }}
+                    />
+                    <Stack.Screen
+                        name="CommissionaryCombinedReport"
+                        component={CommissionaryCombinedReport}
+                        options={{ title: 'Executive Matrix Report' }}
                     />
 
                     {user.role === 'Admin' && (

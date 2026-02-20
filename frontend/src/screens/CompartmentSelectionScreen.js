@@ -10,14 +10,17 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
     const [existingReports, setExistingReports] = useState({ major: 0, minor: 0 });
     const [loading, setLoading] = useState(true);
 
-    // Logic to determine compartments based on subcategory name
+    // Logic to determine compartments
+    const isCommissionary = params.categoryName === 'Coach Commissionary';
     const isLavatory = params.subcategoryName?.toLowerCase().includes('lavatory');
-    const compartments = isLavatory
-        ? ['L1', 'L2', 'L3', 'L4']
-        : ['D1', 'D2', 'D3', 'D4'];
+
+    const compartments = isCommissionary
+        ? ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4']
+        : (isLavatory ? ['L1', 'L2', 'L3', 'L4'] : ['D1', 'D2', 'D3', 'D4']);
 
     useEffect(() => {
-        checkExistingReports();
+        if (!isCommissionary) checkExistingReports();
+        else setLoading(false);
     }, []);
 
     const checkExistingReports = async () => {
@@ -53,12 +56,14 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
     React.useLayoutEffect(() => {
         navigation.setOptions({
             headerRight: () => (
-                <TouchableOpacity
-                    style={{ marginRight: 15, backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}
-                    onPress={() => navigation.navigate('CombinedSummary', { ...params })}
-                >
-                    <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 12 }}>Summary</Text>
-                </TouchableOpacity>
+                !isCommissionary ? (
+                    <TouchableOpacity
+                        style={{ marginRight: 15, backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}
+                        onPress={() => navigation.navigate('CombinedSummary', { ...params })}
+                    >
+                        <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 12 }}>Summary</Text>
+                    </TouchableOpacity>
+                ) : null
             )
         });
     }, [navigation, params]);
@@ -68,6 +73,14 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
             ...prev,
             compartment: comp
         }));
+
+        if (isCommissionary) {
+            navigation.navigate('CommissionaryQuestions', {
+                ...params,
+                compartmentId: comp
+            });
+            return;
+        }
 
         navigation.navigate('ActivitySelection', {
             ...params,

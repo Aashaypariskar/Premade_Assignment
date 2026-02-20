@@ -33,8 +33,10 @@ const Train = sequelize.define('Train', {
 }, { tableName: 'trains', timestamps: false });
 
 const Coach = sequelize.define('Coach', {
-    coach_number: { type: DataTypes.STRING, allowNull: false }
-}, { tableName: 'coaches', timestamps: false });
+    coach_number: { type: DataTypes.STRING, allowNull: false, unique: true },
+    coach_type: { type: DataTypes.STRING, allowNull: true },
+    created_by: { type: DataTypes.INTEGER, allowNull: true } // Who created the coach (null for system coaches)
+}, { tableName: 'coaches', timestamps: true });
 
 const Category = sequelize.define('Category', {
     coach_id: { type: DataTypes.INTEGER, allowNull: false },
@@ -49,6 +51,8 @@ const Activity = sequelize.define('Activity', {
 const LtrSchedule = require('./LtrSchedule')(sequelize);
 const LtrItem = require('./LtrItem')(sequelize); // New: LTR Hierarchy
 const AmenitySubcategory = require('./AmenitySubcategory')(sequelize);
+const CommissionarySession = require('./CommissionarySession')(sequelize);
+const CommissionaryAnswer = require('./CommissionaryAnswer')(sequelize);
 
 const AmenityItem = sequelize.define('AmenityItem', {
     name: { type: DataTypes.STRING, allowNull: false },
@@ -72,7 +76,7 @@ const Question = sequelize.define('Question', {
 const Reason = require('./Reason')(sequelize, DataTypes);
 
 const InspectionAnswer = sequelize.define('InspectionAnswer', {
-    answer: { type: DataTypes.ENUM('YES', 'NO', 'NA'), allowNull: true },
+    status: { type: DataTypes.ENUM('OK', 'DEFICIENCY', 'NA'), allowNull: false },
     answer_type: { type: DataTypes.ENUM('BOOLEAN', 'VALUE'), defaultValue: 'BOOLEAN' },
     observed_value: { type: DataTypes.TEXT },
     reasons: { type: DataTypes.JSON },
@@ -87,7 +91,7 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     item_name: { type: DataTypes.STRING(255) }, // Snapshot
     question_text_snapshot: { type: DataTypes.TEXT },
     activity_type: { type: DataTypes.ENUM('Minor', 'Major') },
-    status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
+    inspection_status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
     role_snapshot: { type: DataTypes.STRING(100) },
     user_name: { type: DataTypes.STRING(100) },
     user_id: { type: DataTypes.INTEGER }
@@ -156,9 +160,26 @@ InspectionAnswer.belongsTo(User, { foreignKey: 'user_id' });
 InspectionAnswer.belongsTo(LtrSchedule, { foreignKey: 'schedule_id' });
 InspectionAnswer.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
 
+// Commissionary Associations
+User.hasMany(CommissionarySession, { foreignKey: 'created_by' });
+CommissionarySession.belongsTo(User, { foreignKey: 'created_by' });
+
+Coach.hasMany(CommissionarySession, { foreignKey: 'coach_id' });
+CommissionarySession.belongsTo(Coach, { foreignKey: 'coach_id' });
+
+CommissionarySession.hasMany(CommissionaryAnswer, { foreignKey: 'session_id' });
+CommissionaryAnswer.belongsTo(CommissionarySession, { foreignKey: 'session_id' });
+
+CommissionaryAnswer.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
+AmenitySubcategory.hasMany(CommissionaryAnswer, { foreignKey: 'subcategory_id' });
+
+CommissionaryAnswer.belongsTo(Question, { foreignKey: 'question_id' });
+Question.hasMany(CommissionaryAnswer, { foreignKey: 'question_id' });
+
 module.exports = {
     Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
     LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem,
     User, Role, CategoryMaster, UserCategory,
+    CommissionarySession, CommissionaryAnswer,
     sequelize
 };

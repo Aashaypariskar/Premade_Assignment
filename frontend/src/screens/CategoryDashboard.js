@@ -13,7 +13,7 @@ const CategoryDashboard = ({ navigation }) => {
     const fetchCategories = async () => {
         try {
             const data = await getUserCategories();
-            setCategories(data);
+            setCategories(data.filter(c => c.name !== 'Coach Commissionary'));
             setError(null);
         } catch (err) {
             console.error('Dash Error:', err);
@@ -101,6 +101,20 @@ const CategoryDashboard = ({ navigation }) => {
                                 <Text style={styles.cardText}>{item.name}</Text>
                             </TouchableOpacity>
                         )}
+                        ListHeaderComponent={() => (
+                            <TouchableOpacity
+                                style={[styles.card, styles.commissionaryCard]}
+                                onPress={() => navigation.navigate('CommissionaryCoach')}
+                            >
+                                <View style={[styles.iconCircle, { backgroundColor: '#f0fdf4' }]}>
+                                    <Text style={[styles.icon, { color: '#10b981' }]}>📋</Text>
+                                </View>
+                                <Text style={styles.cardText}>Coach Commissionary</Text>
+                                <View style={styles.newBadge}>
+                                    <Text style={styles.newBadgeText}>WORKFLOW</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )}
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
                                 <Text style={styles.emptyText}>No categories assigned.</Text>
@@ -178,6 +192,26 @@ const styles = StyleSheet.create({
     iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
     icon: { fontSize: 22, fontWeight: 'bold', color: '#2563eb' },
     cardText: { fontSize: 15, fontWeight: 'bold', color: '#334155', textAlign: 'center' },
+    commissionaryCard: {
+        backgroundColor: '#fff',
+        borderWidth: 2,
+        borderColor: '#10b981',
+        marginBottom: 16
+    },
+    newBadge: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        backgroundColor: '#10b981',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4
+    },
+    newBadgeText: {
+        color: '#fff',
+        fontSize: 8,
+        fontWeight: 'bold'
+    },
     emptyContainer: { alignItems: 'center', marginTop: 100 },
     emptyText: { fontSize: 18, fontWeight: 'bold', color: '#64748b' },
     emptySub: { fontSize: 14, color: '#94a3b8', marginTop: 4 },

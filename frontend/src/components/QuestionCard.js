@@ -8,15 +8,15 @@ import { getReasonsByQuestion } from '../api/api';
  * Handles Toggles, Reasons, and Media
  */
 const QuestionCard = ({ question, answerData, onUpdate }) => {
-    const isNo = answerData?.answer === 'NO';
+    const isDeficiency = answerData?.status === 'DEFICIENCY';
     const [reasonsList, setReasonsList] = useState([]);
     const [loadingReasons, setLoadingReasons] = useState(false);
 
     useEffect(() => {
-        if (isNo && reasonsList.length === 0) {
+        if (isDeficiency && reasonsList.length === 0) {
             fetchReasons();
         }
-    }, [isNo]);
+    }, [isDeficiency]);
 
     const fetchReasons = async () => {
         try {
@@ -35,11 +35,18 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
         }
     };
 
-    const setAnswer = (val) => {
-        const current = answerData?.answer;
-        // If same value, set to null (toggle off)
+    const setStatus = (val) => {
+        const current = answerData?.status;
         const next = current === val ? null : val;
-        onUpdate({ ...answerData, answer: next });
+
+        // Clear reasons/photo if switching away from DEFICIENCY
+        const newData = { ...answerData, status: next };
+        if (next !== 'DEFICIENCY') {
+            newData.reasons = [];
+            // We keep remarks and image for now as per user request to "preselect saved status" in edit mode, 
+            // but requirements say "Clear reason" if switching DEFICIENCY -> OK/NA
+        }
+        onUpdate(newData);
     };
 
     const toggleReason = (reason) => {
@@ -74,22 +81,29 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
             ) : (
                 <View style={styles.toggleRow}>
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.answer === 'YES' && styles.btnYes]}
-                        onPress={() => setAnswer('YES')}
+                        style={[styles.toggleBtn, answerData?.status === 'OK' && styles.btnOk]}
+                        onPress={() => setStatus('OK')}
                     >
-                        <Text style={[styles.toggleText, answerData?.answer === 'YES' && styles.textActive]}>YES</Text>
+                        <Text style={[styles.toggleText, answerData?.status === 'OK' && styles.textActive]}>OK</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.answer === 'NO' && styles.btnNo]}
-                        onPress={() => setAnswer('NO')}
+                        style={[styles.toggleBtn, answerData?.status === 'DEFICIENCY' && styles.btnDeficiency]}
+                        onPress={() => setStatus('DEFICIENCY')}
                     >
-                        <Text style={[styles.toggleText, answerData?.answer === 'NO' && styles.textActive]}>NO</Text>
+                        <Text style={[styles.toggleText, answerData?.status === 'DEFICIENCY' && styles.textActive]}>DEFICIENCY</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.toggleBtn, answerData?.status === 'NA' && styles.btnNa]}
+                        onPress={() => setStatus('NA')}
+                    >
+                        <Text style={[styles.toggleText, answerData?.status === 'NA' && styles.textActive]}>NA</Text>
                     </TouchableOpacity>
                 </View>
             )}
 
-            {isNo && (
+            {isDeficiency && (
                 <View style={styles.noSection}>
                     <Text style={styles.label}>Select Reasons (Mandatory):</Text>
                     <View style={styles.reasonsRow}>
@@ -137,10 +151,11 @@ const styles = StyleSheet.create({
     card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 15, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
     qText: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 15, lineHeight: 22 },
     toggleRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 10, padding: 4 },
-    toggleBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8 },
-    btnYes: { backgroundColor: '#10b981' },
-    btnNo: { backgroundColor: '#ef4444' },
-    toggleText: { fontWeight: 'bold', color: '#64748b' },
+    toggleBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8, marginHorizontal: 2 },
+    btnOk: { backgroundColor: '#10b981' },
+    btnDeficiency: { backgroundColor: '#ef4444' },
+    btnNa: { backgroundColor: '#64748b' },
+    toggleText: { fontWeight: 'bold', color: '#64748b', fontSize: 10 },
     textActive: { color: '#fff' },
     noSection: { marginTop: 20, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 15 },
     label: { fontSize: 13, fontWeight: '700', color: '#64748b', marginBottom: 10 },

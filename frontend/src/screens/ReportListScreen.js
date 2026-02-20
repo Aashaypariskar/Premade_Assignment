@@ -208,14 +208,22 @@ const ReportListScreen = ({ navigation }) => {
                 <View style={{ width: 100, alignItems: 'center' }}>
                     <TouchableOpacity
                         style={styles.viewBtn}
-                        onPress={() => navigation.navigate('ReportDetail', {
-                            submission_id: item.submission_id,
-                            train_number: item.train_number,
-                            coach_number: item.coach_number,
-                            date: new Date(item.createdAt).toISOString().split('T')[0],
-                            user_name: item.user_name,
-                            user_id: item.user_id
-                        })}
+                        onPress={() => {
+                            if (item.submission_id?.startsWith('COMM-')) {
+                                navigation.navigate('CommissionaryCombinedReport', {
+                                    sessionId: item.submission_id.replace('COMM-', '')
+                                });
+                            } else {
+                                navigation.navigate('ReportDetail', {
+                                    submission_id: item.submission_id,
+                                    train_number: item.train_number,
+                                    coach_number: item.coach_number,
+                                    date: new Date(item.createdAt).toISOString().split('T')[0],
+                                    user_name: item.user_name,
+                                    user_id: item.user_id
+                                });
+                            }
+                        }}
                     >
                         <Text style={styles.viewBtnText}>View Report</Text>
                     </TouchableOpacity>
