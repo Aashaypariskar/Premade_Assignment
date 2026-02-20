@@ -7,13 +7,20 @@ import { useStore } from '../store/StoreContext';
  * Inspection Summary Screen - PRODUCTION VERSION
  * Highly defensive code to prevent "Cannot read property of null" errors
  */
-const SummaryScreen = ({ navigation }) => {
+const SummaryScreen = ({ route, navigation }) => {
     const { draft, clearDraft, user } = useStore();
     const [submitting, setSubmitting] = useState(false);
 
     // Defensive check for draft object
     const currentDraft = draft || {};
-    const answersList = Object.entries(currentDraft.answers || {});
+    const params = route?.params || {};
+
+    // Filter answers to ONLY show the current compartment's results
+    const answersList = Object.entries(currentDraft.answers || {}).filter(([key]) => {
+        const parts = key.split('_');
+        const comp = parts.length > 1 ? parts[0] : null;
+        return comp === (params.compartment || null);
+    });
 
     const counts = {
         total: answersList.length,
@@ -35,15 +42,20 @@ const SummaryScreen = ({ navigation }) => {
             activity_id: currentDraft.activity?.id,
             schedule_id: currentDraft.schedule_id,
             subcategory_id: currentDraft.subcategory_id,
+            compartment: params.compartment, // Pass compartment to backend
             submission_id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-            answers: answersList.map(([qId, data]) => ({
-                question_id: parseInt(qId),
-                answer: data?.answer,
-                observed_value: data?.observed_value, // Pass observed value
-                reasons: data?.reasons || [],
-                remarks: data?.remarks || '',
-                image_path: data?.image_path || null
-            }))
+            answers: answersList.map(([key, data]) => {
+                const parts = key.split('_');
+                const qId = parts.length > 1 ? parts[1] : parts[0];
+                return {
+                    question_id: parseInt(qId),
+                    answer: data?.answer,
+                    observed_value: data?.observed_value,
+                    reasons: data?.reasons || [],
+                    remarks: data?.remarks || '',
+                    image_path: data?.image_path || null
+                };
+            })
         };
 
         try {
@@ -85,7 +97,7 @@ const SummaryScreen = ({ navigation }) => {
                         {currentDraft.train?.name || 'Unknown Train'} - Coach {currentDraft.coach?.coach_number || 'N/A'}
                     </Text>
                     <Text style={styles.frameworkSub}>
-                        {currentDraft.category} › {currentDraft.schedule_name || currentDraft.subcategory_name || currentDraft.activity?.type}
+                        {currentDraft.category} › {params.compartment ? `${currentDraft.subcategory_name} (${params.compartment})` : (currentDraft.schedule_name || currentDraft.subcategory_name || currentDraft.activity?.type)}
                     </Text>
 
                     <View style={styles.stats}>

@@ -17,6 +17,8 @@ import ReportListScreen from '../screens/ReportListScreen';
 import ReportDetailScreen from '../screens/ReportDetailScreen';
 import ScheduleSelectionScreen from '../screens/ScheduleSelectionScreen';
 import AmenitySubcategoryScreen from '../screens/AmenitySubcategoryScreen';
+import CompartmentSelectionScreen from '../screens/CompartmentSelectionScreen';
+import CombinedSummaryScreen from '../screens/CombinedSummaryScreen';
 
 const Stack = createStackNavigator();
 
@@ -96,6 +98,16 @@ const AppNavigator = () => {
                         name="AmenitySubcategory"
                         component={AmenitySubcategoryScreen}
                         options={{ title: 'Select Area' }}
+                    />
+                    <Stack.Screen
+                        name="CompartmentSelection"
+                        component={CompartmentSelectionScreen}
+                        options={{ title: 'Select Compartment' }}
+                    />
+                    <Stack.Screen
+                        name="CombinedSummary"
+                        component={CombinedSummaryScreen}
+                        options={{ title: 'Combined Summary' }}
                     />
 
                     {user.role === 'Admin' && (

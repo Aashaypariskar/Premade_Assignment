@@ -82,6 +82,11 @@ export const submitInspection = async (payload) => {
     return res.data;
 };
 
+export const getCombinedSummary = async (scheduleId, area) => {
+    const res = await api.get(`/summary?schedule_id=${scheduleId}&area=${encodeURIComponent(area)}`);
+    return res.data;
+};
+
 // --- Admin APIs ---
 
 export const getAdminUsers = async () => {

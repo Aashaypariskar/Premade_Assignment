@@ -1,7 +1,7 @@
 const {
-    Train, Coach, Category, Activity, Question, InspectionAnswer,
-    User, Role, CategoryMaster, LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem, sequelize
+    Train, Coach, Category, Activity, Question, InspectionAnswer, LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem, Role, User, CategoryMaster, sequelize
 } = require('../models');
+const { Op } = require('sequelize');
 
 /**
  * AuditController - Upgraded for Enterprise RBAC
@@ -78,6 +78,64 @@ exports.getCoaches = async (req, res) => {
         res.json(coaches);
     } catch (err) {
         res.status(500).json({ error: 'Failed to retrieve coaches' });
+    }
+};
+
+/**
+ * Combined Summary API - Requirement 4
+ * GET /api/summary?schedule_id=XX&area=Lavatory
+ */
+exports.getCombinedSummary = async (req, res) => {
+    try {
+        const { schedule_id, area } = req.query;
+        if (!schedule_id || !area) {
+            return res.status(400).json({ error: 'schedule_id and area are required' });
+        }
+
+        // Query answers for this schedule and area (using LIKE for logical tagging)
+        const answers = await InspectionAnswer.findAll({
+            where: {
+                schedule_id: schedule_id,
+                subcategory_name: {
+                    [Op.like]: `${area}%`
+                }
+            },
+            attributes: ['subcategory_name', 'activity_type']
+        });
+
+        const compartments = area.toLowerCase().includes('lavatory')
+            ? ['L1', 'L2', 'L3', 'L4']
+            : ['D1', 'D2', 'D3', 'D4'];
+
+        const summary = {};
+        compartments.forEach(comp => {
+            summary[comp] = { Major: 0, Minor: 0 };
+        });
+
+        const totals = { Major: 0, Minor: 0 };
+
+        answers.forEach(ans => {
+            // Extract compartment from "Area Name [CX]"
+            const match = ans.subcategory_name.match(/\[(.*?)\]/);
+            const comp = match ? match[1] : null;
+
+            if (comp && summary[comp]) {
+                const type = ans.activity_type; // 'Major' or 'Minor'
+                if (summary[comp].hasOwnProperty(type)) {
+                    summary[comp][type]++;
+                    totals[type]++;
+                }
+            }
+        });
+
+        res.json({
+            ...summary,
+            total: totals
+        });
+
+    } catch (error) {
+        console.error('Summary Error:', error);
+        res.status(500).json({ error: 'Failed to fetch summary' });
     }
 };
 
@@ -239,7 +297,7 @@ exports.getQuestions = async (req, res) => {
 exports.submitInspection = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const { train_id, coach_id, activity_id, schedule_id, subcategory_id, answers, submission_id } = req.body;
+        const { train_id, coach_id, activity_id, schedule_id, subcategory_id, compartment, answers, submission_id } = req.body;
         console.log(`[SUBMIT] Attempting: ${submission_id} (Train: ${train_id}, Coach: ${coach_id}, Act: ${activity_id}, Sch: ${schedule_id}, Sub: ${subcategory_id})`);
 
         if (!answers || !Array.isArray(answers)) {
@@ -329,7 +387,7 @@ exports.submitInspection = async (req, res) => {
                 train_number: train.train_number,
                 coach_number: coach.coach_number,
                 category_name: activity?.Category?.name || (schedule ? 'Ltr to Railways' : (subcategory ? 'Amenity' : 'Unknown')),
-                subcategory_name: subcategory?.name || (questionData?.AmenitySubcategory?.name || null),
+                subcategory_name: subcategory ? (compartment ? `${subcategory.name} [${compartment}]` : subcategory.name) : (questionData?.AmenitySubcategory ? (compartment ? `${questionData.AmenitySubcategory.name} [${compartment}]` : questionData.AmenitySubcategory.name) : null),
                 schedule_name: schedule?.name || null,
                 item_name: questionData?.AmenityItem?.name || questionData?.LtrItem?.name || null, // Snapshot Item Name (Amenity or LTR)
                 question_text_snapshot: questionData?.text || 'Standard Question', // Snapshot text

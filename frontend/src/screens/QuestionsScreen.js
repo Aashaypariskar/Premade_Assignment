@@ -36,11 +36,14 @@ const QuestionsScreen = ({ route, navigation }) => {
         }, [params.activityId])
     );
 
+    const getAnswerKey = (qId) => params.compartment ? `${params.compartment}_${qId}` : qId.toString();
+
     const updateAnswer = (qId, data) => {
         if (!qId) return;
+        const key = getAnswerKey(qId);
         setDraft(prev => ({
             ...prev,
-            answers: { ...(prev?.answers || {}), [qId]: data }
+            answers: { ...(prev?.answers || {}), [key]: data }
         }));
     };
 
@@ -52,7 +55,13 @@ const QuestionsScreen = ({ route, navigation }) => {
         ? questions.reduce((acc, curr) => [...acc, ...curr.questions], [])
         : questions;
 
-    const countCompleted = (flatQuestions || []).filter(q => q && currentAnswers[q.id] && (currentAnswers[q.id].answer || currentAnswers[q.id].observed_value)).length;
+    // Filtered count: only count answers for the CURRENT compartment if one exists
+    const countCompleted = (flatQuestions || []).filter(q => {
+        if (!q) return false;
+        const ans = currentAnswers[getAnswerKey(q.id)];
+        return ans && (ans.answer || ans.observed_value);
+    }).length;
+
     const totalQs = (flatQuestions || []).length;
     const progress = totalQs > 0 ? (countCompleted / totalQs) * 100 : 0;
     const isDone = totalQs > 0 && countCompleted === totalQs;
@@ -64,30 +73,30 @@ const QuestionsScreen = ({ route, navigation }) => {
         const ansMap = currentAnswers || {};
 
         const currentQIds = qList.map(q => q?.id?.toString()).filter(Boolean);
-        // Only validate answers that belong to this screen AND have been answered (YES/NO)
-        const relevantAnswers = Object.entries(ansMap).filter(([id, ans]) =>
-            currentQIds.includes(id) && (ans?.answer || ans?.observed_value)
-        );
+        // Only validate answers that belong to this screen AND HAVE THE CORRECT COMPARTMENT PREFIX
+        const relevantAnswers = Object.entries(ansMap).filter(([key, ans]) => {
+            const parts = key.split('_');
+            const qId = parts.length > 1 ? parts[1] : parts[0];
+            const comp = parts.length > 1 ? parts[0] : null;
 
-        const invalidNo = relevantAnswers.find(([id, ans]) => {
+            return currentQIds.includes(qId) &&
+                comp === (params.compartment || null) &&
+                (ans?.answer || ans?.observed_value);
+        });
+
+        const invalidNo = relevantAnswers.find(([key, ans]) => {
             if (!ans) return false;
             const missingReason = !ans.reasons || ans.reasons.length === 0;
             const missingImage = !ans.image_path;
 
             const hasProblem = ans.answer === 'NO' && (missingReason || missingImage);
-
-            if (hasProblem) {
-                console.log(`Validation failed for Q ID ${id}:`, {
-                    ansType: ans.answer,
-                    reasonsCount: ans.reasons?.length || 0,
-                    hasImage: !!ans.image_path
-                });
-            }
             return hasProblem;
         });
 
         if (invalidNo) {
-            const [qId, ans] = invalidNo;
+            const [key, ans] = invalidNo;
+            const parts = key.split('_');
+            const qId = parts.length > 1 ? parts[1] : parts[0];
             const qObj = qList.find(q => q?.id?.toString() === qId);
             const qText = qObj?.text || 'Question';
 
@@ -102,7 +111,7 @@ const QuestionsScreen = ({ route, navigation }) => {
             return;
         }
 
-        navigation.navigate('SummaryScreen');
+        navigation.navigate('SummaryScreen', { ...params });
     };
 
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
@@ -117,6 +126,10 @@ const QuestionsScreen = ({ route, navigation }) => {
                         <Text style={styles.breadcrumb}>{params.coachNumber}</Text>
                         <Text style={styles.separator}>›</Text>
                         <Text style={styles.breadcrumb}>{params.categoryName}</Text>
+                        <Text style={styles.separator}>›</Text>
+                        <Text style={styles.breadcrumb}>
+                            {params.compartment ? `${params.subcategoryName} (${params.compartment})` : params.subcategoryName}
+                        </Text>
                         <Text style={styles.separator}>›</Text>
                         <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
                             {params.scheduleName || params.activityType}
@@ -155,7 +168,7 @@ const QuestionsScreen = ({ route, navigation }) => {
                                 <QuestionCard
                                     key={q.id || `q-${idx}`}
                                     question={q}
-                                    answerData={currentAnswers[q.id]}
+                                    answerData={currentAnswers[getAnswerKey(q.id)]}
                                     onUpdate={(data) => updateAnswer(q.id, data)}
                                 />
                             ))}
@@ -166,7 +179,7 @@ const QuestionsScreen = ({ route, navigation }) => {
                         <QuestionCard
                             key={q.id || idx}
                             question={q}
-                            answerData={currentAnswers[q.id]}
+                            answerData={currentAnswers[getAnswerKey(q.id)]}
                             onUpdate={(data) => updateAnswer(q.id, data)}
                         />
                     ))

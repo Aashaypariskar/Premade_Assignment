@@ -32,11 +32,20 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
             subcategory_name: sub.name
         }));
 
-        navigation.navigate('ActivitySelection', {
-            ...params,
-            subcategoryId: sub.id,
-            subcategoryName: sub.name
-        });
+        const subNameLower = sub.name.toLowerCase();
+        if (subNameLower.includes('lavatory') || subNameLower.includes('door area')) {
+            navigation.navigate('CompartmentSelection', {
+                ...params,
+                subcategoryId: sub.id,
+                subcategoryName: sub.name
+            });
+        } else {
+            navigation.navigate('ActivitySelection', {
+                ...params,
+                subcategoryId: sub.id,
+                subcategoryName: sub.name
+            });
+        }
     };
 
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
