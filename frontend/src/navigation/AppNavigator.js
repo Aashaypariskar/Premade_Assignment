@@ -19,6 +19,7 @@ import ScheduleSelectionScreen from '../screens/ScheduleSelectionScreen';
 import AmenitySubcategoryScreen from '../screens/AmenitySubcategoryScreen';
 import CompartmentSelectionScreen from '../screens/CompartmentSelectionScreen';
 import CombinedSummaryScreen from '../screens/CombinedSummaryScreen';
+import CombinedReportScreen from '../screens/CombinedReportScreen';
 
 const Stack = createStackNavigator();
 
@@ -108,6 +109,11 @@ const AppNavigator = () => {
                         name="CombinedSummary"
                         component={CombinedSummaryScreen}
                         options={{ title: 'Combined Summary' }}
+                    />
+                    <Stack.Screen
+                        name="CombinedReport"
+                        component={CombinedReportScreen}
+                        options={{ title: 'Combined Compartment Report' }}
                     />
 
                     {user.role === 'Admin' && (

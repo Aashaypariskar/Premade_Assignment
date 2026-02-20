@@ -1,0 +1,5 @@
+TOTAL ENTRIES FOUND: 4
+{"id":"7-7949","coach":"12301-B2","sub":"Lavatory area [L1]","type":"Major"}
+{"id":"9-5284","coach":"22436-B2","sub":"Lavatory area [L2]","type":"Major"}
+{"id":"6-7031","coach":"12213-B1","sub":"Lavatory area [L1]","type":"Major"}
+{"id":"2-3563","coach":"12213-B1","sub":"Lavatory area [L2]","type":"Major"}

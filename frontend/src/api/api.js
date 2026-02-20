@@ -179,4 +179,10 @@ export const getReportDetails = async (params) => {
     return res.data;
 };
 
+export const getCombinedReport = async (params) => {
+    // params: { coach_id, subcategory_id, activity_type, date }
+    const res = await api.get('/reports/combined', { params });
+    return res.data;
+};
+
 export default api;

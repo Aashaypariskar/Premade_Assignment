@@ -7,5 +7,6 @@ const { verifyToken } = require('../middleware/auth');
 router.get('/reports', verifyToken, reportController.getAllReports);
 router.get('/report-filters', verifyToken, reportController.getFilterOptions);
 router.get('/report-details', verifyToken, reportController.getReportDetails);
+router.get('/reports/combined', verifyToken, reportController.getCombinedReport);
 
 module.exports = router;

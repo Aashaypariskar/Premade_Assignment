@@ -32,7 +32,11 @@ exports.getAllReports = async (req, res) => {
         if (activity_type) whereClause.activity_type = activity_type;
         if (status) whereClause.status = status; // Assuming status is added or using a placeholder
         if (start_date && end_date) {
-            whereClause.createdAt = { [Op.between]: [new Date(start_date), new Date(end_date)] };
+            const start = new Date(start_date);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(end_date);
+            end.setHours(23, 59, 59, 999);
+            whereClause.createdAt = { [Op.between]: [start, end] };
         }
 
         // Build dynamic WHERE clause for raw SQL
@@ -46,8 +50,12 @@ exports.getAllReports = async (req, res) => {
         if (whereClause.user_id) { sqlWhere += ' AND user_id = :user_id'; replacements.user_id = whereClause.user_id; }
         if (start_date && end_date) {
             sqlWhere += ' AND createdAt BETWEEN :start_date AND :end_date';
-            replacements.start_date = new Date(start_date);
-            replacements.end_date = new Date(end_date);
+            const start = new Date(start_date);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(end_date);
+            end.setHours(23, 59, 59, 999);
+            replacements.start_date = start;
+            replacements.end_date = end;
         }
 
         const sql = `
@@ -62,6 +70,8 @@ exports.getAllReports = async (req, res) => {
                 MAX(activity_type) as severity,
                 MAX(createdAt) as createdAt,
                 MAX(user_id) as user_id,
+                MAX(coach_id) as coach_id,
+                MAX(subcategory_id) as subcategory_id,
                 SUM(CASE WHEN answer = 'YES' THEN 1 ELSE 0 END) as yes_count,
                 SUM(CASE WHEN answer = 'NO' THEN 1 ELSE 0 END) as no_count,
                 SUM(CASE WHEN answer_type = 'VALUE' AND observed_value IS NOT NULL AND observed_value != '' THEN 1 ELSE 0 END) as value_count,
@@ -201,5 +211,135 @@ exports.getReportDetails = async (req, res) => {
     } catch (err) {
         console.error('REPORT DETAILS ERROR:', err.message);
         res.status(500).json({ error: 'Failed to fetch report details' });
+    }
+};
+// GET /api/reports/combined
+// Requirement: coach_id, subcategory_id, activity_type, date
+exports.getCombinedReport = async (req, res) => {
+    try {
+        const { coach_id, subcategory_id, activity_type, date } = req.query;
+
+        if (!coach_id || !subcategory_id || !activity_type || !date) {
+            return res.status(400).json({ error: 'Missing mandatory parameters' });
+        }
+
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Step 1: Find all submission IDs for this group
+        const submissions = await InspectionAnswer.findAll({
+            attributes: ['submission_id', 'subcategory_name'],
+            where: {
+                coach_id,
+                subcategory_id,
+                activity_type,
+                createdAt: { [Op.between]: [startOfDay, endOfDay] }
+            },
+            group: ['submission_id', 'subcategory_name']
+        });
+
+        if (submissions.length <= 1) {
+            return res.status(400).json({ error: 'Combined report not available for single/zero submissions' });
+        }
+
+        const submissionIds = submissions.map(s => s.submission_id);
+
+        // Identify compartments from subcategory_name snapshots
+        const compartments = [...new Set(submissions.map(s => {
+            const match = s.subcategory_name.match(/\[(.*?)\]/);
+            return match ? match[1] : null;
+        }).filter(Boolean))].sort();
+
+        // Step 2 & 3: Fetch answers and build pivot matrix
+        const answers = await InspectionAnswer.findAll({
+            where: { submission_id: submissionIds },
+            order: [['id', 'ASC']]
+        });
+
+        const questionsMap = new Map();
+        const compStats = {};
+        compartments.forEach(c => compStats[c] = { yes: 0, no: 0 });
+
+        // Fetch subcategory once for comparison
+        const subcategory = await require('../models').AmenitySubcategory.findByPk(subcategory_id);
+        const targetBase = subcategory?.name?.split(' [')[0].toLowerCase();
+
+        answers.forEach(ans => {
+            const qText = ans.question_text_snapshot;
+            const ansSubBase = ans.subcategory_name?.split(' [')[0].toLowerCase();
+
+            // Only process if it belongs to this subcategory area (case-insensitive)
+            if (ansSubBase !== targetBase) return;
+
+            const match = ans.subcategory_name.match(/\[(.*?)\]/);
+            const comp = match ? match[1] : 'Unknown';
+
+            if (!questionsMap.has(qText)) {
+                questionsMap.set(qText, {
+                    question: qText,
+                    answer_type: ans.answer_type,
+                    unit: ans.unit || '',
+                    values: {}
+                });
+            }
+
+            const qEntry = questionsMap.get(qText);
+            const displayValue = ans.answer_type === 'BOOLEAN'
+                ? ans.answer
+                : `${ans.observed_value || ''} ${ans.unit || ''}`.trim();
+
+            qEntry.values[comp] = displayValue;
+
+            // Step 4: Compliance logic
+            if (ans.answer_type === 'BOOLEAN' && compartments.includes(comp)) {
+                if (ans.answer === 'YES') compStats[comp].yes++;
+                if (ans.answer === 'NO') compStats[comp].no++;
+            }
+        });
+
+        // Convert Map to ordered array and fill missing values
+        const matrix = Array.from(questionsMap.values()).map(q => {
+            compartments.forEach(c => {
+                if (!q.values[c]) q.values[c] = 'Not Inspected';
+            });
+            return q;
+        });
+
+        // Calculate final percentages
+        const perCompartmentCompliance = {};
+        let totalYes = 0;
+        let totalTotal = 0;
+
+        compartments.forEach(c => {
+            const { yes, no } = compStats[c];
+            const sum = yes + no;
+            perCompartmentCompliance[c] = sum > 0 ? Math.round((yes / sum) * 100) : null;
+            totalYes += yes;
+            totalTotal += sum;
+        });
+
+        const overallCompliance = totalTotal > 0 ? Math.round((totalYes / totalTotal) * 100) : 0;
+
+        // Fetch metadata for header
+        const coach = await Coach.findByPk(coach_id);
+
+        res.json({
+            coach: coach?.coach_number || 'N/A',
+            subcategory: subcategory?.name || 'N/A',
+            activity_type,
+            date,
+            compartments,
+            matrix,
+            compliance: {
+                per_compartment: perCompartmentCompliance,
+                overall: overallCompliance
+            }
+        });
+
+    } catch (err) {
+        console.error('COMBINED REPORT ERROR:', err);
+        res.status(500).json({ error: 'Failed to generate combined report' });
     }
 };
