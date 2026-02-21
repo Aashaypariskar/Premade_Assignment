@@ -50,6 +50,7 @@ app.get('/api/commissionary-coaches', verifyToken, commController.listCoaches);
 app.post('/api/commissionary-coaches', verifyToken, commController.createCoach);
 
 app.use('/api/commissionary', require('./routes/CommissionaryRoutes'));
+app.use('/api/sickline', require('./routes/SickLineRoutes'));
 
 
 // Catch-all for 404

@@ -53,6 +53,8 @@ const LtrItem = require('./LtrItem')(sequelize); // New: LTR Hierarchy
 const AmenitySubcategory = require('./AmenitySubcategory')(sequelize);
 const CommissionarySession = require('./CommissionarySession')(sequelize);
 const CommissionaryAnswer = require('./CommissionaryAnswer')(sequelize);
+const SickLineSession = require('./SickLineSession')(sequelize);
+const SickLineAnswer = require('./SickLineAnswer')(sequelize);
 
 const AmenityItem = sequelize.define('AmenityItem', {
     name: { type: DataTypes.STRING, allowNull: false },
@@ -179,10 +181,27 @@ AmenitySubcategory.hasMany(CommissionaryAnswer, { foreignKey: 'subcategory_id' }
 CommissionaryAnswer.belongsTo(Question, { foreignKey: 'question_id' });
 Question.hasMany(CommissionaryAnswer, { foreignKey: 'question_id' });
 
+// Sick Line Associations (Isolated Clone)
+User.hasMany(SickLineSession, { foreignKey: 'created_by' });
+SickLineSession.belongsTo(User, { foreignKey: 'created_by' });
+
+Coach.hasMany(SickLineSession, { foreignKey: 'coach_id' });
+SickLineSession.belongsTo(Coach, { foreignKey: 'coach_id' });
+
+SickLineSession.hasMany(SickLineAnswer, { foreignKey: 'session_id' });
+SickLineAnswer.belongsTo(SickLineSession, { foreignKey: 'session_id' });
+
+SickLineAnswer.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
+AmenitySubcategory.hasMany(SickLineAnswer, { foreignKey: 'subcategory_id' });
+
+SickLineAnswer.belongsTo(Question, { foreignKey: 'question_id' });
+Question.hasMany(SickLineAnswer, { foreignKey: 'question_id' });
+
 module.exports = {
     Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
     LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem,
     User, Role, CategoryMaster, UserCategory,
     CommissionarySession, CommissionaryAnswer,
+    SickLineSession, SickLineAnswer,
     sequelize
 };

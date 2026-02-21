@@ -93,7 +93,13 @@ const CategoryDashboard = ({ navigation }) => {
                         renderItem={({ item }) => (
                             <TouchableOpacity
                                 style={styles.card}
-                                onPress={() => handleSelectCategory(item.name)}
+                                onPress={() => {
+                                    if (item.name === 'Sick Line Examination') {
+                                        navigation.navigate('SickLineCoach');
+                                    } else {
+                                        handleSelectCategory(item.name);
+                                    }
+                                }}
                             >
                                 <View style={styles.iconCircle}>
                                     <Text style={styles.icon}>{item.name[0]}</Text>

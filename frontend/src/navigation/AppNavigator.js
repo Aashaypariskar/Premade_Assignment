@@ -28,6 +28,11 @@ import CommissionaryDashboardScreen from '../screens/CommissionaryDashboardScree
 import CommissionaryQuestionsScreen from '../screens/CommissionaryQuestionsScreen';
 import CommissionaryCombinedReport from '../screens/CommissionaryCombinedReport';
 
+import SickLineCoachScreen from '../screens/SickLineCoachScreen';
+import SickLineDashboardScreen from '../screens/SickLineDashboardScreen';
+import SickLineActivitySelectionScreen from '../screens/SickLineActivitySelectionScreen';
+import SickLineQuestionsScreen from '../screens/SickLineQuestionsScreen';
+
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
@@ -165,6 +170,28 @@ const AppNavigator = () => {
                         name="CommissionaryCombinedReport"
                         component={CommissionaryCombinedReport}
                         options={{ title: 'Executive Matrix Report' }}
+                    />
+
+                    {/* Sick Line Framework */}
+                    <Stack.Screen
+                        name="SickLineCoach"
+                        component={SickLineCoachScreen}
+                        options={{ title: 'Sick Line Examination' }}
+                    />
+                    <Stack.Screen
+                        name="SickLineDashboard"
+                        component={SickLineDashboardScreen}
+                        options={{ title: 'Area Selection' }}
+                    />
+                    <Stack.Screen
+                        name="SickLineActivitySelection"
+                        component={SickLineActivitySelectionScreen}
+                        options={{ title: 'Select Activity' }}
+                    />
+                    <Stack.Screen
+                        name="SickLineQuestions"
+                        component={SickLineQuestionsScreen}
+                        options={{ title: 'Inspection Form' }}
                     />
 
                     {user.role === 'Admin' && (

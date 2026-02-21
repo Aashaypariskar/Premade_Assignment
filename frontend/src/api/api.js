@@ -124,6 +124,39 @@ export const completeCommissionarySession = (coach_number) => api.post('/commiss
 export const getCommissionaryCombinedReport = (sessionId) =>
     api.get('/commissionary/combined-report', { params: { session_id: sessionId } }).then(r => r.data);
 
+// --- SICK LINE ENDPOINTS (Isolated) ---
+export const getSickLineSession = (coach_number) => api.get(`/sickline/session?coach_number=${coach_number}`).then(res => res.data);
+export const getSickLineQuestions = (subId, actType) =>
+    api.get('/sickline/questions', { params: { subcategory_id: subId, activity_type: actType } }).then(r => r.data);
+
+export const saveSickLineAnswers = async (data) => {
+    try {
+        const isFormData = data instanceof FormData;
+        const response = await api.post(
+            '/sickline/save',
+            data,
+            isFormData
+                ? {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    transformRequest: (formData) => formData,
+                }
+                : {}
+        );
+        return response.data;
+    } catch (error) {
+        console.log("SICKLINE SAVE API ERROR:", error.response?.data || error.message);
+        throw error;
+    }
+};
+
+export const getSickLineProgress = (coachNumber) =>
+    api.get('/sickline/progress', { params: { coach_number: coachNumber } }).then(r => r.data);
+
+export const completeSickLineSession = (coach_number) => api.post('/sickline/complete', { coach_number }).then(res => res.data);
+
+export const getSickLineCombinedReport = (sessionId) =>
+    api.get('/sickline/combined-report', { params: { session_id: sessionId } }).then(r => r.data);
+
 export const getQuestions = async (activityId, scheduleId = null, subcategoryId = null) => {
     let url = `/checklist?`;
     if (scheduleId) {
