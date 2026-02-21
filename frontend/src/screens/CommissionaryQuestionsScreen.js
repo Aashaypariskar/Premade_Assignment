@@ -6,7 +6,7 @@ import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
 
 const CommissionaryQuestionsScreen = ({ route, navigation }) => {
-    const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status } = route.params;
+    const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status, subcategories, currentIndex } = route.params;
     const { user } = useStore();
     const [majorQs, setMajorQs] = useState([]);
     const [minorQs, setMinorQs] = useState([]);
@@ -167,17 +167,16 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             if (activeTab === 'Minor') setIsMinorDone(true);
 
             // Guided Flow Logic
-            const hasMajor = majorQs.length > 0;
-            const hasMinor = minorQs.length > 0;
+            const bothDone = isMajorDone && isMinorDone;
 
-            // Check what else is needed for this subcategory
-            // We'll rely on our currentTab knowledge
-            if (activeTab === 'Minor' && hasMajor) {
-                setGuidedBtns('TO_MAJOR');
-            } else if (activeTab === 'Major' && hasMinor) {
-                setGuidedBtns('TO_MINOR');
-            } else {
+            if (bothDone) {
                 setGuidedBtns('TO_NEXT');
+            }
+            else if (!isMajorDone) {
+                setGuidedBtns('TO_MAJOR');
+            }
+            else if (!isMinorDone) {
+                setGuidedBtns('TO_MINOR');
             }
 
             Alert.alert('Success', 'Answers saved successfully.');
@@ -207,7 +206,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
                     <Ionicons name="home-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
-                <Text style={styles.headerSub}>{subcategoryName} ({compartmentId})</Text>
+                <Text style={styles.headerSub}>{subcategoryName} - {activeTab} ({compartmentId})</Text>
                 <View style={{ width: 26 }} />
             </View>
 
@@ -248,7 +247,22 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                             </TouchableOpacity>
                         )}
                         {guidedBtns === 'TO_NEXT' && (
-                            <TouchableOpacity style={[styles.guideBtn, { backgroundColor: '#10b981' }]} onPress={() => navigation.goBack()}>
+                            <TouchableOpacity style={[styles.guideBtn, { backgroundColor: '#10b981' }]} onPress={() => {
+                                const nextIndex = currentIndex + 1;
+
+                                if (subcategories && nextIndex < subcategories.length) {
+                                    const nextArea = subcategories[nextIndex];
+
+                                    navigation.replace('CommissionaryQuestions', {
+                                        ...route.params,
+                                        subcategoryId: nextArea.id,
+                                        subcategoryName: nextArea.name,
+                                        currentIndex: nextIndex
+                                    });
+                                } else {
+                                    navigation.navigate('CommissionaryDashboard', { ...route.params });
+                                }
+                            }}>
                                 <Text style={styles.guideBtnText}>Go to Next Area</Text>
                                 <Ionicons name="apps-outline" size={18} color="#fff" />
                             </TouchableOpacity>

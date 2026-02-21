@@ -68,18 +68,20 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
         }
     };
 
-    const handleSelect = (sub) => {
+    const handleSelect = (sub, index) => {
         navigation.navigate('CommissionaryQuestions', {
             sessionId: progressStats.session_id || sessionId,
             coachNumber,
             compartmentId,
             subcategoryId: sub.id,
             subcategoryName: sub.name,
-            status: progressStats.status
+            status: progressStats.status,
+            subcategories,
+            currentIndex: index
         });
     };
 
-    const renderItem = ({ item }) => {
+    const renderItem = ({ item, index }) => {
         const subProg = (breakdown[compartmentId] && breakdown[compartmentId][item.id]) || { Major: false, Minor: false };
         const bothDone = subProg.Major && subProg.Minor;
         const oneDone = subProg.Major || subProg.Minor;
@@ -97,7 +99,7 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
         return (
             <TouchableOpacity
                 style={[styles.card, bothDone && styles.cardComplete]}
-                onPress={() => handleSelect(item)}
+                onPress={() => handleSelect(item, index)}
             >
                 <View style={[styles.badge, { backgroundColor: badgeColor }]}>
                     <Text style={styles.badgeText}>{badgeText}</Text>

@@ -62,17 +62,21 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
         ]);
     };
 
-    const handleSelect = (sub) => {
+    const handleSelect = (sub, index) => {
         setDraft(prev => ({
             ...prev,
             subcategory_id: sub.id,
             subcategory_name: sub.name
         }));
 
-        navigation.navigate('SickLineActivitySelection', {
+        navigation.navigate('SickLineQuestions', {
             ...params,
+            sessionId: progress?.session_id || params.sessionId,
             subcategoryId: sub.id,
-            subcategoryName: sub.name
+            subcategoryName: sub.name,
+            status: progress?.status || params.status,
+            subcategories,
+            currentIndex: index
         });
     };
 
@@ -98,7 +102,7 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                 data={subcategories}
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
-                renderItem={({ item }) => {
+                renderItem={({ item, index }) => {
                     const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
                     const hasMajor = status?.hasMajor || false;
                     const hasMinor = status?.hasMinor || false;
@@ -116,7 +120,7 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                     return (
                         <TouchableOpacity
                             style={styles.subCard}
-                            onPress={() => handleSelect(item)}
+                            onPress={() => handleSelect(item, index)}
                         >
                             <View style={[styles.badge, { backgroundColor: badgeColor }]}>
                                 <Text style={styles.badgeText}>{badgeText}</Text>
