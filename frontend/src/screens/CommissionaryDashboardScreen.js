@@ -134,8 +134,8 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-                    <Ionicons name="home-outline" size={26} color="#1e293b" />
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 {isLocked && (
                     <View style={styles.lockedBadge}>

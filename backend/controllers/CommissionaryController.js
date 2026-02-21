@@ -205,7 +205,7 @@ exports.getProgress = async (req, res) => {
         });
 
         const subcategories = await AmenitySubcategory.findAll({ where: { category_id: 6 } });
-        const totalBlocks = subcategories.length * 2;
+        const totalBlocks = subcategories.length;
 
         if (!session) {
             return res.json({
@@ -218,31 +218,50 @@ exports.getProgress = async (req, res) => {
                     subcategory_id: s.id,
                     hasMajor: false,
                     hasMinor: false
-                }))
+                })),
+                breakdown: {}
             });
         }
 
         // Fetch completed blocks via Group By
         const completedBlocks = await CommissionaryAnswer.findAll({
             where: { session_id: session.id },
-            attributes: ['subcategory_id', 'activity_type'],
-            group: ['subcategory_id', 'activity_type']
+            attributes: ['subcategory_id', 'activity_type', 'compartment_id'],
+            group: ['subcategory_id', 'activity_type', 'compartment_id']
         });
 
         const perAreaMap = {};
+        const breakdown = {}; // { compartmentId: { subcategoryId: { Major: bool, Minor: bool } } }
+
         subcategories.forEach(s => {
-            perAreaMap[s.id] = { subcategory_id: s.id, hasMajor: false, hasMinor: false };
+            perAreaMap[s.id] = { subcategory_id: s.id, hasMajor: false, hasMinor: false, subcategory_name: s.name };
         });
 
         completedBlocks.forEach(block => {
-            if (perAreaMap[block.subcategory_id]) {
-                if (block.activity_type === 'Major') perAreaMap[block.subcategory_id].hasMajor = true;
-                if (block.activity_type === 'Minor') perAreaMap[block.subcategory_id].hasMinor = true;
+            const { subcategory_id, activity_type, compartment_id } = block;
+
+            // Global map (any compartment counts)
+            if (perAreaMap[subcategory_id]) {
+                if (activity_type === 'Major') perAreaMap[subcategory_id].hasMajor = true;
+                if (activity_type === 'Minor') perAreaMap[subcategory_id].hasMinor = true;
             }
+
+            // Detailed breakdown (by compartment)
+            if (!breakdown[compartment_id]) breakdown[compartment_id] = {};
+            if (!breakdown[compartment_id][subcategory_id]) {
+                breakdown[compartment_id][subcategory_id] = { Major: false, Minor: false };
+            }
+            if (activity_type === 'Major') breakdown[compartment_id][subcategory_id].Major = true;
+            if (activity_type === 'Minor') breakdown[compartment_id][subcategory_id].Minor = true;
         });
 
-        const completedCount = completedBlocks.length;
-        const progressPercentage = Math.round((completedCount / totalBlocks) * 100) || 0;
+        const completedCount = Object.values(perAreaMap)
+            .filter(area => area.hasMajor && area.hasMinor)
+            .length;
+
+        const progressPercentage = totalBlocks === 0
+            ? 0
+            : Math.round((completedCount / totalBlocks) * 100);
 
         const allAnswers = await CommissionaryAnswer.findAll({ where: { session_id: session.id } });
         const overallCompliance = calculateCompliance(allAnswers);
@@ -255,7 +274,8 @@ exports.getProgress = async (req, res) => {
             overall_compliance: overallCompliance,
             status: session.status,
             perAreaStatus: Object.values(perAreaMap),
-            fully_complete: completedCount >= totalBlocks
+            breakdown,
+            fully_complete: completedCount === totalBlocks
         });
 
     } catch (err) {

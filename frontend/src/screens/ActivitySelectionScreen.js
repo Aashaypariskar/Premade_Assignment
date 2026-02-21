@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { getActivities } from '../api/api';
+import { getActivities, getCommissionaryProgress } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 /**
  * Activity Selection Screen
@@ -13,10 +14,35 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const { setDraft, user } = useStore();
+    const [isMajorDone, setIsMajorDone] = useState(false);
+    const [isMinorDone, setIsMinorDone] = useState(false);
 
     useEffect(() => {
         loadActivities();
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (params.categoryName === 'Coach Commissionary') {
+                loadStatus();
+            }
+        }, [])
+    );
+
+    const loadStatus = async () => {
+        try {
+            const prog = await getCommissionaryProgress(params.coachNumber);
+            const area = prog?.perAreaStatus?.find(
+                a => a.subcategory_id === (params.subcategoryId || params.subcategory_id)
+            );
+            if (area) {
+                setIsMajorDone(area.hasMajor);
+                setIsMinorDone(area.hasMinor);
+            }
+        } catch (err) {
+            console.log('Status load error:', err);
+        }
+    };
 
     const loadActivities = async () => {
         try {
@@ -47,8 +73,8 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-                    <Ionicons name="home-outline" size={26} color="#1e293b" />
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <View style={styles.pills}>
                     <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
@@ -66,7 +92,14 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                             style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
                             onPress={() => handleSelect(act)}
                         >
-                            <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
+                            <View style={styles.titleRow}>
+                                <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
+                                {((act.type === 'Major' && isMajorDone) || (act.type === 'Minor' && isMinorDone)) && (
+                                    <View style={styles.statusBadge}>
+                                        <Text style={styles.badgeText}>Completed</Text>
+                                    </View>
+                                )}
+                            </View>
                             <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
                             <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
                         </TouchableOpacity>
@@ -137,7 +170,25 @@ const styles = StyleSheet.create({
     tabMajorText: { color: '#fff' }, // added logic for colors
     subText: { fontSize: 12, color: '#64748b', marginTop: 5 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+    titleRow: {
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10
+    },
+    statusBadge: {
+        backgroundColor: '#10b981',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12
+    },
+    badgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold'
+    }
 });
 
 // Fix for text colors in dynamic map
