@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const AUTH_URL = 'http://192.168.1.11:3000/api';
+const AUTH_URL = 'https://meetofy.in/wsp/api';
 
 export const login = async (email, password) => {
     try {

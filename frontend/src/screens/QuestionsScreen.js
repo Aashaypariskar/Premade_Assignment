@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getQuestions } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import QuestionCard from '../components/QuestionCard';
+import { Ionicons } from '@expo/vector-icons';
 
 /**
  * Questions Checklist Screen - PRODUCTION VERSION

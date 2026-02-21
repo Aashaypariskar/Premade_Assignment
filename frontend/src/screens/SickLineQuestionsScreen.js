@@ -33,11 +33,13 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                 if (area) {
                     setIsMajorDone(area.hasMajor);
                     setIsMinorDone(area.hasMinor);
+                    return area;
                 }
             }
         } catch (err) {
             console.log('Progress Refresh Error:', err);
         }
+        return null;
     };
 
     const loadQuestions = async () => {
@@ -57,10 +59,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
     };
 
     const handleAnswerUpdate = (qId, data) => {
-        setAnswers(prev => ({
-            ...prev,
-            [qId]: data
-        }));
+        setAnswers(prev => ({ ...prev, [qId]: data }));
     };
 
     const validate = () => {
@@ -68,12 +67,10 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         for (const q of currentQs) {
             const ans = answers[q.id];
             if (!ans || !ans.status) return { valid: false, msg: `Status is required for "${q.text}".` };
-
             if (ans.status === 'DEFICIENCY') {
                 const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                 const hasRemarks = ans.remarks && ans.remarks.trim().length > 0;
                 const hasPhoto = !!ans.image_path;
-
                 if (!hasReasons || !hasRemarks || !hasPhoto) {
                     let missing = [];
                     if (!hasReasons) missing.push('Reasons');
@@ -111,61 +108,34 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                     remarks: ans.remarks || ''
                 };
 
-                try {
-                    if (ans.image_path && typeof ans.image_path === 'string') {
-                        const formData = new FormData();
-                        Object.keys(payload).forEach(key => {
-                            if (key === 'reasons') {
-                                formData.append(key, JSON.stringify(payload[key]));
-                            } else {
-                                formData.append(key, payload[key]);
-                            }
-                        });
+                const formData = new FormData();
+                let hasPhoto = false;
+                if (ans.image_path && typeof ans.image_path === 'string') {
+                    Object.keys(payload).forEach(key => {
+                        formData.append(key, key === 'reasons' ? JSON.stringify(payload[key]) : payload[key]);
+                    });
+                    const cleanUri = ans.image_path.startsWith('file://') ? ans.image_path : `file://${ans.image_path}`;
+                    formData.append('photo', { uri: cleanUri, name: cleanUri.split('/').pop() || `photo_${Date.now()}.jpg`, type: 'image/jpeg' });
+                    hasPhoto = true;
+                }
 
-                        let cleanUri = ans.image_path;
-                        if (!cleanUri.startsWith('file://')) {
-                            cleanUri = `file://${cleanUri}`;
-                        }
+                await saveSickLineAnswers(hasPhoto ? formData : payload);
+            }
 
-                        const filename = cleanUri.split('/').pop() || `photo_${Date.now()}.jpg`;
-                        formData.append('photo', { uri: cleanUri, name: filename, type: 'image/jpeg' });
-
-                        const hasPhoto = formData._parts && formData._parts.some(p => p[0] === 'photo');
-
-                        if (hasPhoto) {
-                            await saveSickLineAnswers(formData);
-                        } else {
-                            await saveSickLineAnswers(payload);
-                        }
-                    } else {
-                        await saveSickLineAnswers(payload);
-                    }
-                } catch (saveErr) {
-                    console.error(`Error saving Q ${q.id}:`, saveErr.message);
+            const freshStatus = await refreshProgress();
+            if (freshStatus) {
+                if (freshStatus.hasMajor && freshStatus.hasMinor) {
+                    setGuidedBtns('TO_NEXT');
+                } else if (!freshStatus.hasMajor) {
+                    setGuidedBtns('TO_MAJOR');
+                } else if (!freshStatus.hasMinor) {
+                    setGuidedBtns('TO_MINOR');
                 }
             }
-
-            await refreshProgress();
-
-            if (activeTab === 'Major') setIsMajorDone(true);
-            if (activeTab === 'Minor') setIsMinorDone(true);
-
-            const bothDone = isMajorDone && isMinorDone;
-
-            if (bothDone) {
-                setGuidedBtns('TO_NEXT');
-            }
-            else if (!isMajorDone) {
-                setGuidedBtns('TO_MAJOR');
-            }
-            else if (!isMinorDone) {
-                setGuidedBtns('TO_MINOR');
-            }
-
             Alert.alert('Success', 'Answers saved successfully.');
         } catch (err) {
             console.error('Save Error:', err);
-            Alert.alert('Error', 'Failed to save answers. Please check network.');
+            Alert.alert('Error', 'Failed to save answers.');
         } finally {
             setSaving(false);
         }

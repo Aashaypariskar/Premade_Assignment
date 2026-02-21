@@ -166,61 +166,78 @@ exports.getProgress = async (req, res) => {
         });
 
         const subcategories = await AmenitySubcategory.findAll({ where: { category_id: 6 } });
-        const totalBlocks = subcategories.length;
+        const totalAreasCount = subcategories.length;
 
         if (!session) {
             return res.json({
                 session_id: null,
                 completed_count: 0,
-                total_expected: totalBlocks,
+                total_expected: totalAreasCount,
                 progress_percentage: 0,
                 status: 'NOT_STARTED',
-                perAreaStatus: subcategories.map(s => ({ subcategory_id: s.id, hasMajor: false, hasMinor: false })),
+                perAreaStatus: subcategories.map(s => ({
+                    subcategory_id: s.id,
+                    hasMajor: false,
+                    hasMinor: false
+                })),
                 breakdown: {}
             });
         }
 
-        const completedBlocks = await SickLineAnswer.findAll({
-            where: { session_id: session.id },
-            attributes: ['subcategory_id', 'activity_type', 'compartment_id'],
-            group: ['subcategory_id', 'activity_type', 'compartment_id']
-        });
+        const progress = await Promise.all(subcategories.map(async (sub) => {
+            const subName = sub.name;
+            const subId = sub.id;
 
-        const perAreaMap = {};
-        const breakdown = {};
+            // Strict Question Counts for this subcategory
+            const totalMajor = await Question.count({
+                where: { subcategory_id: subId },
+                include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
+            });
+            const totalMinor = await Question.count({
+                where: { subcategory_id: subId },
+                include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
+            });
 
-        subcategories.forEach(s => {
-            perAreaMap[s.id] = { subcategory_id: s.id, hasMajor: false, hasMinor: false, subcategory_name: s.name };
-        });
+            // Sick Line usually does NOT use compartments for progress tracking (one coach per date)
+            // But we check if ALL questions are answered in 'null' compartment or any.
+            // In legacy, SickLineAnswer usually stores 'null' for compartment_id if not selected.
 
-        completedBlocks.forEach(block => {
-            const { subcategory_id, activity_type, compartment_id } = block;
-            if (perAreaMap[subcategory_id]) {
-                if (activity_type === 'Major') perAreaMap[subcategory_id].hasMajor = true;
-                if (activity_type === 'Minor') perAreaMap[subcategory_id].hasMinor = true;
-            }
-            if (!breakdown[compartment_id]) breakdown[compartment_id] = {};
-            if (!breakdown[compartment_id][subcategory_id]) breakdown[compartment_id][subcategory_id] = { Major: false, Minor: false };
-            if (activity_type === 'Major') breakdown[compartment_id][subcategory_id].Major = true;
-            if (activity_type === 'Minor') breakdown[compartment_id][subcategory_id].Minor = true;
-        });
+            const answeredMajor = await SickLineAnswer.count({
+                where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major' }
+            });
+            const answeredMinor = await SickLineAnswer.count({
+                where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor' }
+            });
 
-        const completedCount = Object.values(perAreaMap).filter(area => area.hasMajor && area.hasMinor).length;
-        const progressPercentage = totalBlocks === 0 ? 0 : Math.round((completedCount / totalBlocks) * 100);
+            const majorDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
+            const minorDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
+
+            const isFullyComplete = majorDone && minorDone;
+
+            return {
+                subcategory_id: subId,
+                subcategory_name: subName,
+                isComplete: isFullyComplete,
+                hasMajor: majorDone,
+                hasMinor: minorDone
+            };
+        }));
+
+        const completedAreasCount = progress.filter(p => p.isComplete).length;
+        const percentage = totalAreasCount > 0 ? Math.round((completedAreasCount / totalAreasCount) * 100) : 0;
 
         const allAnswers = await SickLineAnswer.findAll({ where: { session_id: session.id } });
         const overallCompliance = calculateCompliance(allAnswers);
 
         return res.json({
             session_id: session.id,
-            completed_count: completedCount,
-            total_expected: totalBlocks,
-            progress_percentage: progressPercentage,
+            completed_count: completedAreasCount,
+            total_expected: totalAreasCount,
+            progress_percentage: percentage,
             overall_compliance: overallCompliance,
             status: session.status,
-            perAreaStatus: Object.values(perAreaMap),
-            breakdown,
-            fully_complete: completedCount === totalBlocks
+            perAreaStatus: progress,
+            fully_complete: completedAreasCount === totalAreasCount
         });
     } catch (err) {
         console.error('SickLine Progress Error:', err);

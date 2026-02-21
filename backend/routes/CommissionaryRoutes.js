@@ -5,6 +5,10 @@ const { verifyToken } = require('../middleware/auth');
 
 const upload = require('../middleware/upload');
 
+// Coach Management
+router.get('/coaches', verifyToken, controller.listCoaches);
+router.post('/coaches', verifyToken, controller.createCoach);
+
 router.get('/session', verifyToken, controller.getOrCreateSession);
 router.get('/questions', verifyToken, controller.getQuestions);
 router.post('/save', verifyToken, (req, res, next) => {

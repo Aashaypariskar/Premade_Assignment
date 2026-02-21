@@ -205,13 +205,13 @@ exports.getProgress = async (req, res) => {
         });
 
         const subcategories = await AmenitySubcategory.findAll({ where: { category_id: 6 } });
-        const totalBlocks = subcategories.length;
+        const totalAreasCount = subcategories.length;
 
         if (!session) {
             return res.json({
                 session_id: null,
                 completed_count: 0,
-                total_expected: totalBlocks,
+                total_expected: totalAreasCount,
                 progress_percentage: 0,
                 status: 'NOT_STARTED',
                 perAreaStatus: subcategories.map(s => ({
@@ -223,59 +223,75 @@ exports.getProgress = async (req, res) => {
             });
         }
 
-        // Fetch completed blocks via Group By
-        const completedBlocks = await CommissionaryAnswer.findAll({
-            where: { session_id: session.id },
-            attributes: ['subcategory_id', 'activity_type', 'compartment_id'],
-            group: ['subcategory_id', 'activity_type', 'compartment_id']
-        });
+        const COMPARTMENTS = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
 
-        const perAreaMap = {};
-        const breakdown = {}; // { compartmentId: { subcategoryId: { Major: bool, Minor: bool } } }
+        const progress = await Promise.all(subcategories.map(async (sub) => {
+            const subName = sub.name;
+            const subId = sub.id;
 
-        subcategories.forEach(s => {
-            perAreaMap[s.id] = { subcategory_id: s.id, hasMajor: false, hasMinor: false, subcategory_name: s.name };
-        });
+            // Strict Question Counts for this subcategory
+            const totalMajor = await Question.count({
+                where: { subcategory_id: subId },
+                include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
+            });
+            const totalMinor = await Question.count({
+                where: { subcategory_id: subId },
+                include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
+            });
 
-        completedBlocks.forEach(block => {
-            const { subcategory_id, activity_type, compartment_id } = block;
+            // For each compartment, check if ALL questions are answered
+            let compartmentsCompleted = 0;
+            const compBreakdown = {};
 
-            // Global map (any compartment counts)
-            if (perAreaMap[subcategory_id]) {
-                if (activity_type === 'Major') perAreaMap[subcategory_id].hasMajor = true;
-                if (activity_type === 'Minor') perAreaMap[subcategory_id].hasMinor = true;
+            for (const compId of COMPARTMENTS) {
+                const answeredMajor = await CommissionaryAnswer.count({
+                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major', compartment_id: compId }
+                });
+                const answeredMinor = await CommissionaryAnswer.count({
+                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor', compartment_id: compId }
+                });
+
+                const majorDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
+                const minorDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
+
+                if (majorDone && minorDone) {
+                    compartmentsCompleted++;
+                }
+
+                compBreakdown[compId] = { major: majorDone, minor: minorDone, isComplete: majorDone && minorDone };
             }
 
-            // Detailed breakdown (by compartment)
-            if (!breakdown[compartment_id]) breakdown[compartment_id] = {};
-            if (!breakdown[compartment_id][subcategory_id]) {
-                breakdown[compartment_id][subcategory_id] = { Major: false, Minor: false };
-            }
-            if (activity_type === 'Major') breakdown[compartment_id][subcategory_id].Major = true;
-            if (activity_type === 'Minor') breakdown[compartment_id][subcategory_id].Minor = true;
-        });
+            // In Commissionary, ALMOST EVERYTHING with DUAL check needs all 8 compartments
+            // Exception: If an area has NO questions in either Major or Minor, we effectively treat it as done.
+            // But usually, Exterior, Interior, etc. have questions in all 8.
+            const isFullyComplete = (compartmentsCompleted === COMPARTMENTS.length);
 
-        const completedCount = Object.values(perAreaMap)
-            .filter(area => area.hasMajor && area.hasMinor)
-            .length;
+            return {
+                subcategory_id: subId,
+                subcategory_name: subName,
+                isComplete: isFullyComplete,
+                hasMajor: compartmentsCompleted > 0, // Partial indicator for UI
+                hasMinor: compartmentsCompleted > 0, // Partial indicator for UI
+                compartmentStatus: compBreakdown
+            };
+        }));
 
-        const progressPercentage = totalBlocks === 0
-            ? 0
-            : Math.round((completedCount / totalBlocks) * 100);
+        const completedAreasCount = progress.filter(p => p.isComplete).length;
+        const percentage = totalAreasCount > 0 ? Math.round((completedAreasCount / totalAreasCount) * 100) : 0;
 
         const allAnswers = await CommissionaryAnswer.findAll({ where: { session_id: session.id } });
         const overallCompliance = calculateCompliance(allAnswers);
 
         return res.json({
             session_id: session.id,
-            completed_count: completedCount,
-            total_expected: totalBlocks,
-            progress_percentage: progressPercentage,
+            completed_count: completedAreasCount,
+            total_expected: totalAreasCount,
+            progress_percentage: percentage,
             overall_compliance: overallCompliance,
             status: session.status,
-            perAreaStatus: Object.values(perAreaMap),
-            breakdown,
-            fully_complete: completedCount === totalBlocks
+            perAreaStatus: progress,
+            progress: progress, // For compatibility
+            fully_complete: completedAreasCount === totalAreasCount
         });
 
     } catch (err) {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = 'http://192.168.1.11:3000/api';
+const BASE_URL = 'https://meetofy.in/wsp/api';
 
 const api = axios.create({
     baseURL: BASE_URL,
@@ -86,8 +86,8 @@ export const getAmenitySubcategories = async (categoryName, coachId) => {
 
 // --- COMMISSIONARY ENDPOINTS ---
 export const getCommissionarySession = (coach_number) => api.get(`/commissionary/session?coach_number=${coach_number}`).then(res => res.data);
-export const getCommissionaryCoaches = () => api.get('/commissionary-coaches').then(res => res.data);
-export const createCommissionaryCoach = (data) => api.post('/commissionary-coaches', data).then(res => res.data);
+export const getCommissionaryCoaches = () => api.get('/commissionary/coaches').then(res => res.data);
+export const createCommissionaryCoach = (data) => api.post('/commissionary/coaches', data).then(res => res.data);
 
 export const getCommissionaryQuestions = (subId, actType) =>
     api.get('/commissionary/questions', { params: { subcategory_id: subId, activity_type: actType } }).then(r => r.data);

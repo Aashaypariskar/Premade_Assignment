@@ -33,13 +33,16 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             if (prog?.perAreaStatus) {
                 const area = prog.perAreaStatus.find(a => a.subcategory_id === subcategoryId);
                 if (area) {
-                    setIsMajorDone(area.hasMajor);
-                    setIsMinorDone(area.hasMinor);
+                    const compStatus = area.compartmentStatus?.[compartmentId] || { major: false, minor: false };
+                    setIsMajorDone(compStatus.major);
+                    setIsMinorDone(compStatus.minor);
+                    return compStatus;
                 }
             }
         } catch (err) {
             console.log('Progress Refresh Error:', err);
         }
+        return null;
     };
 
     const loadQuestions = async () => {
@@ -48,8 +51,6 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 getCommissionaryQuestions(subcategoryId, 'Major'),
                 getCommissionaryQuestions(subcategoryId, 'Minor')
             ]);
-
-            // Flatten grouped items
             const flatten = (data) => data.flatMap(item => item.questions);
             setMajorQs(flatten(major));
             setMinorQs(flatten(minor));
@@ -61,10 +62,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     };
 
     const handleAnswerUpdate = (qId, data) => {
-        setAnswers(prev => ({
-            ...prev,
-            [qId]: data
-        }));
+        setAnswers(prev => ({ ...prev, [qId]: data }));
     };
 
     const validate = () => {
@@ -72,12 +70,10 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
         for (const q of currentQs) {
             const ans = answers[q.id];
             if (!ans || !ans.status) return { valid: false, msg: `Status is required for "${q.text}".` };
-
             if (ans.status === 'DEFICIENCY') {
                 const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                 const hasRemarks = ans.remarks && ans.remarks.trim().length > 0;
                 const hasPhoto = !!ans.image_path;
-
                 if (!hasReasons || !hasRemarks || !hasPhoto) {
                     let missing = [];
                     if (!hasReasons) missing.push('Reasons');
@@ -99,15 +95,11 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
         setSaving(true);
         try {
-            let count = 0;
             const currentQs = activeTab === 'Major' ? majorQs : minorQs;
             const answeredQs = currentQs.filter(q => answers[q.id]?.status);
 
             for (const q of answeredQs) {
-                count++;
                 const ans = answers[q.id];
-                console.log(`Saving question ${count}/${answeredQs.length} (ID: ${q.id})`);
-
                 const payload = {
                     session_id: sessionId.toString(),
                     compartment_id: compartmentId,
@@ -119,70 +111,34 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                     remarks: ans.remarks || ''
                 };
 
-                try {
-                    if (ans.image_path && typeof ans.image_path === 'string') {
-                        // Use FormData for photo uploads
-                        const formData = new FormData();
-                        Object.keys(payload).forEach(key => {
-                            if (key === 'reasons') {
-                                formData.append(key, JSON.stringify(payload[key]));
-                            } else {
-                                formData.append(key, payload[key]);
-                            }
-                        });
+                const formData = new FormData();
+                let hasPhoto = false;
+                if (ans.image_path && typeof ans.image_path === 'string') {
+                    Object.keys(payload).forEach(key => {
+                        formData.append(key, key === 'reasons' ? JSON.stringify(payload[key]) : payload[key]);
+                    });
+                    const cleanUri = ans.image_path.startsWith('file://') ? ans.image_path : `file://${ans.image_path}`;
+                    formData.append('photo', { uri: cleanUri, name: cleanUri.split('/').pop(), type: 'image/jpeg' });
+                    hasPhoto = true;
+                }
 
-                        let cleanUri = ans.image_path;
-                        if (!cleanUri.startsWith('file://')) {
-                            cleanUri = `file://${cleanUri}`;
-                        }
+                await saveCommissionaryAnswers(hasPhoto ? formData : payload);
+            }
 
-                        const filename = cleanUri.split('/').pop() || `photo_${Date.now()}.jpg`;
-                        const type = 'image/jpeg';
-
-                        formData.append('photo', {
-                            uri: cleanUri,
-                            name: filename,
-                            type
-                        });
-
-                        // Check if photo exists in formData _parts before sending
-                        const hasPhoto = formData._parts && formData._parts.some(p => p[0] === 'photo');
-
-                        if (hasPhoto) {
-                            await saveCommissionaryAnswers(formData);
-                        } else {
-                            await saveCommissionaryAnswers(payload);
-                        }
-                    } else {
-                        await saveCommissionaryAnswers(payload);
-                    }
-                } catch (saveErr) {
-                    console.error(`Error saving Q ${q.id}:`, saveErr.message);
+            const freshStatus = await refreshProgress();
+            if (freshStatus) {
+                if (freshStatus.major && freshStatus.minor) {
+                    setGuidedBtns('TO_NEXT');
+                } else if (!freshStatus.major) {
+                    setGuidedBtns('TO_MAJOR');
+                } else if (!freshStatus.minor) {
+                    setGuidedBtns('TO_MINOR');
                 }
             }
-
-            await refreshProgress();
-
-            if (activeTab === 'Major') setIsMajorDone(true);
-            if (activeTab === 'Minor') setIsMinorDone(true);
-
-            // Guided Flow Logic
-            const bothDone = isMajorDone && isMinorDone;
-
-            if (bothDone) {
-                setGuidedBtns('TO_NEXT');
-            }
-            else if (!isMajorDone) {
-                setGuidedBtns('TO_MAJOR');
-            }
-            else if (!isMinorDone) {
-                setGuidedBtns('TO_MINOR');
-            }
-
             Alert.alert('Success', 'Answers saved successfully.');
         } catch (err) {
             console.error('Save Error:', err);
-            Alert.alert('Error', 'Failed to save answers. Please check network.');
+            Alert.alert('Error', 'Failed to save answers.');
         } finally {
             setSaving(false);
         }

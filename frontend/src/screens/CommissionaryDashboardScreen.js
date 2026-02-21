@@ -82,16 +82,19 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
     };
 
     const renderItem = ({ item, index }) => {
-        const subProg = (breakdown[compartmentId] && breakdown[compartmentId][item.id]) || { Major: false, Minor: false };
-        const bothDone = subProg.Major && subProg.Minor;
-        const oneDone = subProg.Major || subProg.Minor;
+        const areaProgress = (progressStats.progress || []).find(p => p.subcategory_id === item.id);
+        const compStatus = areaProgress?.compartmentStatus?.[compartmentId] || { major: false, minor: false, isComplete: false };
+
+        const isMajorDone = compStatus.major;
+        const isMinorDone = compStatus.minor;
+        const bothDone = compStatus.isComplete;
 
         let badgeText = "Pending";
         let badgeColor = "#94a3b8"; // grey
         if (bothDone) {
             badgeText = "Completed";
             badgeColor = "#10b981"; // green
-        } else if (oneDone) {
+        } else if (isMajorDone || isMinorDone) {
             badgeText = "Partial";
             badgeColor = "#f59e0b"; // yellow
         }
@@ -115,13 +118,13 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
                 <Text style={styles.subName} numberOfLines={2}>{item.name}</Text>
 
                 <View style={styles.indicators}>
-                    <View style={[styles.miniBadge, subProg.Minor && styles.miniBadgeDone]}>
-                        <Ionicons name={subProg.Minor ? "checkmark-circle" : "close-circle"} size={10} color={subProg.Minor ? "#fff" : "#94a3b8"} />
-                        <Text style={[styles.miniBadgeText, subProg.Minor && styles.miniBadgeTextDone]}>Minor</Text>
+                    <View style={[styles.miniBadge, isMinorDone && styles.miniBadgeDone]}>
+                        <Ionicons name={isMinorDone ? "checkmark-circle" : "close-circle"} size={10} color={isMinorDone ? "#fff" : "#94a3b8"} />
+                        <Text style={[styles.miniBadgeText, isMinorDone && styles.miniBadgeTextDone]}>Minor</Text>
                     </View>
-                    <View style={[styles.miniBadge, subProg.Major && styles.miniBadgeDone]}>
-                        <Ionicons name={subProg.Major ? "checkmark-circle" : "close-circle"} size={10} color={subProg.Major ? "#fff" : "#94a3b8"} />
-                        <Text style={[styles.miniBadgeText, subProg.Major && styles.miniBadgeTextDone]}>Major</Text>
+                    <View style={[styles.miniBadge, isMajorDone && styles.miniBadgeDone]}>
+                        <Ionicons name={isMajorDone ? "checkmark-circle" : "close-circle"} size={10} color={isMajorDone ? "#fff" : "#94a3b8"} />
+                        <Text style={[styles.miniBadgeText, isMajorDone && styles.miniBadgeTextDone]}>Major</Text>
                     </View>
                 </View>
             </TouchableOpacity>
