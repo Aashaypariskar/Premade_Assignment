@@ -80,13 +80,13 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
         });
     };
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#f59e0b" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-                    <Ionicons name="home-outline" size={26} color="#1e293b" />
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <View style={styles.pills}>
                     <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
@@ -114,7 +114,7 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                         badgeColor = "#10b981"; // green
                     } else if (hasMajor || hasMinor) {
                         badgeText = "Partial";
-                        badgeColor = "#f59e0b"; // orange
+                        badgeColor = "#f59e0b"; // yellow (keep this one as orange/yellow for "Partial" per original Commissionary design)
                     }
 
                     return (
@@ -126,7 +126,7 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                                 <Text style={styles.badgeText}>{badgeText}</Text>
                             </View>
                             <View style={styles.iconBox}>
-                                <Ionicons name="build-outline" size={24} color="#f59e0b" />
+                                <Ionicons name="build-outline" size={24} color="#2563eb" />
                             </View>
                             <Text style={styles.subName}>{item.name}</Text>
                         </TouchableOpacity>
@@ -175,13 +175,13 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
     pills: { flexDirection: 'row', marginBottom: 20 },
     pill: { backgroundColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginRight: 8 },
-    activePill: { backgroundColor: '#f59e0b' },
+    activePill: { backgroundColor: '#2563eb' },
     pillText: { fontSize: 10, fontWeight: 'bold', color: '#64748b' },
     title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b' },
     subtitle: { fontSize: 14, color: '#64748b', marginBottom: 30 },
     list: { paddingBottom: 20 },
     subCard: { flex: 1, backgroundColor: '#fff', margin: 6, padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 4, minHeight: 140 },
-    iconBox: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#fef3c7', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    iconBox: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
     subName: { fontSize: 13, fontWeight: 'bold', color: '#334155', textAlign: 'center' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },

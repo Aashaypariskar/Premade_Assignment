@@ -181,13 +181,13 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         />
     );
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#f59e0b" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-                    <Ionicons name="home-outline" size={26} color="#1e293b" />
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <Text style={styles.headerSub}>{subcategoryName} - {activeTab}</Text>
                 <View style={{ width: 26 }} />
@@ -277,15 +277,15 @@ const styles = StyleSheet.create({
     headerSub: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
     tabBar: { flexDirection: 'row', backgroundColor: '#fff', margin: 20, borderRadius: 12, padding: 4, elevation: 2 },
     tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 10 },
-    activeTab: { backgroundColor: '#f59e0b' },
+    activeTab: { backgroundColor: '#2563eb' },
     tabText: { fontSize: 14, fontWeight: 'bold', color: '#64748b' },
     activeTabText: { color: '#fff' },
     scroll: { padding: 20, paddingBottom: 60 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    saveBtn: { backgroundColor: '#f59e0b', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20, elevation: 4 },
+    saveBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20, elevation: 4 },
     saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    guidedBox: { marginTop: 10, marginBottom: 20, padding: 15, backgroundColor: '#fff', borderRadius: 16, borderLeftWidth: 5, borderLeftColor: '#f59e0b', elevation: 2 },
-    guideBtn: { backgroundColor: '#f59e0b', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, gap: 10 },
+    guidedBox: { marginTop: 10, marginBottom: 20, padding: 15, backgroundColor: '#fff', borderRadius: 16, borderLeftWidth: 5, borderLeftColor: '#2563eb', elevation: 2 },
+    guideBtn: { backgroundColor: '#2563eb', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, gap: 10 },
     guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });
 

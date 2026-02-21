@@ -61,7 +61,7 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
         });
     };
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#f59e0b" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
         <View style={styles.container}>
@@ -106,7 +106,7 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
                                     categoryName: params.categoryName
                                 })}
                             >
-                                <Ionicons name="settings-outline" size={14} color="#f59e0b" />
+                                <Ionicons name="settings-outline" size={14} color="#2563eb" />
                                 <Text style={styles.adminEditBtnText}>Edit Questions</Text>
                             </TouchableOpacity>
                         )}
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
     pills: { flexDirection: 'row', marginBottom: 20 },
     pill: { backgroundColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginRight: 8 },
-    activePill: { backgroundColor: '#f59e0b' },
+    activePill: { backgroundColor: '#2563eb' },
     pillText: { fontSize: 10, fontWeight: 'bold', color: '#64748b' },
     title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b', marginBottom: 40 },
     tabContainer: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -143,17 +143,17 @@ const styles = StyleSheet.create({
         marginTop: 15,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fef3c7',
+        backgroundColor: '#eff6ff',
         paddingVertical: 8,
         paddingHorizontal: 12,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#fde68a'
+        borderColor: '#bfdbfe'
     },
     adminEditBtnText: {
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#f59e0b',
+        color: '#2563eb',
         marginLeft: 6
     },
     tabMinor: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#e2e8f0' },

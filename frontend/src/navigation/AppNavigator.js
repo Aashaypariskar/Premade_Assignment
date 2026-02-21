@@ -83,7 +83,7 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="ReportSuccess"
                         component={ReportSuccessScreen}
-                        options={{ title: 'Success', headerLeft: () => null }}
+                        options={{ title: 'Success', headerLeft: () => null, headerRight: () => null }}
                     />
                     <Stack.Screen
                         name="TrainSelection"
