@@ -34,6 +34,7 @@ exports.getReasonsByQuestion = async (req, res) => {
 // POST /api/admin/reason
 exports.createReason = async (req, res) => {
     try {
+        console.log('[DEBUG] createReason Body:', req.body);
         const { question_id, text } = req.body;
 
         if (!question_id || !text) {
@@ -55,6 +56,7 @@ exports.createReason = async (req, res) => {
 // PUT /api/admin/reason/:id
 exports.updateReason = async (req, res) => {
     try {
+        console.log('[DEBUG] updateReason ID:', req.params.id, 'Body:', req.body);
         const { id } = req.params;
         const { text } = req.body;
 
@@ -80,6 +82,7 @@ exports.updateReason = async (req, res) => {
 // DELETE /api/admin/reason/:id
 exports.deleteReason = async (req, res) => {
     try {
+        console.log('[DEBUG] deleteReason ID:', req.params.id);
         const { id } = req.params;
 
         const reason = await Reason.findByPk(id);

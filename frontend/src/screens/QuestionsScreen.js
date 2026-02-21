@@ -88,7 +88,7 @@ const QuestionsScreen = ({ route, navigation }) => {
             if (!ans) return false;
             const missingReason = !ans.reasons || ans.reasons.length === 0;
             const missingImage = !ans.image_path;
-            const missingRemark = !ans.remarks;
+            const missingRemark = !ans.remarks || !ans.remarks.trim();
 
             const hasProblem = ans.status === 'DEFICIENCY' && (missingReason || missingImage || missingRemark);
             return hasProblem;
@@ -188,12 +188,22 @@ const QuestionsScreen = ({ route, navigation }) => {
                 )}
             </ScrollView>
 
-            <TouchableOpacity
-                style={[styles.nextBtn, !isDone && styles.btnDisabled]}
-                disabled={!isDone}
-                onPress={goSummary}
-            >
-                <Text style={styles.nextText}>Review Inspection ➔</Text>
+            {user?.role === 'Admin' && (
+                <TouchableOpacity
+                    style={styles.adminEditFab}
+                    onPress={() => navigation.navigate('QuestionManagement', {
+                        activityId: params.activityId,
+                        activityType: params.activityType,
+                        categoryName: params.categoryName
+                    })}
+                >
+                    <Ionicons name="settings" size={20} color="#fff" />
+                    <Text style={styles.fabText}>Edit Questions</Text>
+                </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.submitBtn} onPress={goSummary}>
+                <Text style={styles.submitText}>Review Inspection ({relevantAnswers.length})</Text>
             </TouchableOpacity>
         </View>
     );
@@ -207,10 +217,32 @@ const styles = StyleSheet.create({
     percent: { fontSize: 13, fontWeight: 'bold', color: '#2563eb' },
     barBg: { height: 8, backgroundColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' },
     barFill: { height: '100%', backgroundColor: '#2563eb' },
-    list: { padding: 15, paddingBottom: 100 },
-    nextBtn: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#1e293b', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 8 },
+    list: { padding: 15, paddingBottom: 150 }, // More padding for FAB
+    submitBtn: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#1e293b', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 8 },
     btnDisabled: { backgroundColor: '#cbd5e1' },
-    nextText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    adminEditFab: {
+        position: 'absolute',
+        bottom: 90,
+        right: 20,
+        backgroundColor: '#2563eb',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 25,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5
+    },
+    fabText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 12,
+        marginLeft: 8
+    },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     breadcrumbs: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },

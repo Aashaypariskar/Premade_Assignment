@@ -61,15 +61,30 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
             <View style={styles.tabContainer}>
                 {activities.map(act => (
-                    <TouchableOpacity
-                        key={act.id}
-                        style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
-                        onPress={() => handleSelect(act)}
-                    >
-                        <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
-                        <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
-                        <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
-                    </TouchableOpacity>
+                    <View key={act.id} style={styles.activityWrapper}>
+                        <TouchableOpacity
+                            style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
+                            onPress={() => handleSelect(act)}
+                        >
+                            <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
+                            <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
+                            <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
+                        </TouchableOpacity>
+
+                        {user?.role === 'Admin' && (
+                            <TouchableOpacity
+                                style={styles.adminEditBtn}
+                                onPress={() => navigation.navigate('QuestionManagement', {
+                                    activityId: act.id,
+                                    activityType: act.type,
+                                    categoryName: params.categoryName
+                                })}
+                            >
+                                <Ionicons name="settings-outline" size={14} color="#2563eb" />
+                                <Text style={styles.adminEditBtnText}>Edit Questions</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 ))}
             </View>
         </View>
@@ -84,8 +99,9 @@ const styles = StyleSheet.create({
     pillText: { fontSize: 10, fontWeight: 'bold', color: '#64748b' },
     title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b', marginBottom: 40 },
     tabContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+    activityWrapper: { width: '48%', alignItems: 'center' },
     tab: {
-        width: '48%',
+        width: '100%',
         height: 160,
         borderRadius: 24,
         padding: 20,
@@ -96,6 +112,23 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 10
+    },
+    adminEditBtn: {
+        marginTop: 15,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#eff6ff',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#bfdbfe'
+    },
+    adminEditBtnText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#2563eb',
+        marginLeft: 6
     },
     tabMinor: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#e2e8f0' },
     tabMajor: { backgroundColor: '#1e293b' },

@@ -31,9 +31,17 @@ module.exports = (sequelize) => {
             type: DataTypes.ENUM('OK', 'DEFICIENCY', 'NA'),
             allowNull: false
         },
-        reason: {
+        reasons: {
+            type: DataTypes.JSON,
+            allowNull: true
+        },
+        remarks: {
             type: DataTypes.TEXT,
             allowNull: true
+        },
+        question_text_snapshot: {
+            type: DataTypes.TEXT,
+            allowNull: true // Allow null for legacy but logic will populate it
         },
         photo_url: {
             type: DataTypes.STRING,

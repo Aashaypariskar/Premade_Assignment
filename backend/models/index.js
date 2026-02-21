@@ -76,7 +76,10 @@ const Question = sequelize.define('Question', {
 const Reason = require('./Reason')(sequelize, DataTypes);
 
 const InspectionAnswer = sequelize.define('InspectionAnswer', {
-    status: { type: DataTypes.ENUM('OK', 'DEFICIENCY', 'NA'), allowNull: false },
+    status: {
+        type: DataTypes.ENUM('OK', 'DEFICIENCY', 'NA'),
+        allowNull: false
+    },
     answer_type: { type: DataTypes.ENUM('BOOLEAN', 'VALUE'), defaultValue: 'BOOLEAN' },
     observed_value: { type: DataTypes.TEXT },
     reasons: { type: DataTypes.JSON },

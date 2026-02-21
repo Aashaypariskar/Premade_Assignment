@@ -9,6 +9,7 @@ const {
     sequelize
 } = require('../models');
 const { Op } = require('sequelize');
+const { calculateCompliance } = require('../utils/compliance');
 
 
 
@@ -116,45 +117,76 @@ exports.getQuestions = async (req, res) => {
 
 // POST /api/commissionary/save
 exports.saveAnswers = async (req, res) => {
-    const transaction = await sequelize.transaction();
+    console.log(`[DEBUG] saveAnswers ENTERED - Question: ${req.body.question_id}, File: ${!!req.file}`);
     try {
-        const { session_id, compartment_id, subcategory_id, activity_type, answers } = req.body;
-
-        if (!session_id || !compartment_id || !subcategory_id || !activity_type || !answers) {
-            return res.status(400).json({ error: 'Missing submission data' });
-        }
-
-        // Verify session is DRAFT
-        const session = await CommissionarySession.findByPk(session_id);
-        if (!session || session.status !== 'DRAFT') {
-            return res.status(403).json({ error: 'Session is locked or not found' });
-        }
-
-        // Remove existing answers for this specific block to allow overwrite/update
-        await CommissionaryAnswer.destroy({
-            where: { session_id, compartment_id, subcategory_id, activity_type },
-            transaction
-        });
-
-        const records = answers.map(ans => ({
+        const {
             session_id,
             compartment_id,
             subcategory_id,
             activity_type,
-            question_id: ans.question_id,
-            status: ans.status,
-            reason: ans.remarks || ans.reason, // Map for compatibility
-            photo_url: ans.photo_url
-        }));
+            question_id,
+            status,
+            remarks
+        } = req.body;
 
-        await CommissionaryAnswer.bulkCreate(records, { transaction });
-        await transaction.commit();
+        if (!session_id || !question_id) {
+            console.warn('[DEBUG] saveAnswers - Missing fields:', { session_id, question_id });
+            return res.status(400).json({ message: "Missing required session_id or question_id" });
+        }
 
-        res.json({ success: true });
-    } catch (err) {
-        await transaction.rollback();
-        console.error('Save error:', err);
-        res.status(500).json({ error: 'Failed to save answers' });
+        let parsedReasons = [];
+        if (req.body.reasons) {
+            try {
+                parsedReasons = typeof req.body.reasons === 'string'
+                    ? JSON.parse(req.body.reasons)
+                    : req.body.reasons;
+            } catch (pErr) {
+                console.error('[DEBUG] Reasons parse fail:', pErr);
+                parsedReasons = [];
+            }
+        }
+
+        let photo_url = null;
+        if (req.file) {
+            photo_url = `/public/uploads/${req.file.filename}`;
+            console.log('[DEBUG] Image saved at:', photo_url);
+        } else if (req.body.photo_url) {
+            photo_url = req.body.photo_url;
+        }
+
+        // Fetch question text for snapshot (required by schema)
+        const qData = await Question.findByPk(question_id);
+
+        const [ansRecord, created] = await CommissionaryAnswer.findOrCreate({
+            where: { session_id, question_id, compartment_id, subcategory_id, activity_type },
+            defaults: {
+                status: status || 'OK',
+                reasons: parsedReasons,
+                remarks: remarks || '',
+                photo_url,
+                question_text_snapshot: qData?.text || 'Standard Question'
+            }
+        });
+
+        if (!created) {
+            await ansRecord.update({
+                status: status || 'OK',
+                reasons: parsedReasons,
+                remarks: remarks || '',
+                photo_url: photo_url || ansRecord.photo_url,
+                question_text_snapshot: qData?.text || ansRecord.question_text_snapshot
+            });
+        }
+
+        console.log(`[DEBUG] saveAnswers SUCCESS - ID: ${question_id}`);
+        return res.status(200).json({ success: true });
+
+    } catch (error) {
+        console.error("Commissionary Save Error (FATAL):", error);
+        // Ensure we ALWAYS return a response even on fatal crash
+        if (!res.headersSent) {
+            return res.status(500).json({ message: "Internal Server Error", error: error.message });
+        }
     }
 };
 
@@ -172,47 +204,63 @@ exports.getProgress = async (req, res) => {
             where: { coach_id: coach.id, inspection_date: today }
         });
 
+        const subcategories = await AmenitySubcategory.findAll({ where: { category_id: 6 } });
+        const totalBlocks = subcategories.length * 2;
+
         if (!session) {
             return res.json({
+                session_id: null,
                 completed_count: 0,
-                total_expected: 112, // 7 areas * 8 comps * 2 (Major/Minor)
-                fully_complete: false,
-                overall_compliance: 0,
-                status: 'NOT_STARTED'
+                total_expected: totalBlocks,
+                progress_percentage: 0,
+                status: 'NOT_STARTED',
+                perAreaStatus: subcategories.map(s => ({
+                    subcategory_id: s.id,
+                    hasMajor: false,
+                    hasMinor: false
+                }))
             });
         }
 
-        const answers = await CommissionaryAnswer.findAll({
+        // Fetch completed blocks via Group By
+        const completedBlocks = await CommissionaryAnswer.findAll({
             where: { session_id: session.id },
-            attributes: ['compartment_id', 'subcategory_id', 'activity_type']
+            attributes: ['subcategory_id', 'activity_type'],
+            group: ['subcategory_id', 'activity_type']
         });
 
-        // We assume 7 subcategories (Areas) and 8 compartments based on strict requirements
-        const subcategories = await AmenitySubcategory.findAll({
-            where: { category_id: 6 } // 'Amenity' category
+        const perAreaMap = {};
+        subcategories.forEach(s => {
+            perAreaMap[s.id] = { subcategory_id: s.id, hasMajor: false, hasMinor: false };
         });
 
-        const subIds = subcategories.map(s => s.id);
-        const compartments = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
-        const activities = ['Major', 'Minor'];
+        completedBlocks.forEach(block => {
+            if (perAreaMap[block.subcategory_id]) {
+                if (block.activity_type === 'Major') perAreaMap[block.subcategory_id].hasMajor = true;
+                if (block.activity_type === 'Minor') perAreaMap[block.subcategory_id].hasMinor = true;
+            }
+        });
 
-        const completedSet = new Set(
-            answers.map(a => `${a.subcategory_id}-${a.compartment_id}-${a.activity_type}`)
-        );
+        const completedCount = completedBlocks.length;
+        const progressPercentage = Math.round((completedCount / totalBlocks) * 100) || 0;
 
-        completedCount = completedSet.size;
+        const allAnswers = await CommissionaryAnswer.findAll({ where: { session_id: session.id } });
+        const overallCompliance = calculateCompliance(allAnswers);
 
-        res.json({
+        return res.json({
             session_id: session.id,
             completed_count: completedCount,
-            total_expected: totalExpected,
-            fully_complete: completedCount >= totalExpected,
-            overall_compliance: totalExpected > 0 ? (completedCount / totalExpected) : 1,
-            status: session.status
+            total_expected: totalBlocks,
+            progress_percentage: progressPercentage,
+            overall_compliance: overallCompliance,
+            status: session.status,
+            perAreaStatus: Object.values(perAreaMap),
+            fully_complete: completedCount >= totalBlocks
         });
+
     } catch (err) {
         console.error('Progress Error:', err);
-        res.status(500).json({ error: 'Failed to fetch progress' });
+        return res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -293,37 +341,30 @@ exports.getCombinedReport = async (req, res) => {
 
             matrixData[subId].questions[qId].cells[compId][ans.activity_type] = {
                 status: ans.status,
-                remark: ans.reason, // Using reason column for remark snapshot
+                remark: ans.remarks || ans.reason, // Use remarks with compatibility fallback
                 hasPhoto: !!ans.photo_url
             };
         });
 
-        // Calculate Compliance
+        // Use central utility for stats
+        const overallCompliance = calculateCompliance(answers);
+
+        // Group-wise stats
         const stats = {
-            overall: { yes: 0, total: 0 },
+            overall: overallCompliance,
             subcategories: {},
             compartments: {}
         };
 
-        const compartments = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
-        compartments.forEach(c => stats.compartments[c] = { yes: 0, total: 0 });
+        const compartmentsList = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
+        compartmentsList.forEach(c => {
+            const compRecords = answers.filter(a => a.compartment_id === c);
+            stats.compartments[c] = calculateCompliance(compRecords);
+        });
 
-        answers.forEach(ans => {
-            if (ans.status === 'OK' || ans.status === 'DEFICIENCY') {
-                const isOk = ans.status === 'OK' ? 1 : 0;
-
-                stats.overall.yes += isOk;
-                stats.overall.total += 1;
-
-                if (!stats.subcategories[ans.subcategory_id]) stats.subcategories[ans.subcategory_id] = { yes: 0, total: 0 };
-                stats.subcategories[ans.subcategory_id].yes += isOk;
-                stats.subcategories[ans.subcategory_id].total += 1;
-
-                if (stats.compartments[ans.compartment_id]) {
-                    stats.compartments[ans.compartment_id].yes += isOk;
-                    stats.compartments[ans.compartment_id].total += 1;
-                }
-            }
+        Object.keys(matrixData).forEach(subId => {
+            const subRecords = answers.filter(a => a.subcategory_id == subId);
+            stats.subcategories[subId] = calculateCompliance(subRecords);
         });
 
         res.json({
@@ -331,7 +372,7 @@ exports.getCombinedReport = async (req, res) => {
             date: session.inspection_date,
             matrix: matrixData,
             stats,
-            compartments
+            compartments: compartmentsList
         });
     } catch (err) {
         console.error('Combined Report Error:', err);

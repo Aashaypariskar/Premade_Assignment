@@ -1,22 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput } from 'react-native';
-import { getCommissionaryQuestions, saveCommissionaryAnswers } from '../api/api';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
+import { getCommissionaryQuestions, saveCommissionaryAnswers, getCommissionaryProgress } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
+import QuestionCard from '../components/QuestionCard';
+import { useStore } from '../store/StoreContext';
 
 const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status } = route.params;
+    const { user } = useStore();
     const [majorQs, setMajorQs] = useState([]);
     const [minorQs, setMinorQs] = useState([]);
     const [activeTab, setActiveTab] = useState('Major'); // Default to Major
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [guidedBtns, setGuidedBtns] = useState(null); // 'TO_MAJOR', 'TO_MINOR', 'TO_NEXT'
+    const [isMajorDone, setIsMajorDone] = useState(false);
+    const [isMinorDone, setIsMinorDone] = useState(false);
+
+    const isLocked = status === 'COMPLETED';
 
     // answers: { questionId: { answer, reason, photo_url } }
     const [answers, setAnswers] = useState({});
 
     useEffect(() => {
         loadQuestions();
+        refreshProgress();
     }, []);
+
+    const refreshProgress = async () => {
+        try {
+            const prog = await getCommissionaryProgress(coachNumber);
+            if (prog?.perAreaStatus) {
+                const area = prog.perAreaStatus.find(a => a.subcategory_id === subcategoryId);
+                if (area) {
+                    setIsMajorDone(area.hasMajor);
+                    setIsMinorDone(area.hasMinor);
+                }
+            }
+        } catch (err) {
+            console.log('Progress Refresh Error:', err);
+        }
+    };
 
     const loadQuestions = async () => {
         try {
@@ -36,17 +60,10 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
         }
     };
 
-    const handleAnswer = (qId, val) => {
+    const handleAnswerUpdate = (qId, data) => {
         setAnswers(prev => ({
             ...prev,
-            [qId]: { ...prev[qId], status: val }
-        }));
-    };
-
-    const handleRemark = (qId, text) => {
-        setAnswers(prev => ({
-            ...prev,
-            [qId]: { ...prev[qId], reason: text }
+            [qId]: data
         }));
     };
 
@@ -55,8 +72,19 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
         for (const q of currentQs) {
             const ans = answers[q.id];
             if (!ans || !ans.status) return { valid: false, msg: `Status is required for "${q.text}".` };
-            if (ans.status === 'DEFICIENCY' && (!ans.reason || !ans.reason.trim())) {
-                return { valid: false, msg: `Remark is required for "DEFICIENCY" on "${q.text}".` };
+
+            if (ans.status === 'DEFICIENCY') {
+                const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
+                const hasRemarks = ans.remarks && ans.remarks.trim().length > 0;
+                const hasPhoto = !!ans.image_path;
+
+                if (!hasReasons || !hasRemarks || !hasPhoto) {
+                    let missing = [];
+                    if (!hasReasons) missing.push('Reasons');
+                    if (!hasRemarks) missing.push('Remarks');
+                    if (!hasPhoto) missing.push('Photo');
+                    return { valid: false, msg: `"${q.text}" requires: ${missing.join(', ')} for DEFICIENCY.` };
+                }
             }
         }
         return { valid: true };
@@ -71,95 +99,112 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
         setSaving(true);
         try {
+            let count = 0;
             const currentQs = activeTab === 'Major' ? majorQs : minorQs;
-            const payload = {
-                session_id: sessionId,
-                compartment_id: compartmentId,
-                subcategory_id: subcategoryId,
-                activity_type: activeTab,
-                answers: currentQs.map(q => ({
-                    question_id: q.id,
-                    status: answers[q.id].status,
-                    reason: answers[q.id].reason || '',
-                    photo_url: answers[q.id].photo_url || ''
-                }))
-            };
+            const answeredQs = currentQs.filter(q => answers[q.id]?.status);
 
-            await saveCommissionaryAnswers(payload);
+            for (const q of answeredQs) {
+                count++;
+                const ans = answers[q.id];
+                console.log(`Saving question ${count}/${answeredQs.length} (ID: ${q.id})`);
 
-            if (activeTab === 'Major' && minorQs.length > 0) {
-                Alert.alert('Saved', 'Major questions saved. Now proceeding to Minor.', [
-                    { text: 'Continue', onPress: () => setActiveTab('Minor') }
-                ]);
-            } else {
-                Alert.alert('Success', 'All questions for this activity saved!', [
-                    { text: 'OK', onPress: () => navigation.navigate('CompartmentSelection', { ...route.params }) }
-                ]);
+                const payload = {
+                    session_id: sessionId.toString(),
+                    compartment_id: compartmentId,
+                    subcategory_id: subcategoryId.toString(),
+                    activity_type: activeTab,
+                    question_id: q.id.toString(),
+                    status: ans.status,
+                    reasons: ans.reasons || [],
+                    remarks: ans.remarks || ''
+                };
+
+                try {
+                    if (ans.image_path && typeof ans.image_path === 'string') {
+                        // Use FormData for photo uploads
+                        const formData = new FormData();
+                        Object.keys(payload).forEach(key => {
+                            if (key === 'reasons') {
+                                formData.append(key, JSON.stringify(payload[key]));
+                            } else {
+                                formData.append(key, payload[key]);
+                            }
+                        });
+
+                        let cleanUri = ans.image_path;
+                        if (!cleanUri.startsWith('file://')) {
+                            cleanUri = `file://${cleanUri}`;
+                        }
+
+                        const filename = cleanUri.split('/').pop() || `photo_${Date.now()}.jpg`;
+                        const type = 'image/jpeg';
+
+                        formData.append('photo', {
+                            uri: cleanUri,
+                            name: filename,
+                            type
+                        });
+
+                        // Check if photo exists in formData _parts before sending
+                        const hasPhoto = formData._parts && formData._parts.some(p => p[0] === 'photo');
+
+                        if (hasPhoto) {
+                            await saveCommissionaryAnswers(formData);
+                        } else {
+                            await saveCommissionaryAnswers(payload);
+                        }
+                    } else {
+                        await saveCommissionaryAnswers(payload);
+                    }
+                } catch (saveErr) {
+                    console.error(`Error saving Q ${q.id}:`, saveErr.message);
+                }
             }
+
+            await refreshProgress();
+
+            if (activeTab === 'Major') setIsMajorDone(true);
+            if (activeTab === 'Minor') setIsMinorDone(true);
+
+            // Guided Flow Logic
+            const hasMajor = majorQs.length > 0;
+            const hasMinor = minorQs.length > 0;
+
+            // Check what else is needed for this subcategory
+            // We'll rely on our currentTab knowledge
+            if (activeTab === 'Minor' && hasMajor) {
+                setGuidedBtns('TO_MAJOR');
+            } else if (activeTab === 'Major' && hasMinor) {
+                setGuidedBtns('TO_MINOR');
+            } else {
+                setGuidedBtns('TO_NEXT');
+            }
+
+            Alert.alert('Success', 'Answers saved successfully.');
         } catch (err) {
-            Alert.alert('Error', 'Failed to save answers');
+            console.error('Save Error:', err);
+            Alert.alert('Error', 'Failed to save answers. Please check network.');
         } finally {
             setSaving(false);
         }
     };
 
-    const renderQuestion = (q) => {
-        const ans = answers[q.id] || {};
-        const isLocked = status === 'COMPLETED';
-
-        return (
-            <View key={q.id} style={styles.qCard}>
-                <Text style={styles.qText}>{q.text}</Text>
-                <View style={styles.btnRow}>
-                    <TouchableOpacity
-                        style={[styles.ansBtn, ans.status === 'OK' && styles.ansBtnOk]}
-                        onPress={() => !isLocked && handleAnswer(q.id, 'OK')}
-                        disabled={isLocked}
-                    >
-                        <Text style={[styles.ansBtnText, ans.status === 'OK' && styles.ansBtnTextActive]}>OK</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.ansBtn, ans.status === 'DEFICIENCY' && styles.ansBtnDeficiency]}
-                        onPress={() => !isLocked && handleAnswer(q.id, 'DEFICIENCY')}
-                        disabled={isLocked}
-                    >
-                        <Text style={[styles.ansBtnText, ans.status === 'DEFICIENCY' && styles.ansBtnTextActive]}>DEFICIENCY</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.ansBtn, ans.status === 'NA' && styles.ansBtnNa]}
-                        onPress={() => !isLocked && handleAnswer(q.id, 'NA')}
-                        disabled={isLocked}
-                    >
-                        <Text style={[styles.ansBtnText, ans.status === 'NA' && styles.ansBtnTextActive]}>NA</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {ans.status === 'DEFICIENCY' && (
-                    <View style={styles.remarkBox}>
-                        <TextInput
-                            style={styles.remarkInput}
-                            placeholder="Enter specific remark..."
-                            value={ans.reason}
-                            onChangeText={(text) => handleRemark(q.id, text)}
-                            multiline
-                            editable={!isLocked}
-                        />
-                        <TouchableOpacity style={[styles.photoBtn, isLocked && { opacity: 0.5 }]} disabled={isLocked}>
-                            <Ionicons name="camera" size={20} color="#64748b" />
-                            <Text style={styles.photoBtnText}>Add Photo</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </View>
-        );
-    };
+    const renderQuestion = (q) => (
+        <QuestionCard
+            key={q.id}
+            question={q}
+            answerData={answers[q.id]}
+            onUpdate={(data) => handleAnswerUpdate(q.id, data)}
+            readOnly={isLocked}
+        />
+    );
 
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('CategoryDashboard')}>
+                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
                     <Ionicons name="home-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <Text style={styles.headerSub}>{subcategoryName} ({compartmentId})</Text>
@@ -171,33 +216,77 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                     style={[styles.tab, activeTab === 'Major' && styles.activeTab]}
                     onPress={() => setActiveTab('Major')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'Major' && styles.activeTabText]}>MAJOR</Text>
+                    <Text style={[styles.tabText, activeTab === 'Major' && styles.activeTabText]}>
+                        MAJOR {isMajorDone && '✓'}
+                    </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'Minor' && styles.activeTab]}
                     onPress={() => setActiveTab('Minor')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'Minor' && styles.activeTabText]}>MINOR</Text>
+                    <Text style={[styles.tabText, activeTab === 'Minor' && styles.activeTabText]}>
+                        MINOR {isMinorDone && '✓'}
+                    </Text>
                 </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll}>
                 {(activeTab === 'Major' ? majorQs : minorQs).map(renderQuestion)}
+
+                {guidedBtns && (
+                    <View style={styles.guidedBox}>
+                        {guidedBtns === 'TO_MAJOR' && (
+                            <TouchableOpacity style={styles.guideBtn} onPress={() => { setActiveTab('Major'); setGuidedBtns(null); }}>
+                                <Text style={styles.guideBtnText}>Continue to Major</Text>
+                                <Ionicons name="arrow-forward" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        )}
+                        {guidedBtns === 'TO_MINOR' && (
+                            <TouchableOpacity style={styles.guideBtn} onPress={() => { setActiveTab('Minor'); setGuidedBtns(null); }}>
+                                <Text style={styles.guideBtnText}>Continue to Minor</Text>
+                                <Ionicons name="arrow-forward" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        )}
+                        {guidedBtns === 'TO_NEXT' && (
+                            <TouchableOpacity style={[styles.guideBtn, { backgroundColor: '#10b981' }]} onPress={() => navigation.goBack()}>
+                                <Text style={styles.guideBtnText}>Go to Next Area</Text>
+                                <Ionicons name="apps-outline" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
+
                 <TouchableOpacity
-                    style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+                    style={[styles.saveBtn, isLocked && { backgroundColor: '#f1f5f9' }, saving && { opacity: 0.7 }]}
                     onPress={handleSave}
-                    disabled={saving || status === 'COMPLETED'}
+                    disabled={saving || isLocked}
                 >
                     {saving ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={[styles.saveBtnText, (saving || status === 'COMPLETED') && { color: '#94a3b8' }]}>
-                            {status === 'COMPLETED' ? 'Inspection Locked' : 'Save & Sync'}
+                        <Text style={[styles.saveBtnText, isLocked && { color: '#94a3b8' }]}>
+                            {isLocked ? 'Inspection Completed (Read-Only)' : 'Save & Sync'}
                         </Text>
                     )}
                 </TouchableOpacity>
             </ScrollView>
-        </View>
+
+            {
+                user?.role === 'Admin' && (
+                    <TouchableOpacity
+                        style={styles.adminEditFab}
+                        onPress={() => navigation.navigate('QuestionManagement', {
+                            activityId: activeTab === 'Major' ? majorQs[0]?.activity_id : minorQs[0]?.activity_id,
+                            activityType: activeTab,
+                            categoryName: 'Coach Commissionary'
+                        })}
+                    >
+                        <Ionicons name="settings" size={20} color="#fff" />
+                        <Text style={styles.fabText}>Edit Questions</Text>
+                    </TouchableOpacity>
+                )
+            }
+        </View >
     );
 };
 
@@ -211,22 +300,57 @@ const styles = StyleSheet.create({
     tabText: { fontSize: 14, fontWeight: 'bold', color: '#64748b' },
     activeTabText: { color: '#fff' },
     scroll: { padding: 20, paddingBottom: 60 },
-    qCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, elevation: 2 },
-    qText: { fontSize: 16, color: '#1e293b', fontWeight: '500', marginBottom: 15 },
-    btnRow: { flexDirection: 'row', gap: 10 },
-    ansBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', justifyContent: 'center', alignItems: 'center' },
-    ansBtnOk: { backgroundColor: '#10b981', borderColor: '#10b981' },
-    ansBtnDeficiency: { backgroundColor: '#ef4444', borderColor: '#ef4444' },
-    ansBtnNa: { backgroundColor: '#64748b', borderColor: '#64748b' },
-    ansBtnText: { fontWeight: 'bold', color: '#64748b', fontSize: 10 },
-    ansBtnTextActive: { color: '#fff' },
-    remarkBox: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-    remarkInput: { backgroundColor: '#f8fafc', borderRadius: 8, padding: 12, fontSize: 13, minHeight: 60, textAlignVertical: 'top' },
-    photoBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
-    photoBtnText: { marginLeft: 6, fontSize: 12, color: '#64748b', fontWeight: 'bold' },
-    saveBtn: { backgroundColor: '#2563eb', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 20, elevation: 4 },
-    saveBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    saveBtn: {
+        backgroundColor: '#2563eb',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        marginTop: 20,
+        elevation: 4
+    },
+    saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+
+    guidedBox: {
+        marginTop: 10,
+        marginBottom: 20,
+        padding: 15,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        borderLeftWidth: 5,
+        borderLeftColor: '#2563eb',
+        elevation: 2
+    },
+    guideBtn: {
+        backgroundColor: '#2563eb',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: 12,
+        gap: 10
+    },
+    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+
+    adminEditFab: {
+        position: 'absolute',
+        bottom: 90,
+        right: 20,
+        backgroundColor: '#2563eb',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 25,
+        elevation: 10
+    },
+    fabText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 12,
+        marginLeft: 8
+    }
 });
 
 export default CommissionaryQuestionsScreen;

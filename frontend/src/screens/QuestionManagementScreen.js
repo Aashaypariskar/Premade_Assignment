@@ -14,6 +14,9 @@ const QuestionManagementScreen = ({ route, navigation }) => {
     const [modalVisible, setModalVisible] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState(null); // null = adding new
     const [questionText, setQuestionText] = useState('');
+    const [answerType, setAnswerType] = useState('BOOLEAN');
+    const [unit, setUnit] = useState('');
+    const [specifiedValue, setSpecifiedValue] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
     // Reason Management State (inside modal)
@@ -42,7 +45,9 @@ const QuestionManagementScreen = ({ route, navigation }) => {
         try {
             setLoadingReasons(true);
             const data = await getReasonsByQuestion(questionId);
-            setQuestionReasons(data);
+            // Handle both array response and { reasons: [] } object response
+            const reasons = data?.reasons || data || [];
+            setQuestionReasons(Array.isArray(reasons) ? reasons : []);
         } catch (err) {
             console.error(err);
             Alert.alert('Error', 'Failed to fetch reasons');
@@ -54,6 +59,9 @@ const QuestionManagementScreen = ({ route, navigation }) => {
     const openAddModal = () => {
         setEditingQuestion(null);
         setQuestionText('');
+        setAnswerType('BOOLEAN');
+        setUnit('');
+        setSpecifiedValue('');
         setQuestionReasons([]);
         setModalVisible(true);
     };
@@ -61,6 +69,9 @@ const QuestionManagementScreen = ({ route, navigation }) => {
     const openEditModal = (question) => {
         setEditingQuestion(question);
         setQuestionText(question.text);
+        setAnswerType(question.answer_type || 'BOOLEAN');
+        setUnit(question.unit || '');
+        setSpecifiedValue(question.specified_value || '');
         setQuestionReasons([]); // Clear prev
         setModalVisible(true);
         fetchReasons(question.id);
@@ -74,9 +85,16 @@ const QuestionManagementScreen = ({ route, navigation }) => {
 
         setSubmitting(true);
         try {
+            const payload = {
+                text: questionText.trim(),
+                answer_type: answerType,
+                unit: answerType === 'VALUE' ? unit.trim() : null,
+                specified_value: specifiedValue.trim() || null
+            };
+
             if (editingQuestion) {
                 // Update
-                const response = await updateQuestion(editingQuestion.id, { text: questionText.trim() });
+                const response = await updateQuestion(editingQuestion.id, payload);
                 const updated = response.question;
                 // Update local list
                 setQuestions(prev => prev.map(q => q.id === updated.id ? updated : q));
@@ -84,14 +102,11 @@ const QuestionManagementScreen = ({ route, navigation }) => {
             } else {
                 // Create
                 const response = await createQuestion({
+                    ...payload,
                     activity_id: activityId,
-                    text: questionText.trim()
                 });
                 const created = response.question;
                 setQuestions(prev => [...prev, created]);
-                // Automatically switch to edit mode to allow adding reasons?
-                // For simplicity, just close logic or ask user.
-                // Let's close for now, user can click edit to add reasons.
                 Alert.alert('Success', 'Question created. You can now edit it to add reasons.');
                 setModalVisible(false); // Close on create
             }
@@ -245,8 +260,44 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                                 onPress={handleSaveQuestion}
                                 disabled={submitting}
                             >
-                                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{editingQuestion ? 'Update Text' : 'Save Question'}</Text>}
+                                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{editingQuestion ? 'Update' : 'Save Question'}</Text>}
                             </TouchableOpacity>
+
+                            <Text style={styles.label}>Answer Type:</Text>
+                            <View style={styles.tabRow}>
+                                <TouchableOpacity
+                                    style={[styles.tab, answerType === 'BOOLEAN' && styles.activeTab]}
+                                    onPress={() => setAnswerType('BOOLEAN')}
+                                >
+                                    <Text style={[styles.tabText, answerType === 'BOOLEAN' && styles.activeTabText]}>Toggle (OK/DEF)</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.tab, answerType === 'VALUE' && styles.activeTab]}
+                                    onPress={() => setAnswerType('VALUE')}
+                                >
+                                    <Text style={[styles.tabText, answerType === 'VALUE' && styles.activeTabText]}>Value Input</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {answerType === 'VALUE' && (
+                                <View>
+                                    <Text style={styles.label}>Measurement Unit:</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={unit}
+                                        onChangeText={setUnit}
+                                        placeholder="e.g. mm, Volts, Amps"
+                                    />
+                                </View>
+                            )}
+
+                            <Text style={styles.label}>Specified Value (Optional Reference):</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={specifiedValue}
+                                onChangeText={setSpecifiedValue}
+                                placeholder="e.g. 5.5mm or 230V"
+                            />
 
                             {/* Reasons Section - Only visible when editing existing question */}
                             {editingQuestion && (
@@ -341,7 +392,13 @@ const styles = StyleSheet.create({
     addReasonContainer: { flexDirection: 'row', marginTop: 16, gap: 10 },
     reasonInput: { flex: 1, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14 },
     addReasonBtn: { backgroundColor: '#10b981', paddingHorizontal: 16, justifyContent: 'center', borderRadius: 8 },
-    addReasonBtnText: { color: '#fff', fontWeight: 'bold' }
+    addReasonBtnText: { color: '#fff', fontWeight: 'bold' },
+    tabRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 15 },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+    activeTab: { backgroundColor: '#2563eb' },
+    tabText: { fontSize: 13, fontWeight: '700', color: '#64748b' },
+    activeTabText: { color: '#fff' },
+    input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 15 }
 });
 
 export default QuestionManagementScreen;

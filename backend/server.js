@@ -10,12 +10,28 @@ const reasonRoutes = require('./routes/ReasonRoutes');
 const app = express();
 const PORT = 3000;
 
+// Log every request to see if things are working
+app.use((req, res, next) => {
+    const start = Date.now();
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url} - INCOMING`);
+    // console.log(' - Headers:', JSON.stringify(req.headers));
+
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+    });
+
+    next();
+});
+
 app.use(cors());
 app.use(express.json());
 
-// Log every request to see if things are working
+// Log body after parsing for JSON requests
 app.use((req, res, next) => {
-    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+    if (['POST', 'PUT'].includes(req.method) && !req.header('content-type')?.includes('multipart')) {
+        console.log(' - Parsed Body:', JSON.stringify(req.body));
+    }
     next();
 });
 
@@ -71,5 +87,12 @@ sequelize.authenticate()
 
 // Handle unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error('FATAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    console.error('FATAL: Uncaught Exception:', err);
+    // Give time for log to print
+    setTimeout(() => process.exit(1), 500);
 });

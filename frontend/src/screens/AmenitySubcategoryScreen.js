@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, 
 import { getAmenitySubcategories, getCommissionaryProgress, completeCommissionarySession } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 const AmenitySubcategoryScreen = ({ route, navigation }) => {
     const params = route.params;
@@ -12,9 +14,11 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
     const [submitting, setSubmitting] = useState(false);
     const { setDraft } = useStore();
 
-    useEffect(() => {
-        loadSubcategories();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            loadSubcategories();
+        }, [])
+    );
 
     const loadSubcategories = async () => {
         try {
@@ -104,17 +108,36 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                 data={subcategories}
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={styles.subCard}
-                        onPress={() => handleSelect(item)}
-                    >
-                        <View style={styles.iconBox}>
-                            <Ionicons name="apps-outline" size={24} color="#2563eb" />
-                        </View>
-                        <Text style={styles.subName}>{item.name}</Text>
-                    </TouchableOpacity>
-                )}
+                renderItem={({ item }) => {
+                    const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
+                    const hasMajor = status?.hasMajor || false;
+                    const hasMinor = status?.hasMinor || false;
+
+                    let badgeText = "Pending";
+                    let badgeColor = "#94a3b8"; // grey
+                    if (hasMajor && hasMinor) {
+                        badgeText = "Completed";
+                        badgeColor = "#10b981"; // green
+                    } else if (hasMajor || hasMinor) {
+                        badgeText = "Partial";
+                        badgeColor = "#f59e0b"; // yellow
+                    }
+
+                    return (
+                        <TouchableOpacity
+                            style={styles.subCard}
+                            onPress={() => handleSelect(item)}
+                        >
+                            <View style={[styles.badge, { backgroundColor: badgeColor }]}>
+                                <Text style={styles.badgeText}>{badgeText}</Text>
+                            </View>
+                            <View style={styles.iconBox}>
+                                <Ionicons name="apps-outline" size={24} color="#2563eb" />
+                            </View>
+                            <Text style={styles.subName}>{item.name}</Text>
+                        </TouchableOpacity>
+                    );
+                }}
                 contentContainerStyle={styles.list}
                 ListFooterComponent={() => (
                     params.categoryName === 'Coach Commissionary' && progress ? (
@@ -125,7 +148,7 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                                     <View style={[styles.progressFill, { width: `${progress.overall_compliance * 100}%` }]} />
                                 </View>
                                 <Text style={styles.progressText}>
-                                    {progress.completed_count} / {progress.total_expected} Activities Finished
+                                    {progress.completed_count} / {progress.total_expected} Activity Blocks Completed
                                 </Text>
                             </View>
 
@@ -190,6 +213,8 @@ const styles = StyleSheet.create({
     progressText: { fontSize: 12, color: '#64748b' },
     submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#10b981', padding: 18, borderRadius: 16, elevation: 4 },
     submitBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
+    badge: { position: 'absolute', top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' }
 });
 
 export default AmenitySubcategoryScreen;

@@ -5,7 +5,7 @@ const BASE_URL = 'http://192.168.1.11:3000/api';
 
 const api = axios.create({
     baseURL: BASE_URL,
-    timeout: 5000,
+    timeout: 30000,
 });
 
 // Inject JWT Token into requests
@@ -14,20 +14,39 @@ api.interceptors.request.use(async (config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // DEBUG: Log outgoing request details
+    console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    if (config.data instanceof FormData) {
+        console.log(' - Body: FormData');
+    } else if (config.data) {
+        console.log(' - Body Keys:', Object.keys(config.data));
+    }
+
     return config;
 }, (error) => {
+    console.error('[API REQUEST ERROR]', error);
     return Promise.reject(error);
 });
 
-// Response Interceptor for handling 401 globally
+// Response Interceptor for handling errors globally
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
+        const errorDetails = {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            url: error.config?.url,
+            method: error.config?.method?.toUpperCase()
+        };
+
+        console.error('[API ERROR DETAILS]', JSON.stringify(errorDetails, null, 2));
+
         if (error.response?.status === 401) {
             console.warn('Session expired or unauthorized. Logging out...');
             await SecureStore.deleteItemAsync('user_token');
             await SecureStore.deleteItemAsync('user_data');
-            // Root cause of 401 is usually expired session
         }
         return Promise.reject(error);
     }
@@ -73,8 +92,29 @@ export const createCommissionaryCoach = (data) => api.post('/commissionary-coach
 export const getCommissionaryQuestions = (subId, actType) =>
     api.get('/commissionary/questions', { params: { subcategory_id: subId, activity_type: actType } }).then(r => r.data);
 
-export const saveCommissionaryAnswers = (payload) =>
-    api.post('/commissionary/save', payload).then(r => r.data);
+export const saveCommissionaryAnswers = async (data) => {
+    try {
+        const isFormData = data instanceof FormData;
+
+        const response = await api.post(
+            '/commissionary/save',
+            data,
+            isFormData
+                ? {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                    transformRequest: (formData) => formData,
+                }
+                : {}
+        );
+
+        return response.data;
+    } catch (error) {
+        console.log("SAVE API ERROR:", error.response?.data || error.message);
+        throw error;
+    }
+};
 
 export const getCommissionaryProgress = (coachNumber) =>
     api.get('/commissionary/progress', { params: { coach_number: coachNumber } }).then(r => r.data);

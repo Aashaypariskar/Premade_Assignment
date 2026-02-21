@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 const ReportDetailScreen = ({ route, navigation }) => {
     const { submission_id, train_number, coach_number, date, user_name, user_id } = route.params;
     const [details, setDetails] = useState([]);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
@@ -21,7 +22,8 @@ const ReportDetailScreen = ({ route, navigation }) => {
     const fetchDetails = async () => {
         try {
             const data = await getReportDetails({ submission_id, train_number, coach_number, date, user_id });
-            setDetails(data);
+            setDetails(data.details || []);
+            setStats(data.stats || null);
         } catch (err) {
             Alert.alert('Error', 'Failed to load details');
         } finally {
@@ -145,7 +147,10 @@ const ReportDetailScreen = ({ route, navigation }) => {
                             <td style="text-align: right;"><strong>Date:</strong> ${date}</td>
                         </tr>
                         <tr>
-                            <td colspan="2"><strong>Submission ID:</strong> #${submission_id}</td>
+                            <td><strong>Submission ID:</strong> #${submission_id}</td>
+                            <td style="text-align: right; color: ${stats?.compliance < 80 ? '#ef4444' : '#10b981'}; font-weight: bold; font-size: 16px;">
+                                Compliance Score: ${stats?.compliance || 0}%
+                            </td>
                         </tr>
                     </table>
                     ${sectionsHtml}
@@ -247,6 +252,18 @@ const ReportDetailScreen = ({ route, navigation }) => {
                 <View style={styles.officialHeader}>
                     <Text style={styles.headerOrg}>Indian Railways</Text>
                     <Text style={styles.railwayText}>Inspection Report</Text>
+                    {stats && (
+                        <View style={styles.statsSummary}>
+                            <View style={styles.summaryBox}>
+                                <Text style={styles.summaryLabel}>COMPLIANCE</Text>
+                                <Text style={[styles.summaryValue, { color: stats.compliance < 80 ? '#ef4444' : '#10b981' }]}>{stats.compliance}%</Text>
+                            </View>
+                            <View style={styles.summaryBox}>
+                                <Text style={styles.summaryLabel}>OK / DEF / NA</Text>
+                                <Text style={styles.summaryValue}>{stats.yes_count} / {stats.no_count} / {stats.na_count}</Text>
+                            </View>
+                        </View>
+                    )}
                     <View style={styles.thickDivider} />
                 </View>
 
@@ -328,7 +345,11 @@ const styles = StyleSheet.create({
     cell: { padding: 8, justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#f1f5f9' },
     cellText: { fontSize: 11, color: '#1e293b' },
     cellTextCenter: { fontSize: 11, color: '#1e293b', textAlign: 'center' },
-    cellRemarkText: { fontSize: 10, color: '#64748b' }
+    cellRemarkText: { fontSize: 10, color: '#64748b' },
+    statsSummary: { flexDirection: 'row', gap: 20, marginTop: 15, width: '100%', justifyContent: 'center' },
+    summaryBox: { alignItems: 'center', backgroundColor: '#fff', padding: 8, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', minWidth: 100 },
+    summaryLabel: { fontSize: 9, fontWeight: 'bold', color: '#64748b', marginBottom: 2 },
+    summaryValue: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' }
 });
 
 export default ReportDetailScreen;

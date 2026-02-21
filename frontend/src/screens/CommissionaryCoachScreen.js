@@ -54,6 +54,7 @@ const CommissionaryCoachScreen = ({ navigation }) => {
         try {
             setLoading(true);
             const session = await getCommissionarySession(coach.coach_number);
+            console.log(`[DEBUG] Coach Selected: ${coach.coach_number}, Session ID: ${session.id}, Status: ${session.status}`);
             navigation.navigate('AmenitySubcategory', {
                 sessionId: session.id,
                 coachId: coach.id,

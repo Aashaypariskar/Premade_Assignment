@@ -7,7 +7,7 @@ import { getReasonsByQuestion } from '../api/api';
  * Modern Question Card Component
  * Handles Toggles, Reasons, and Media
  */
-const QuestionCard = ({ question, answerData, onUpdate }) => {
+const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
     const isDeficiency = answerData?.status === 'DEFICIENCY';
     const [reasonsList, setReasonsList] = useState([]);
     const [loadingReasons, setLoadingReasons] = useState(false);
@@ -39,13 +39,15 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
         const current = answerData?.status;
         const next = current === val ? null : val;
 
-        // Clear reasons/photo if switching away from DEFICIENCY
         const newData = { ...answerData, status: next };
-        if (next !== 'DEFICIENCY') {
+
+        // Requirement: When switching away from DEFICIENCY, clear reasons, remarks, and photo
+        if (current === 'DEFICIENCY' && next !== 'DEFICIENCY') {
             newData.reasons = [];
-            // We keep remarks and image for now as per user request to "preselect saved status" in edit mode, 
-            // but requirements say "Clear reason" if switching DEFICIENCY -> OK/NA
+            newData.remarks = '';
+            newData.image_path = null;
         }
+
         onUpdate(newData);
     };
 
@@ -81,22 +83,25 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
             ) : (
                 <View style={styles.toggleRow}>
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.status === 'OK' && styles.btnOk]}
+                        style={[styles.toggleBtn, answerData?.status === 'OK' && styles.btnOk, readOnly && styles.disabledBtn]}
                         onPress={() => setStatus('OK')}
+                        disabled={readOnly}
                     >
                         <Text style={[styles.toggleText, answerData?.status === 'OK' && styles.textActive]}>OK</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.status === 'DEFICIENCY' && styles.btnDeficiency]}
+                        style={[styles.toggleBtn, answerData?.status === 'DEFICIENCY' && styles.btnDeficiency, readOnly && styles.disabledBtn]}
                         onPress={() => setStatus('DEFICIENCY')}
+                        disabled={readOnly}
                     >
                         <Text style={[styles.toggleText, answerData?.status === 'DEFICIENCY' && styles.textActive]}>DEFICIENCY</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.status === 'NA' && styles.btnNa]}
+                        style={[styles.toggleBtn, answerData?.status === 'NA' && styles.btnNa, readOnly && styles.disabledBtn]}
                         onPress={() => setStatus('NA')}
+                        disabled={readOnly}
                     >
                         <Text style={[styles.toggleText, answerData?.status === 'NA' && styles.textActive]}>NA</Text>
                     </TouchableOpacity>
@@ -113,8 +118,9 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
                             reasonsList.map(r => (
                                 <TouchableOpacity
                                     key={r.id}
-                                    style={[styles.chip, answerData?.reasons?.includes(r.text) && styles.chipActive]}
+                                    style={[styles.chip, answerData?.reasons?.includes(r.text) && styles.chipActive, readOnly && styles.disabledBtn]}
                                     onPress={() => toggleReason(r.text)}
+                                    disabled={readOnly}
                                 >
                                     <Text style={[styles.chipText, answerData?.reasons?.includes(r.text) && styles.textActive]}>{r.text}</Text>
                                 </TouchableOpacity>
@@ -128,11 +134,12 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
                     </View>
 
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, readOnly && styles.disabledInput]}
                         placeholder="Additional remarks..."
                         value={answerData?.remarks || ''}
                         onChangeText={(t) => onUpdate({ ...answerData, remarks: t })}
                         multiline
+                        editable={!readOnly}
                     />
 
                     <Text style={styles.label}>Attach Photo (Mandatory):</Text>
@@ -140,6 +147,7 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
                         image={answerData?.image_path}
                         onImagePicked={(uri) => onUpdate({ ...answerData, image_path: uri })}
                         onRemove={() => onUpdate({ ...answerData, image_path: null })}
+                        disabled={readOnly}
                     />
                 </View>
             )}
@@ -149,6 +157,8 @@ const QuestionCard = ({ question, answerData, onUpdate }) => {
 
 const styles = StyleSheet.create({
     card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 15, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+    disabledBtn: { opacity: 0.6 },
+    disabledInput: { backgroundColor: '#f1f5f9', color: '#94a3b8' },
     qText: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 15, lineHeight: 22 },
     toggleRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 10, padding: 4 },
     toggleBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8, marginHorizontal: 2 },

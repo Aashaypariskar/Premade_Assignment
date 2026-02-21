@@ -1,6 +1,14 @@
-const { InspectionAnswer, Train, Coach, User, Activity, Question, Category } = require('../models');
-const { Op } = require('sequelize');
 const sequelize = require('../config/db');
+const { Sequelize, Op } = require('sequelize');
+const {
+    InspectionAnswer,
+    Question,
+    Activity,
+    Category,
+    Coach,
+    CommissionarySession
+} = require('../models');
+const { calculateCompliance } = require('../utils/compliance');
 
 /**
  * Report Controller
@@ -46,7 +54,8 @@ exports.getAllReports = async (req, res) => {
         if (train_no) { sqlWhere += ' AND train_number LIKE :train_no'; replacements.train_no = `%${train_no}%`; }
         if (coach_no) { sqlWhere += ' AND coach_number LIKE :coach_no'; replacements.coach_no = `%${coach_no}%`; }
         if (inspection_type) { sqlWhere += ' AND category_name = :inspection_type'; replacements.inspection_type = inspection_type; }
-        if (activity_type) { sqlWhere += ' AND activity_type = :activity_type'; replacements.activity_type = activity_type; }
+        if (activity_type) { sqlWhere += ' AND severity = :activity_type'; replacements.activity_type = activity_type; }
+        if (status) { sqlWhere += ' AND session_status = :status'; replacements.status = status; }
         if (whereClause.user_id) { sqlWhere += ' AND user_id = :user_id'; replacements.user_id = whereClause.user_id; }
         if (start_date && end_date) {
             sqlWhere += ' AND createdAt BETWEEN :start_date AND :end_date';
@@ -73,6 +82,7 @@ exports.getAllReports = async (req, res) => {
                     MAX(user_id) as user_id,
                     MAX(coach_id) as coach_id,
                     MAX(subcategory_id) as subcategory_id,
+                    MAX(status) as session_status,
                     SUM(CASE WHEN status = 'OK' THEN 1 ELSE 0 END) as yes_count,
                     SUM(CASE WHEN status = 'DEFICIENCY' THEN 1 ELSE 0 END) as no_count,
                     SUM(CASE WHEN answer_type = 'VALUE' AND observed_value IS NOT NULL AND observed_value != '' THEN 1 ELSE 0 END) as value_count,
@@ -83,18 +93,19 @@ exports.getAllReports = async (req, res) => {
                 UNION ALL
 
                 SELECT 
-                    'COMM-' || s.id as submission_id,
+                    CONCAT('COMM-', s.id) as submission_id,
                     'COMMISSIONARY' as train_number,
-                    s.coach_number,
-                    u.name as user_name,
+                    MAX(s.coach_number) as coach_number,
+                    MAX(u.name) as user_name,
                     'Coach Commissionary' as category_name,
                     'Combined Matrix' as subcategory_name,
                     '' as schedule_name,
                     'Major/Minor' as severity,
-                    s.createdAt,
-                    s.created_by as user_id,
+                    MAX(s.createdAt) as createdAt,
+                    MAX(s.created_by) as user_id,
                     0 as coach_id,
                     0 as subcategory_id,
+                    MAX(s.status) as session_status,
                     SUM(CASE WHEN a.status = 'OK' THEN 1 ELSE 0 END) as yes_count,
                     SUM(CASE WHEN a.status = 'DEFICIENCY' THEN 1 ELSE 0 END) as no_count,
                     0 as value_count,
@@ -102,6 +113,7 @@ exports.getAllReports = async (req, res) => {
                 FROM commissionary_sessions s
                 LEFT JOIN commissionary_answers a ON s.id = a.session_id
                 LEFT JOIN users u ON s.created_by = u.id
+                WHERE s.status = 'COMPLETED'
                 GROUP BY s.id
             ) as combined
             WHERE ${sqlWhere}
@@ -115,7 +127,15 @@ exports.getAllReports = async (req, res) => {
         });
 
         // Simplified count for MVP
-        const totalCount = reports.length > 0 ? reports.length * page : 0;
+        const totalCount = reports.length;
+        const totalPages = Math.ceil(totalCount / limit) || 1;
+
+        return res.json({
+            data: reports,
+            total: totalCount,
+            page: parseInt(page),
+            pages: totalPages
+        });
 
     } catch (err) {
         console.error('Get Reports Error:', err);
@@ -136,22 +156,22 @@ exports.getFilterOptions = async (req, res) => {
 
         const [trains, coaches, types, statuses] = await Promise.all([
             InspectionAnswer.findAll({
-                attributes: [[sequelize.fn('DISTINCT', sequelize.col('train_number')), 'train_number']],
+                attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('train_number')), 'train_number']],
                 where: whereClause,
                 raw: true
             }),
             InspectionAnswer.findAll({
-                attributes: [[sequelize.fn('DISTINCT', sequelize.col('coach_number')), 'coach_number']],
+                attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('coach_number')), 'coach_number']],
                 where: whereClause,
                 raw: true
             }),
             InspectionAnswer.findAll({
-                attributes: [[sequelize.fn('DISTINCT', sequelize.col('category_name')), 'category_name']],
+                attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('category_name')), 'category_name']],
                 where: whereClause,
                 raw: true
             }),
             InspectionAnswer.findAll({
-                attributes: [[sequelize.fn('DISTINCT', sequelize.col('status')), 'status']],
+                attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('status')), 'status']],
                 where: whereClause,
                 raw: true
             })
@@ -222,7 +242,15 @@ exports.getReportDetails = async (req, res) => {
             order: [['id', 'ASC']]
         });
 
-        res.json(details);
+        const stats = {
+            yes_count: details.filter(d => d.status === 'OK' || d.answer === 'YES').length,
+            no_count: details.filter(d => d.status === 'DEFICIENCY' || d.answer === 'NO').length,
+            na_count: details.filter(d => d.status === 'NA').length,
+            total: details.length,
+            compliance: calculateCompliance(details)
+        };
+
+        res.json({ details, stats });
 
     } catch (err) {
         console.error('REPORT DETAILS ERROR:', err.message);
@@ -363,35 +391,25 @@ exports.getCombinedReport = async (req, res) => {
             return q;
         });
 
-        // Calculate final percentages from the matrix (correct way)
+        // Calculate final percentages from the matrix (correct way) using utility
         const perCompartmentCompliance = {};
-        let totalYes = 0;
-        let totalTotal = 0;
+        let allMatrixAnswers = [];
 
         matrix.forEach(row => {
             if (row.answer_type === 'BOOLEAN') {
                 compartments.forEach(comp => {
                     const cell = row.values[comp];
-                    if (cell) {
-                        if (cell.status === 'OK') {
-                            compStats[comp].yes++;
-                        } else if (cell.status === 'DEFICIENCY') {
-                            compStats[comp].no++;
-                        }
-                    }
+                    if (cell) allMatrixAnswers.push(cell);
                 });
             }
         });
 
         compartments.forEach(c => {
-            const { yes, no } = compStats[c];
-            const sum = yes + no;
-            perCompartmentCompliance[c] = sum > 0 ? Math.round((yes / sum) * 100) : null;
-            totalYes += yes;
-            totalTotal += sum;
+            const compCells = matrix.map(row => row.answer_type === 'BOOLEAN' ? row.values[c] : null).filter(Boolean);
+            perCompartmentCompliance[c] = calculateCompliance(compCells);
         });
 
-        const overallCompliance = totalTotal > 0 ? Math.round((totalYes / totalTotal) * 100) : 0;
+        const overallCompliance = calculateCompliance(allMatrixAnswers);
 
         // Fetch metadata for header
         const coach = await Coach.findByPk(coach_id);

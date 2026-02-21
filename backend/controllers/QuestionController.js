@@ -32,21 +32,22 @@ exports.getQuestionsByActivity = async (req, res) => {
 // POST /api/admin/question (Admin only)
 exports.createQuestion = async (req, res) => {
     try {
-        const { activity_id, schedule_id, subcategory_id, text, specified_value } = req.body;
+        console.log('[DEBUG] createQuestion Body:', req.body);
+        const { activity_id, schedule_id, subcategory_id, text, specified_value, answer_type, unit } = req.body;
 
         if (!text) {
             return res.status(400).json({ error: 'text is required' });
         }
 
-        const questionData = { text, specified_value };
+        const questionData = { text, specified_value, answer_type: answer_type || 'BOOLEAN', unit };
         if (activity_id) questionData.activity_id = activity_id;
         if (schedule_id) questionData.schedule_id = schedule_id;
         if (subcategory_id) questionData.subcategory_id = subcategory_id;
 
         const question = await Question.create(questionData);
 
-        // Auto-seed default reasons ONLY if activity_id is provided
-        if (activity_id) {
+        // Auto-seed default reasons ONLY if activity_id is provided and it's a BOOLEAN question
+        if (activity_id && question.answer_type === 'BOOLEAN') {
             const activity = await Activity.findByPk(activity_id);
             if (activity) {
                 const defaultMinorReasons = ['Dirty', 'Broken', 'Missing', 'Loose', 'Worn Out', 'Damaged'];
@@ -63,7 +64,7 @@ exports.createQuestion = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'Question created successfully with default reasons',
+            message: 'Question created successfully',
             question
         });
     } catch (err) {
@@ -75,12 +76,9 @@ exports.createQuestion = async (req, res) => {
 // PUT /api/admin/question/:id (Admin only)
 exports.updateQuestion = async (req, res) => {
     try {
+        console.log('[DEBUG] updateQuestion ID:', req.params.id, 'Body:', req.body);
         const { id } = req.params;
-        const { text, specified_value } = req.body;
-
-        if (!text && specified_value === undefined) {
-            return res.status(400).json({ error: 'Nothing to update' });
-        }
+        const { text, specified_value, answer_type, unit } = req.body;
 
         const question = await Question.findByPk(id);
         if (!question) {
@@ -89,6 +87,9 @@ exports.updateQuestion = async (req, res) => {
 
         if (text) question.text = text;
         if (specified_value !== undefined) question.specified_value = specified_value;
+        if (answer_type) question.answer_type = answer_type;
+        if (unit !== undefined) question.unit = unit;
+
         await question.save();
 
         res.json({

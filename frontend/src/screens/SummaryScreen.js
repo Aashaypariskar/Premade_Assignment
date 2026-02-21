@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
 import { submitInspection } from '../api/api';
 import { useStore } from '../store/StoreContext';
+import { calculateCompliance } from '../utils/compliance';
 
 /**
  * Inspection Summary Screen - PRODUCTION VERSION
@@ -21,6 +22,8 @@ const SummaryScreen = ({ route, navigation }) => {
         const comp = parts.length > 1 ? parts[0] : null;
         return comp === (params.compartment || null);
     });
+
+    const complianceScore = calculateCompliance(answersList);
 
     const counts = {
         total: answersList.length,
@@ -121,6 +124,10 @@ const SummaryScreen = ({ route, navigation }) => {
                         <View style={styles.statBox}>
                             <Text style={[styles.statNum, { color: '#3b82f6' }]}>{counts.value}</Text>
                             <Text style={styles.statLabel}>MEASURED</Text>
+                        </View>
+                        <View style={styles.statBox}>
+                            <Text style={[styles.statNum, { color: complianceScore < 80 ? '#ef4444' : '#10b981' }]}>{complianceScore}%</Text>
+                            <Text style={styles.statLabel}>SCORE</Text>
                         </View>
                         <View style={styles.statBox}>
                             <Text style={styles.statNum}>{counts.total}</Text>
