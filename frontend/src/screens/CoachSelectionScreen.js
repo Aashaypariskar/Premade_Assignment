@@ -8,7 +8,7 @@ import { useStore } from '../store/StoreContext';
  * Features 2-column grid layout with select indicators
  */
 const CoachSelectionScreen = ({ route, navigation }) => {
-    const { trainId, trainName, categoryName } = route.params;
+    const { trainId, trainName, categoryName } = route.params || {};
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
     const { setDraft } = useStore();
@@ -35,12 +35,12 @@ const CoachSelectionScreen = ({ route, navigation }) => {
             coachId: item.id,
             coachNumber: item.coach_number,
             trainId: trainId,
-            trainName: trainName,
+            trainName: trainName || 'Audit',
             categoryName
         };
 
-        if (categoryName === 'Ltr to Railways') {
-            navigation.navigate('ScheduleSelection', nextParams);
+        if (categoryName === 'WSP Examination') {
+            navigation.navigate('WspScheduleScreen', { ...nextParams, mode: 'INDEPENDENT' });
         } else if (categoryName === 'Amenity') {
             navigation.navigate('AmenitySubcategory', nextParams);
         } else {
@@ -63,8 +63,8 @@ const CoachSelectionScreen = ({ route, navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.topBar}>
-                <Text style={styles.trainName}>{trainName}</Text>
-                <Text style={styles.title}>Select Coach Plate</Text>
+                {trainName && <Text style={styles.trainName}>{trainName}</Text>}
+                <Text style={styles.title}>{categoryName || 'Select Coach Plate'}</Text>
             </View>
 
             <FlatList

@@ -74,15 +74,22 @@ export const getActivities = async (coachId, categoryName, subcategoryId = null)
     return res.data;
 };
 
-export const getLtrSchedules = async (categoryName, coachId) => {
-    const res = await api.get(`/ltr-schedules?category_name=${encodeURIComponent(categoryName)}&coach_id=${coachId}`);
-    return res.data;
-};
-
 export const getAmenitySubcategories = async (categoryName, coachId) => {
     const res = await api.get(`/amenity-subcategories`, { params: { category_name: categoryName, coach_id: coachId } });
     return res.data;
 };
+
+// --- WSP (New Architecture) ---
+export const getWspSession = (coach_number) => api.get(`/wsp/session?coach_number=${coach_number}`).then(res => res.data);
+export const getWspSchedules = () => api.get('/wsp/schedules').then(res => res.data);
+export const getWspQuestions = (scheduleId) => api.get(`/wsp/questions?schedule_id=${scheduleId}`).then(res => res.data);
+export const saveWspAnswers = (data) => api.post('/wsp/save', data).then(res => res.data);
+export const getWspProgress = (coachNumber, mode = 'INDEPENDENT') =>
+    api.get('/wsp/progress', { params: { coach_number: coachNumber, mode } }).then(res => res.data);
+
+// --- COMMON ENDPOINTS ---
+export const getSubcategoryMetadata = (subId) =>
+    api.get('/common/subcategory-metadata', { params: { subcategory_id: subId } }).then(res => res.data);
 
 // --- COMMISSIONARY ENDPOINTS ---
 export const getCommissionarySession = (coach_number) => api.get(`/commissionary/session?coach_number=${coach_number}`).then(res => res.data);
@@ -161,10 +168,10 @@ export const getQuestions = async (activityId, scheduleId = null, subcategoryId 
     let url = `/checklist?`;
     if (scheduleId) {
         url += `schedule_id=${scheduleId}`;
-    } else {
+    } else if (activityId) {
         url += `activity_id=${activityId}`;
-        if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
     }
+    if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
     const res = await api.get(url);
     return res.data;
 };

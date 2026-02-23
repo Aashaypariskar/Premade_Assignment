@@ -6,7 +6,6 @@ import { useStore } from '../store/StoreContext';
 
 import LoginScreen from '../screens/LoginScreen';
 import CategoryDashboard from '../screens/CategoryDashboard';
-import TrainSelectionScreen from '../screens/TrainSelectionScreen';
 import CoachSelectionScreen from '../screens/CoachSelectionScreen';
 import ActivitySelectionScreen from '../screens/ActivitySelectionScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
@@ -16,7 +15,7 @@ import CreateUserScreen from '../screens/CreateUserScreen';
 import QuestionManagementScreen from '../screens/QuestionManagementScreen';
 import ReportListScreen from '../screens/ReportListScreen';
 import ReportDetailScreen from '../screens/ReportDetailScreen';
-import ScheduleSelectionScreen from '../screens/ScheduleSelectionScreen';
+import WspScheduleScreen from '../screens/WspScheduleScreen';
 import AmenitySubcategoryScreen from '../screens/AmenitySubcategoryScreen';
 import CompartmentSelectionScreen from '../screens/CompartmentSelectionScreen';
 import CombinedSummaryScreen from '../screens/CombinedSummaryScreen';
@@ -86,11 +85,6 @@ const AppNavigator = () => {
                         options={{ title: 'Success', headerLeft: () => null, headerRight: () => null }}
                     />
                     <Stack.Screen
-                        name="TrainSelection"
-                        component={TrainSelectionScreen}
-                        options={{ title: 'Select Train' }}
-                    />
-                    <Stack.Screen
                         name="CoachSelection"
                         component={CoachSelectionScreen}
                         options={{ title: 'Select Coach' }}
@@ -121,8 +115,8 @@ const AppNavigator = () => {
                         options={{ title: 'Report Details' }}
                     />
                     <Stack.Screen
-                        name="ScheduleSelection"
-                        component={ScheduleSelectionScreen}
+                        name="WspScheduleScreen"
+                        component={WspScheduleScreen}
                         options={{ title: 'Select Schedule' }}
                     />
                     <Stack.Screen

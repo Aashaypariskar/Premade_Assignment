@@ -81,21 +81,48 @@ exports.getOrCreateSession = async (req, res) => {
 exports.getQuestions = async (req, res) => {
     try {
         const { subcategory_id, activity_type } = req.query;
-        if (!subcategory_id || !activity_type) return res.status(400).json({ error: 'Missing parameters' });
+        if (!subcategory_id) return res.status(400).json({ error: 'Missing subcategory_id' });
 
-        const items = await AmenityItem.findAll({
-            where: { subcategory_id, activity_type },
-            include: [{ model: Question, required: true, where: { subcategory_id } }],
-            order: [['id', 'ASC'], [{ model: Question }, 'display_order', 'ASC']]
+        console.log(`[STABILIZATION-SL-INPUT] subcategory_id: ${subcategory_id}, activity_type: ${activity_type}`);
+
+        // Step 1: Fetch ALL AmenityItems
+        const allItems = await AmenityItem.findAll({
+            where: { subcategory_id },
+            include: [{ model: Question, required: false, where: { subcategory_id } }],
+            order: [['id', 'ASC']]
         });
 
-        const grouped = items.map(item => ({
-            item_name: item.name,
-            questions: item.Questions
-        }));
+        console.log(`[STABILIZATION-SL-ITEMS] Total items: ${allItems.length}`);
+
+        // Step 2: Detect support
+        const supportsActivityType = allItems.some(item => item.activity_type !== null);
+        console.log(`[STABILIZATION-SL-SUPPORT] subcategory_id: ${subcategory_id}, supports: ${supportsActivityType}`);
+
+        // Step 3: Filter logic (Strict Phase 7)
+        let filteredItems = allItems;
+        if (supportsActivityType && activity_type) {
+            filteredItems = allItems.filter(item => item.activity_type === activity_type);
+            console.log(`[STABILIZATION-SL-FILTER] Applied ${activity_type}, items: ${filteredItems.length}`);
+        }
+
+        // Step 4: Grouping
+        const grouped = filteredItems
+            .filter(it => it.Questions && it.Questions.length > 0)
+            .map(item => ({
+                item_name: item.name,
+                questions: item.Questions
+            }));
+
+        const totalQ = grouped.reduce((acc, g) => acc + g.questions.length, 0);
+        console.log(`[STABILIZATION-SL-OUTPUT] Groups: ${grouped.length}, Questions: ${totalQ}`);
+
+        if (grouped.length === 0) {
+            console.log(`[STABILIZATION-SL-EMPTY] subcategory_id: ${subcategory_id} - EMPTY RESULT – VERIFY DATA`);
+        }
 
         res.json(grouped);
     } catch (err) {
+        console.error('[STABILIZATION-SL-FATAL] getQuestions Error:', err);
         res.status(500).json({ error: 'Failed' });
     }
 };
@@ -188,31 +215,43 @@ exports.getProgress = async (req, res) => {
             const subName = sub.name;
             const subId = sub.id;
 
-            // Strict Question Counts for this subcategory
-            const totalMajor = await Question.count({
-                where: { subcategory_id: subId },
-                include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
-            });
-            const totalMinor = await Question.count({
-                where: { subcategory_id: subId },
-                include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
-            });
+            // 1. Detect if this subcategory supports activity types
+            const items = await AmenityItem.findAll({ where: { subcategory_id: subId } });
+            const supportsActivityType = items.some(it => it.activity_type !== null);
 
-            // Sick Line usually does NOT use compartments for progress tracking (one coach per date)
-            // But we check if ALL questions are answered in 'null' compartment or any.
-            // In legacy, SickLineAnswer usually stores 'null' for compartment_id if not selected.
+            let isFullyComplete = false;
+            let majorDone = false;
+            let minorDone = false;
 
-            const answeredMajor = await SickLineAnswer.count({
-                where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major' }
-            });
-            const answeredMinor = await SickLineAnswer.count({
-                where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor' }
-            });
+            if (supportsActivityType) {
+                const totalMajor = await Question.count({
+                    where: { subcategory_id: subId },
+                    include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
+                });
+                const totalMinor = await Question.count({
+                    where: { subcategory_id: subId },
+                    include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
+                });
 
-            const majorDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
-            const minorDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
+                const answeredMajor = await SickLineAnswer.count({
+                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major' }
+                });
+                const answeredMinor = await SickLineAnswer.count({
+                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor' }
+                });
 
-            const isFullyComplete = majorDone && minorDone;
+                majorDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
+                minorDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
+                isFullyComplete = majorDone && minorDone;
+            } else {
+                const totalQuestions = await Question.count({ where: { subcategory_id: subId } });
+                const answeredQuestions = await SickLineAnswer.count({
+                    where: { session_id: session.id, subcategory_id: subId }
+                });
+                isFullyComplete = (totalQuestions > 0) ? (answeredQuestions === totalQuestions) : false;
+                majorDone = isFullyComplete;
+                minorDone = isFullyComplete;
+            }
 
             return {
                 subcategory_id: subId,

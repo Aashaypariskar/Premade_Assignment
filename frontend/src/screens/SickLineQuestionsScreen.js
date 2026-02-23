@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { getSickLineQuestions, saveSickLineAnswers, getSickLineProgress } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
+import { normalizeQuestionResponse } from '../utils/normalization';
 
 const SickLineQuestionsScreen = ({ route, navigation }) => {
     const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status, subcategories, currentIndex } = route.params;
@@ -16,14 +17,11 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
     const [guidedBtns, setGuidedBtns] = useState(null);
     const [isMajorDone, setIsMajorDone] = useState(false);
     const [isMinorDone, setIsMinorDone] = useState(false);
+    const fetchRef = useRef(null);
+    const [supportsActivityType, setSupportsActivityType] = useState(true);
 
     const isLocked = status === 'COMPLETED';
     const [answers, setAnswers] = useState({});
-
-    useEffect(() => {
-        loadQuestions();
-        refreshProgress();
-    }, []);
 
     const refreshProgress = async () => {
         try {
@@ -42,21 +40,58 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         return null;
     };
 
-    const loadQuestions = async () => {
-        try {
-            const [major, minor] = await Promise.all([
-                getSickLineQuestions(subcategoryId, 'Major'),
-                getSickLineQuestions(subcategoryId, 'Minor')
-            ]);
-            const flatten = (data) => data.flatMap(item => item.questions);
-            setMajorQs(flatten(major));
-            setMinorQs(flatten(minor));
-        } catch (err) {
-            Alert.alert('Error', 'Failed to load questions');
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        const key = `${subcategoryId}-${activeTab}`;
+        if (fetchRef.current === key) return;
+        fetchRef.current = key;
+
+        let isMounted = true;
+
+        const load = async () => {
+            try {
+                setLoading(true);
+                // State Reset
+                setMajorQs([]);
+                setMinorQs([]);
+
+                console.log(`[FETCHING QUESTIONS] SickLine - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
+
+                const response = await getSickLineQuestions(subcategoryId, activeTab);
+
+                if (!isMounted) return;
+
+                console.log(`[RAW QUESTIONS RESPONSE - ${activeTab}]`, response);
+
+                const normalized = normalizeQuestionResponse(response);
+                setSupportsActivityType(normalized.supportsActivityType);
+
+                if (activeTab === 'Major') {
+                    setMajorQs(normalized.groups.flatMap(g => g.questions || []));
+                } else if (activeTab === 'Minor') {
+                    setMinorQs(normalized.groups.flatMap(g => g.questions || []));
+                } else {
+                    setMajorQs(normalized.groups.flatMap(g => g.questions || []));
+                }
+
+                await refreshProgress();
+            } catch (err) {
+                console.error("[QUESTION FETCH ERROR]", err);
+                if (isMounted) {
+                    Alert.alert('Error', 'Failed to load questions');
+                    setMajorQs([]);
+                    setMinorQs([]);
+                }
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        load();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [subcategoryId, activeTab]);
 
     const handleAnswerUpdate = (qId, data) => {
         setAnswers(prev => ({ ...prev, [qId]: data }));
@@ -159,31 +194,40 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
-                <Text style={styles.headerSub}>{subcategoryName} - {activeTab}</Text>
+                <Text style={styles.headerSub}>{subcategoryName} {supportsActivityType ? `- ${activeTab}` : ''}</Text>
                 <View style={{ width: 26 }} />
             </View>
 
-            <View style={styles.tabBar}>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'Major' && styles.activeTab]}
-                    onPress={() => setActiveTab('Major')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'Major' && styles.activeTabText]}>
-                        MAJOR {isMajorDone && '✓'}
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'Minor' && styles.activeTab]}
-                    onPress={() => setActiveTab('Minor')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'Minor' && styles.activeTabText]}>
-                        MINOR {isMinorDone && '✓'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
+            {supportsActivityType && (
+                <View style={styles.tabBar}>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'Major' && styles.activeTab]}
+                        onPress={() => setActiveTab('Major')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'Major' && styles.activeTabText]}>
+                            MAJOR {isMajorDone && '✓'}
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'Minor' && styles.activeTab]}
+                        onPress={() => setActiveTab('Minor')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'Minor' && styles.activeTabText]}>
+                            MINOR {isMinorDone && '✓'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <ScrollView contentContainerStyle={styles.scroll}>
-                {(activeTab === 'Major' ? majorQs : minorQs).map(renderQuestion)}
+                {Array.isArray(activeTab === 'Major' ? majorQs : minorQs) && (activeTab === 'Major' ? majorQs : minorQs).length > 0 ? (
+                    (activeTab === 'Major' ? majorQs : minorQs).map(renderQuestion)
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <Ionicons name="information-circle-outline" size={48} color="#94a3b8" />
+                        <Text style={styles.emptyText}>No questions available for this selection.</Text>
+                    </View>
+                )}
 
                 {guidedBtns && (
                     <View style={styles.guidedBox}>
@@ -252,6 +296,8 @@ const styles = StyleSheet.create({
     activeTabText: { color: '#fff' },
     scroll: { padding: 20, paddingBottom: 60 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
+    emptyText: { marginTop: 10, color: '#64748b', fontSize: 14, textAlign: 'center' },
     saveBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20, elevation: 4 },
     saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
     guidedBox: { marginTop: 10, marginBottom: 20, padding: 15, backgroundColor: '#fff', borderRadius: 16, borderLeftWidth: 5, borderLeftColor: '#2563eb', elevation: 2 },

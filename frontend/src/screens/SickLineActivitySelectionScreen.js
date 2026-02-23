@@ -10,12 +10,24 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const { setDraft, user } = useStore();
-    const [isMajorDone, setIsMajorDone] = useState(false);
     const [isMinorDone, setIsMinorDone] = useState(false);
+    const [supportsActivityType, setSupportsActivityType] = useState(true);
 
     useEffect(() => {
         loadActivities();
+        checkMetadata();
     }, []);
+
+    const checkMetadata = async () => {
+        try {
+            const { getSubcategoryMetadata } = require('../api/api');
+            const meta = await getSubcategoryMetadata(params.subcategoryId || params.subcategory_id);
+            setSupportsActivityType(meta.supportsActivityType);
+        } catch (err) {
+            console.log('Metadata check error:', err);
+            setSupportsActivityType(true);
+        }
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -55,9 +67,9 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
 
         navigation.navigate('SickLineQuestions', {
             ...params,
-            activityId: act.id,
-            activityType: act.type,
-            compartmentId: 'NA' // Sick Line uses NA for compartment
+            activityId: act?.id || null,
+            activityType: act?.type || null,
+            compartmentId: 'NA'
         });
     };
 
@@ -78,41 +90,54 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
 
             <Text style={styles.title}>Select Activity Type</Text>
 
-            <View style={styles.tabContainer}>
-                {activities.map(act => (
-                    <View key={act.id} style={styles.activityWrapper}>
-                        <TouchableOpacity
-                            style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
-                            onPress={() => handleSelect(act)}
-                        >
-                            <View style={styles.titleRow}>
-                                <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
-                                {((act.type === 'Major' && isMajorDone) || (act.type === 'Minor' && isMinorDone)) && (
-                                    <View style={styles.statusBadge}>
-                                        <Text style={styles.badgeText}>Completed</Text>
-                                    </View>
-                                )}
-                            </View>
-                            <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
-                            <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
-                        </TouchableOpacity>
-
-                        {user?.role === 'Admin' && (
+            {supportsActivityType === false ? (
+                <View style={[styles.tabContainer, { justifyContent: 'center' }]}>
+                    <TouchableOpacity
+                        style={[styles.tab, styles.tabMajor, { width: '90%', height: 200 }]}
+                        onPress={() => handleSelect(activities.length ? activities[0] : { id: null, type: null })}
+                    >
+                        <Text style={styles.tabIcon}>📋</Text>
+                        <Text style={[styles.tabText, styles.tabMajorText]}>Start Inspection</Text>
+                        <Text style={[styles.subText, styles.tabMajorText]}>Complete check for this area</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <View style={styles.tabContainer}>
+                    {activities.map(act => (
+                        <View key={act.id} style={styles.activityWrapper}>
                             <TouchableOpacity
-                                style={styles.adminEditBtn}
-                                onPress={() => navigation.navigate('QuestionManagement', {
-                                    activityId: act.id,
-                                    activityType: act.type,
-                                    categoryName: params.categoryName
-                                })}
+                                style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
+                                onPress={() => handleSelect(act)}
                             >
-                                <Ionicons name="settings-outline" size={14} color="#2563eb" />
-                                <Text style={styles.adminEditBtnText}>Edit Questions</Text>
+                                <View style={styles.titleRow}>
+                                    <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
+                                    {((act.type === 'Major' && isMajorDone) || (act.type === 'Minor' && isMinorDone)) && (
+                                        <View style={styles.statusBadge}>
+                                            <Text style={styles.badgeText}>Completed</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
+                                <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
                             </TouchableOpacity>
-                        )}
-                    </View>
-                ))}
-            </View>
+
+                            {user?.role === 'Admin' && (
+                                <TouchableOpacity
+                                    style={styles.adminEditBtn}
+                                    onPress={() => navigation.navigate('QuestionManagement', {
+                                        activityId: act.id,
+                                        activityType: act.type,
+                                        categoryName: params.categoryName
+                                    })}
+                                >
+                                    <Ionicons name="settings-outline" size={14} color="#2563eb" />
+                                    <Text style={styles.adminEditBtnText}>Edit Questions</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    ))}
+                </View>
+            )}
         </View>
     );
 };

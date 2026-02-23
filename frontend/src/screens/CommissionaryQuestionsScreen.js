@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { getCommissionaryQuestions, saveCommissionaryAnswers, getCommissionaryProgress } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
+import { normalizeQuestionResponse } from '../utils/normalization';
 
 const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status, subcategories, currentIndex } = route.params;
@@ -16,6 +17,8 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const [guidedBtns, setGuidedBtns] = useState(null); // 'TO_MAJOR', 'TO_MINOR', 'TO_NEXT'
     const [isMajorDone, setIsMajorDone] = useState(false);
     const [isMinorDone, setIsMinorDone] = useState(false);
+    const fetchRef = useRef(null);
+    const [supportsActivityType, setSupportsActivityType] = useState(true);
 
     const isLocked = status === 'COMPLETED';
 
@@ -23,9 +26,59 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const [answers, setAnswers] = useState({});
 
     useEffect(() => {
-        loadQuestions();
-        refreshProgress();
-    }, []);
+        const key = `${subcategoryId}-${activeTab}`;
+        if (fetchRef.current === key) return;
+        fetchRef.current = key;
+
+        let isMounted = true;
+
+        const load = async () => {
+            try {
+                setLoading(true);
+                // State Reset: Clear existing questions before fetch
+                setMajorQs([]);
+                setMinorQs([]);
+
+                console.log(`[FETCHING QUESTIONS] Commissionary - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
+
+                // Single fetch model: Only fetch for the current activeTab
+                const response = await getCommissionaryQuestions(subcategoryId, activeTab);
+
+                if (!isMounted) return;
+
+                console.log(`[RAW QUESTIONS RESPONSE - ${activeTab}]`, response);
+
+                const normalized = normalizeQuestionResponse(response);
+                setSupportsActivityType(normalized.supportsActivityType);
+
+                if (activeTab === 'Major') {
+                    setMajorQs(normalized.groups.flatMap(g => g.questions || []));
+                } else if (activeTab === 'Minor') {
+                    setMinorQs(normalized.groups.flatMap(g => g.questions || []));
+                } else {
+                    // Fallback for subcategories without specific tab logic
+                    setMajorQs(normalized.groups.flatMap(g => g.questions || []));
+                }
+
+                await refreshProgress();
+            } catch (err) {
+                console.error("[QUESTION FETCH ERROR]", err);
+                if (isMounted) {
+                    Alert.alert('Error', 'Failed to load questions');
+                    setMajorQs([]);
+                    setMinorQs([]);
+                }
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        load();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [subcategoryId, activeTab]);
 
     const refreshProgress = async () => {
         try {
@@ -43,22 +96,6 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             console.log('Progress Refresh Error:', err);
         }
         return null;
-    };
-
-    const loadQuestions = async () => {
-        try {
-            const [major, minor] = await Promise.all([
-                getCommissionaryQuestions(subcategoryId, 'Major'),
-                getCommissionaryQuestions(subcategoryId, 'Minor')
-            ]);
-            const flatten = (data) => data.flatMap(item => item.questions);
-            setMajorQs(flatten(major));
-            setMinorQs(flatten(minor));
-        } catch (err) {
-            Alert.alert('Error', 'Failed to load questions');
-        } finally {
-            setLoading(false);
-        }
     };
 
     const handleAnswerUpdate = (qId, data) => {
@@ -166,27 +203,36 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 <View style={{ width: 26 }} />
             </View>
 
-            <View style={styles.tabBar}>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'Major' && styles.activeTab]}
-                    onPress={() => setActiveTab('Major')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'Major' && styles.activeTabText]}>
-                        MAJOR {isMajorDone && '✓'}
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'Minor' && styles.activeTab]}
-                    onPress={() => setActiveTab('Minor')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'Minor' && styles.activeTabText]}>
-                        MINOR {isMinorDone && '✓'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
+            {supportsActivityType && (
+                <View style={styles.tabBar}>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'Major' && styles.activeTab]}
+                        onPress={() => setActiveTab('Major')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'Major' && styles.activeTabText]}>
+                            MAJOR {isMajorDone && '✓'}
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'Minor' && styles.activeTab]}
+                        onPress={() => setActiveTab('Minor')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'Minor' && styles.activeTabText]}>
+                            MINOR {isMinorDone && '✓'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <ScrollView contentContainerStyle={styles.scroll}>
-                {(activeTab === 'Major' ? majorQs : minorQs).map(renderQuestion)}
+                {Array.isArray(activeTab === 'Major' ? majorQs : minorQs) && (activeTab === 'Major' ? majorQs : minorQs).length > 0 ? (
+                    (activeTab === 'Major' ? majorQs : minorQs).map(renderQuestion)
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <Ionicons name="information-circle-outline" size={48} color="#94a3b8" />
+                        <Text style={styles.emptyText}>No questions available for this selection.</Text>
+                    </View>
+                )}
 
                 {guidedBtns && (
                     <View style={styles.guidedBox}>
@@ -271,6 +317,8 @@ const styles = StyleSheet.create({
     activeTabText: { color: '#fff' },
     scroll: { padding: 20, paddingBottom: 60 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
+    emptyText: { marginTop: 10, color: '#64748b', fontSize: 14, textAlign: 'center' },
 
     saveBtn: {
         backgroundColor: '#2563eb',

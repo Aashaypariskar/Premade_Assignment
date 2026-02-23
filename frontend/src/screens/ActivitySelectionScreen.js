@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { getActivities, getCommissionaryProgress } from '../api/api';
+import { getActivities, getCommissionaryProgress, getSubcategoryMetadata } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,8 +17,11 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     const [isMajorDone, setIsMajorDone] = useState(false);
     const [isMinorDone, setIsMinorDone] = useState(false);
 
+    const [supportsActivityType, setSupportsActivityType] = useState(true);
+
     useEffect(() => {
         loadActivities();
+        checkMetadata();
     }, []);
 
     useFocusEffect(
@@ -44,10 +47,23 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
         }
     };
 
+    const checkMetadata = async () => {
+        try {
+            const meta = await getSubcategoryMetadata(params.subcategoryId || params.subcategory_id);
+            setSupportsActivityType(meta.supportsActivityType);
+        } catch (err) {
+            console.log('Metadata check error:', err);
+            setSupportsActivityType(true); // Default to true on error
+        }
+    };
+
     const loadActivities = async () => {
         try {
             const data = await getActivities(params.coachId, params.categoryName, params.subcategoryId || params.subcategory_id);
             setActivities(data);
+
+            // AUTO-NAVIGATE if single mode is detected early
+            // But we wait for metadata check to be sure
         } catch (err) {
             Alert.alert('Error', 'Could not get activities');
         } finally {
@@ -85,41 +101,54 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
             <Text style={styles.title}>Select Activity Type</Text>
 
-            <View style={styles.tabContainer}>
-                {activities.map(act => (
-                    <View key={act.id} style={styles.activityWrapper}>
-                        <TouchableOpacity
-                            style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
-                            onPress={() => handleSelect(act)}
-                        >
-                            <View style={styles.titleRow}>
-                                <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
-                                {((act.type === 'Major' && isMajorDone) || (act.type === 'Minor' && isMinorDone)) && (
-                                    <View style={styles.statusBadge}>
-                                        <Text style={styles.badgeText}>Completed</Text>
-                                    </View>
-                                )}
-                            </View>
-                            <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
-                            <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
-                        </TouchableOpacity>
-
-                        {user?.role === 'Admin' && (
+            {supportsActivityType === false ? (
+                <View style={styles.singleModeContainer}>
+                    <TouchableOpacity
+                        style={[styles.tab, styles.tabMajor, { width: '100%', height: 200 }]}
+                        onPress={() => handleSelect(activities.length ? activities[0] : { id: null, type: null })}
+                    >
+                        <Text style={styles.tabIcon}>📋</Text>
+                        <Text style={[styles.tabText, styles.tabMajorText]}>Start Inspection</Text>
+                        <Text style={[styles.subText, styles.tabMajorText]}>Complete check for this area</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <View style={styles.tabContainer}>
+                    {activities.map(act => (
+                        <View key={act.id} style={styles.activityWrapper}>
                             <TouchableOpacity
-                                style={styles.adminEditBtn}
-                                onPress={() => navigation.navigate('QuestionManagement', {
-                                    activityId: act.id,
-                                    activityType: act.type,
-                                    categoryName: params.categoryName
-                                })}
+                                style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
+                                onPress={() => handleSelect(act)}
                             >
-                                <Ionicons name="settings-outline" size={14} color="#2563eb" />
-                                <Text style={styles.adminEditBtnText}>Edit Questions</Text>
+                                <View style={styles.titleRow}>
+                                    <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
+                                    {((act.type === 'Major' && isMajorDone) || (act.type === 'Minor' && isMinorDone)) && (
+                                        <View style={styles.statusBadge}>
+                                            <Text style={styles.badgeText}>Completed</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
+                                <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
                             </TouchableOpacity>
-                        )}
-                    </View>
-                ))}
-            </View>
+
+                            {user?.role === 'Admin' && (
+                                <TouchableOpacity
+                                    style={styles.adminEditBtn}
+                                    onPress={() => navigation.navigate('QuestionManagement', {
+                                        activityId: act.id,
+                                        activityType: act.type,
+                                        categoryName: params.categoryName
+                                    })}
+                                >
+                                    <Ionicons name="settings-outline" size={14} color="#2563eb" />
+                                    <Text style={styles.adminEditBtnText}>Edit Questions</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    ))}
+                </View>
+            )}
         </View>
     );
 };
@@ -188,6 +217,10 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 10,
         fontWeight: 'bold'
+    },
+    singleModeContainer: {
+        width: '100%',
+        paddingHorizontal: 10
     }
 });
 

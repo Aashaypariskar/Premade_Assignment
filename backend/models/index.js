@@ -55,11 +55,12 @@ const CommissionarySession = require('./CommissionarySession')(sequelize);
 const CommissionaryAnswer = require('./CommissionaryAnswer')(sequelize);
 const SickLineSession = require('./SickLineSession')(sequelize);
 const SickLineAnswer = require('./SickLineAnswer')(sequelize);
+const WspSession = require('./WspSession')(sequelize);
 
 const AmenityItem = sequelize.define('AmenityItem', {
     name: { type: DataTypes.STRING, allowNull: false },
     subcategory_id: { type: DataTypes.INTEGER, allowNull: false },
-    activity_type: { type: DataTypes.ENUM('Minor', 'Major'), allowNull: false }
+    activity_type: { type: DataTypes.ENUM('Minor', 'Major'), allowNull: true }
 }, { tableName: 'amenity_items', timestamps: false });
 
 const Question = sequelize.define('Question', {
@@ -68,7 +69,9 @@ const Question = sequelize.define('Question', {
     schedule_id: { type: DataTypes.INTEGER, allowNull: true },
     subcategory_id: { type: DataTypes.INTEGER, allowNull: true },
     category_id: { type: DataTypes.INTEGER, allowNull: true },
-    item_id: { type: DataTypes.INTEGER, allowNull: true }, // Shared for Amenity & LTR Items
+    ltr_item_id: { type: DataTypes.INTEGER, allowNull: true },
+    amenity_item_id: { type: DataTypes.INTEGER, allowNull: true },
+    item_id: { type: DataTypes.INTEGER, allowNull: true }, // Keep legacy for safety
     specified_value: { type: DataTypes.STRING, allowNull: true },
     answer_type: { type: DataTypes.ENUM('BOOLEAN', 'VALUE'), defaultValue: 'BOOLEAN' },
     unit: { type: DataTypes.STRING(50) },
@@ -130,8 +133,8 @@ Category.hasMany(LtrSchedule, { foreignKey: 'category_id' });
 LtrSchedule.hasMany(LtrItem, { foreignKey: 'schedule_id' });
 LtrItem.belongsTo(LtrSchedule, { foreignKey: 'schedule_id' });
 
-LtrItem.hasMany(Question, { foreignKey: 'item_id' });
-Question.belongsTo(LtrItem, { foreignKey: 'item_id' });
+LtrItem.hasMany(Question, { foreignKey: 'ltr_item_id' });
+Question.belongsTo(LtrItem, { foreignKey: 'ltr_item_id' });
 
 // Amenity Associations
 AmenitySubcategory.belongsTo(Category, { foreignKey: 'category_id' });
@@ -153,8 +156,8 @@ Reason.belongsTo(Question, { foreignKey: 'question_id' });
 AmenitySubcategory.hasMany(AmenityItem, { foreignKey: 'subcategory_id' });
 AmenityItem.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
 
-AmenityItem.hasMany(Question, { foreignKey: 'item_id' });
-Question.belongsTo(AmenityItem, { foreignKey: 'item_id' });
+AmenityItem.hasMany(Question, { foreignKey: 'amenity_item_id' });
+Question.belongsTo(AmenityItem, { foreignKey: 'amenity_item_id' });
 
 // Inspection Answer links
 InspectionAnswer.belongsTo(Train, { foreignKey: 'train_id' });
@@ -164,6 +167,7 @@ InspectionAnswer.belongsTo(Question, { foreignKey: 'question_id' });
 InspectionAnswer.belongsTo(User, { foreignKey: 'user_id' });
 InspectionAnswer.belongsTo(LtrSchedule, { foreignKey: 'schedule_id' });
 InspectionAnswer.belongsTo(AmenitySubcategory, { foreignKey: 'subcategory_id' });
+InspectionAnswer.belongsTo(WspSession, { foreignKey: 'session_id' });
 
 // Commissionary Associations
 User.hasMany(CommissionarySession, { foreignKey: 'created_by' });
@@ -171,6 +175,9 @@ CommissionarySession.belongsTo(User, { foreignKey: 'created_by' });
 
 Coach.hasMany(CommissionarySession, { foreignKey: 'coach_id' });
 CommissionarySession.belongsTo(Coach, { foreignKey: 'coach_id' });
+
+Coach.hasMany(WspSession, { foreignKey: 'coach_id' });
+WspSession.belongsTo(Coach, { foreignKey: 'coach_id' });
 
 CommissionarySession.hasMany(CommissionaryAnswer, { foreignKey: 'session_id' });
 CommissionaryAnswer.belongsTo(CommissionarySession, { foreignKey: 'session_id' });
@@ -203,5 +210,6 @@ module.exports = {
     User, Role, CategoryMaster, UserCategory,
     CommissionarySession, CommissionaryAnswer,
     SickLineSession, SickLineAnswer,
+    WspSession,
     sequelize
 };

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getQuestions } from '../api/api';
+import { getQuestions, getWspQuestions } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import QuestionCard from '../components/QuestionCard';
 import { Ionicons } from '@expo/vector-icons';
+import { normalizeQuestionResponse } from '../utils/normalization';
 
 /**
  * Questions Checklist Screen - PRODUCTION VERSION
@@ -16,26 +17,52 @@ const QuestionsScreen = ({ route, navigation }) => {
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchQuestions = async () => {
-        try {
-            setLoading(true);
-            const data = await getQuestions(params.activityId, params.scheduleId, params.subcategoryId || params.subcategory_id);
-            // Unified data handling
-            setQuestions(data || []);
-        } catch (error) {
-            console.log("Fetch Error:", error);
-            Alert.alert('Network Error', 'Check if backend is running');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const fetchRef = useRef(null);
 
-    // Refresh questions whenever screen comes into focus (e.g., after adding/deleting questions)
-    useFocusEffect(
-        useCallback(() => {
-            fetchQuestions();
-        }, [params.activityId])
-    );
+    useEffect(() => {
+        const subId = params.subcategoryId || params.subcategory_id;
+        const key = `${subId}-${params.activityId}-${params.scheduleId}`;
+
+        if (fetchRef.current === key) return;
+        fetchRef.current = key;
+
+        let isMounted = true;
+
+        const load = async () => {
+            try {
+                setLoading(true);
+                setQuestions([]); // State Reset
+
+                console.log(`[FETCHING QUESTIONS] Generic - Subcategory: ${subId}, Activity: ${params.activityId}`);
+
+                let rawResponse;
+                if (params.categoryName === 'WSP Examination') {
+                    rawResponse = await getWspQuestions(params.scheduleId);
+                } else {
+                    rawResponse = await getQuestions(params.activityId, params.scheduleId, subId);
+                }
+
+                if (!isMounted) return;
+
+                const normalized = normalizeQuestionResponse(rawResponse);
+                setQuestions(normalized.groups);
+            } catch (error) {
+                console.error("[QUESTION FETCH ERROR]", error);
+                if (isMounted) {
+                    Alert.alert('Network Error', 'Check if backend is running');
+                    setQuestions([]);
+                }
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        load();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [params.activityId, params.subcategoryId, params.subcategory_id, params.scheduleId]);
 
     const getAnswerKey = (qId) => params.compartment ? `${params.compartment}_${qId}` : qId.toString();
 
@@ -50,41 +77,34 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     const currentAnswers = draft?.answers || {};
 
-    // Flatten questions for logic/progress if they are grouped
-    const isGrouped = questions.length > 0 && (questions[0].item || questions[0].item_name) && questions[0].questions;
-    const flatQuestions = isGrouped
-        ? questions.reduce((acc, curr) => [...acc, ...curr.questions], [])
-        : questions;
+    // Flatten questions for logic/progress since we now guarantee they are grouped
+    const flatQuestions = questions.flatMap(group => group.questions || []);
 
-    // Filtered count: only count answers for the CURRENT compartment if one exists
-    const countCompleted = (flatQuestions || []).filter(q => {
+    const qList = flatQuestions || [];
+    const ansMap = currentAnswers || {};
+    const currentQIds = qList.map(q => q?.id?.toString()).filter(Boolean);
+
+    // FIXED: Define relevantAnswers in scope for both validation and render
+    const relevantAnswers = Object.entries(ansMap).filter(([key, ans]) => {
+        const parts = key.split('_');
+        const qId = parts.length > 1 ? parts[1] : parts[0];
+        const comp = parts.length > 1 ? parts[0] : null;
+
+        return currentQIds.includes(qId) &&
+            comp === (params.compartment || null) &&
+            (ans?.status || ans?.observed_value);
+    });
+
+    const countCompleted = qList.filter(q => {
         if (!q) return false;
-        const ans = currentAnswers[getAnswerKey(q.id)];
+        const ans = ansMap[getAnswerKey(q.id)];
         return ans && (ans.status || ans.observed_value);
     }).length;
 
-    const totalQs = (flatQuestions || []).length;
+    const totalQs = qList.length;
     const progress = totalQs > 0 ? (countCompleted / totalQs) * 100 : 0;
-    const isDone = totalQs > 0 && countCompleted === totalQs;
 
     const goSummary = () => {
-        console.log('Running validation check for answers...');
-
-        const qList = flatQuestions || [];
-        const ansMap = currentAnswers || {};
-
-        const currentQIds = qList.map(q => q?.id?.toString()).filter(Boolean);
-        // Only validate answers that belong to this screen AND HAVE THE CORRECT COMPARTMENT PREFIX
-        const relevantAnswers = Object.entries(ansMap).filter(([key, ans]) => {
-            const parts = key.split('_');
-            const qId = parts.length > 1 ? parts[1] : parts[0];
-            const comp = parts.length > 1 ? parts[0] : null;
-
-            return currentQIds.includes(qId) &&
-                comp === (params.compartment || null) &&
-                (ans?.status || ans?.observed_value);
-        });
-
         const invalidDeficiency = relevantAnswers.find(([key, ans]) => {
             if (!ans) return false;
             const missingReason = !ans.reasons || ans.reasons.length === 0;
@@ -119,24 +139,43 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
+    const isWsp = params.categoryName === 'WSP Examination' || params.mode === 'WSP';
+
     return (
         <View style={styles.container}>
             <View style={styles.stickyHeader}>
                 <View style={styles.headerTop}>
+                    <TouchableOpacity onPress={() => navigation.goBack()}>
+                        <Ionicons name="arrow-back" size={24} color="#1e293b" />
+                    </TouchableOpacity>
                     <View style={styles.breadcrumbs}>
-                        <Text style={styles.breadcrumb}>{params.trainName}</Text>
-                        <Text style={styles.separator}>›</Text>
-                        <Text style={styles.breadcrumb}>{params.coachNumber}</Text>
-                        <Text style={styles.separator}>›</Text>
-                        <Text style={styles.breadcrumb}>{params.categoryName}</Text>
-                        <Text style={styles.separator}>›</Text>
-                        <Text style={styles.breadcrumb}>
-                            {params.compartment ? `${params.subcategoryName} (${params.compartment})` : params.subcategoryName}
-                        </Text>
-                        <Text style={styles.separator}>›</Text>
-                        <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
-                            {params.scheduleName || params.activityType}
-                        </Text>
+                        {!isWsp ? (
+                            <>
+                                <Text style={styles.breadcrumb}>{params.trainName}</Text>
+                                <Text style={styles.separator}>›</Text>
+                                <Text style={styles.breadcrumb}>{params.coachNumber}</Text>
+                                <Text style={styles.separator}>›</Text>
+                                <Text style={styles.breadcrumb}>{params.categoryName}</Text>
+                                <Text style={styles.separator}>›</Text>
+                                <Text style={styles.breadcrumb}>
+                                    {params.compartment ? `${params.subcategoryName} (${params.compartment})` : params.subcategoryName}
+                                </Text>
+                                <Text style={styles.separator}>›</Text>
+                                <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
+                                    {params.activityType}
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.breadcrumb}>{params.coachNumber}</Text>
+                                <Text style={styles.separator}>›</Text>
+                                <Text style={styles.breadcrumb}>WSP</Text>
+                                <Text style={styles.separator}>›</Text>
+                                <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
+                                    {params.scheduleName}
+                                </Text>
+                            </>
+                        )}
                     </View>
                     {user?.role === 'Admin' && (
                         <TouchableOpacity
@@ -161,31 +200,28 @@ const QuestionsScreen = ({ route, navigation }) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-                {isGrouped ? (
-                    (questions || []).map((group, gIdx) => (
+                {Array.isArray(questions) && questions.length > 0 ? (
+                    questions.map((group, gIdx) => (
                         <View key={`group-${gIdx}`} style={styles.groupContainer}>
                             <View style={styles.itemHeader}>
-                                <Text style={styles.itemHeaderText}>{group.item_name || group.item}</Text>
+                                <Text style={styles.itemHeaderText}>{group.item_name || group.item || 'Questions'}</Text>
                             </View>
-                            {(group.questions || []).map((q, idx) => (
+                            {Array.isArray(group.questions) && group.questions.map((q, idx) => (
                                 <QuestionCard
                                     key={q.id || `q-${idx}`}
                                     question={q}
                                     answerData={currentAnswers[getAnswerKey(q.id)]}
                                     onUpdate={(data) => updateAnswer(q.id, data)}
+                                    isDraft={true}
                                 />
                             ))}
                         </View>
                     ))
                 ) : (
-                    (questions || []).map((q, idx) => q && (
-                        <QuestionCard
-                            key={q.id || idx}
-                            question={q}
-                            answerData={currentAnswers[getAnswerKey(q.id)]}
-                            onUpdate={(data) => updateAnswer(q.id, data)}
-                        />
-                    ))
+                    <View style={styles.emptyContainer}>
+                        <Ionicons name="information-circle-outline" size={60} color="#94a3b8" />
+                        <Text style={styles.emptyText}>No questions available for this area.</Text>
+                    </View>
                 )}
             </ScrollView>
 
@@ -254,7 +290,9 @@ const styles = StyleSheet.create({
     editQuestionsBtnText: { fontSize: 11, fontWeight: 'bold', color: '#2563eb' },
     groupContainer: { marginBottom: 20 },
     itemHeader: { backgroundColor: '#f8fafc', paddingVertical: 8, paddingHorizontal: 12, borderLeftWidth: 4, borderLeftColor: '#334155', marginBottom: 10, borderRadius: 4 },
-    itemHeaderText: { fontSize: 14, fontWeight: 'bold', color: '#334155', textTransform: 'uppercase' }
+    itemHeaderText: { fontSize: 14, fontWeight: 'bold', color: '#334155', textTransform: 'uppercase' },
+    emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 100 },
+    emptyText: { marginTop: 15, color: '#64748b', fontSize: 16, fontWeight: '500' }
 });
 
 export default QuestionsScreen;

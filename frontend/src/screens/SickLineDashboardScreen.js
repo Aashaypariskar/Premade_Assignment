@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Alert } from 'react-native';
-import { getAmenitySubcategories, getSickLineProgress, completeSickLineSession } from '../api/api';
+import { getAmenitySubcategories, getSickLineProgress, completeSickLineSession, getWspProgress } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,6 +10,7 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
     const [subcategories, setSubcategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(null);
+    const [wspProgress, setWspProgress] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const { setDraft } = useStore();
 
@@ -24,11 +25,21 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
             setLoading(true);
             const [data, prog] = await Promise.all([
                 getAmenitySubcategories('Amenity', 1),
-                getSickLineProgress(params.coachNumber)
+                getSickLineProgress(params.coachNumber),
             ]);
+
+            try {
+                const wspProg = await getWspProgress(params.coachNumber, 'SICKLINE');
+                setWspProgress(wspProg);
+            } catch (err) {
+                console.log('WSP Progress load error:', err);
+                setWspProgress({ completedCount: 0, totalCount: 0, completed: false }); // Safe default
+            }
+
             setSubcategories(data);
             setProgress(prog);
         } catch (err) {
+            console.log('SickLine Dashboard Load Error:', err);
             Alert.alert('Error', 'Could not fetch dashboard data');
         } finally {
             setLoading(false);
@@ -63,6 +74,10 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
     };
 
     const handleSelect = (sub, index) => {
+        if (sub.isWsp) {
+            handleWspCardPress();
+            return;
+        }
         setDraft(prev => ({
             ...prev,
             subcategory_id: sub.id,
@@ -80,7 +95,20 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
         });
     };
 
+    const handleWspCardPress = () => {
+        navigation.navigate('WspScheduleScreen', {
+            mode: 'SICKLINE',
+            sickLineSessionId: progress?.session_id || params.sessionId,
+            coachId: params.coachId,
+            coachNumber: params.coachNumber,
+            categoryName: 'WSP Examination'
+        });
+    };
+
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+
+    // Prepend WSP as a virtual subcategory for the grid
+    const gridData = [{ id: 'wsp', name: 'WSP Examination', isWsp: true }, ...subcategories];
 
     return (
         <View style={styles.container}>
@@ -99,22 +127,37 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
             <Text style={styles.subtitle}>Choose an area for Sick Line inspection</Text>
 
             <FlatList
-                data={subcategories}
+                data={gridData}
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
                 renderItem={({ item, index }) => {
-                    const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
-                    const hasMajor = status?.hasMajor || false;
-                    const hasMinor = status?.hasMinor || false;
-
                     let badgeText = "Pending";
-                    let badgeColor = "#94a3b8"; // grey
-                    if (hasMajor && hasMinor) {
-                        badgeText = "Completed";
-                        badgeColor = "#10b981"; // green
-                    } else if (hasMajor || hasMinor) {
-                        badgeText = "Partial";
-                        badgeColor = "#f59e0b"; // yellow (keep this one as orange/yellow for "Partial" per original Commissionary design)
+                    let badgeColor = "#94a3b8";
+                    let iconName = "build-outline";
+                    let iconColor = "#2563eb";
+
+                    if (item.isWsp) {
+                        iconName = "shield-checkmark-outline";
+                        iconColor = "#1e293b";
+                        if (wspProgress?.isCompleted) {
+                            badgeText = "Completed";
+                            badgeColor = "#10b981";
+                        } else if (wspProgress?.hasStarted) {
+                            badgeText = "Partial";
+                            badgeColor = "#f59e0b";
+                        }
+                    } else {
+                        const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
+                        const hasMajor = status?.hasMajor || false;
+                        const hasMinor = status?.hasMinor || false;
+
+                        if (hasMajor && hasMinor) {
+                            badgeText = "Completed";
+                            badgeColor = "#10b981";
+                        } else if (hasMajor || hasMinor) {
+                            badgeText = "Partial";
+                            badgeColor = "#f59e0b";
+                        }
                     }
 
                     return (
@@ -125,8 +168,8 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                             <View style={[styles.badge, { backgroundColor: badgeColor }]}>
                                 <Text style={styles.badgeText}>{badgeText}</Text>
                             </View>
-                            <View style={styles.iconBox}>
-                                <Ionicons name="build-outline" size={24} color="#2563eb" />
+                            <View style={[styles.iconBox, item.isWsp && { backgroundColor: '#f1f5f9' }]}>
+                                <Ionicons name={iconName} size={24} color={iconColor} />
                             </View>
                             <Text style={styles.subName}>{item.name}</Text>
                         </TouchableOpacity>
@@ -194,7 +237,51 @@ const styles = StyleSheet.create({
     submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#10b981', padding: 18, borderRadius: 16, elevation: 4 },
     submitBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
     badge: { position: 'absolute', top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-    badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' }
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+    wspCard: {
+        backgroundColor: '#fff',
+        marginHorizontal: 6,
+        marginVertical: 10,
+        padding: 20,
+        borderRadius: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e2e8f0'
+    },
+    wspIconBox: {
+        width: 60,
+        height: 60,
+        borderRadius: 20,
+        backgroundColor: '#1e293b',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15
+    },
+    wspContent: {
+        flex: 1
+    },
+    wspName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1e293b'
+    },
+    wspSub: {
+        fontSize: 12,
+        color: '#64748b',
+        marginTop: 2
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#e2e8f0',
+        marginHorizontal: 20,
+        marginVertical: 15
+    }
 });
 
 export default SickLineDashboardScreen;

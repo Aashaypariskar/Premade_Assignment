@@ -2,18 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/StoreContext';
-import { getUserCategories } from '../api/api';
+import { getUserCategories, getWspProgress } from '../api/api';
 
 const CategoryDashboard = ({ navigation }) => {
     const { user, logout, setDraft } = useStore();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [wspProgress, setWspProgress] = useState(null);
 
     const fetchCategories = async () => {
         try {
             const data = await getUserCategories();
-            setCategories(data.filter(c => c.name !== 'Coach Commissionary'));
+            setCategories(data);
             setError(null);
         } catch (err) {
             console.error('Dash Error:', err);
@@ -36,7 +37,7 @@ const CategoryDashboard = ({ navigation }) => {
             activity: null,
             answers: {}
         });
-        navigation.navigate('TrainSelection', { categoryName });
+        navigation.navigate('CoachSelection', { categoryName });
     };
 
     if (loading) {
@@ -96,29 +97,23 @@ const CategoryDashboard = ({ navigation }) => {
                                 onPress={() => {
                                     if (item.name === 'Sick Line Examination') {
                                         navigation.navigate('SickLineCoach');
+                                    } else if (item.name === 'Coach Commissionary') {
+                                        navigation.navigate('CommissionaryCoach');
+                                    } else if (item.name === 'WSP Examination') {
+                                        navigation.navigate('CoachSelection', { categoryName: 'WSP Examination' });
                                     } else {
                                         handleSelectCategory(item.name);
                                     }
                                 }}
                             >
                                 <View style={styles.iconCircle}>
-                                    <Text style={styles.icon}>{item.name[0]}</Text>
+                                    <Text style={styles.icon}>
+                                        {item.name === 'Coach Commissionary' ? '📋' :
+                                            item.name === 'Sick Line Examination' ? '🏥' :
+                                                item.name === 'WSP Examination' ? '⚙️' : item.name[0]}
+                                    </Text>
                                 </View>
                                 <Text style={styles.cardText}>{item.name}</Text>
-                            </TouchableOpacity>
-                        )}
-                        ListHeaderComponent={() => (
-                            <TouchableOpacity
-                                style={[styles.card, styles.commissionaryCard]}
-                                onPress={() => navigation.navigate('CommissionaryCoach')}
-                            >
-                                <View style={[styles.iconCircle, { backgroundColor: '#f0fdf4' }]}>
-                                    <Text style={[styles.icon, { color: '#10b981' }]}>📋</Text>
-                                </View>
-                                <Text style={styles.cardText}>Coach Commissionary</Text>
-                                <View style={styles.newBadge}>
-                                    <Text style={styles.newBadgeText}>WORKFLOW</Text>
-                                </View>
                             </TouchableOpacity>
                         )}
                         ListEmptyComponent={
@@ -224,7 +219,16 @@ const styles = StyleSheet.create({
     errorContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 30 },
     errorText: { fontSize: 16, color: '#ef4444', textAlign: 'center', fontWeight: '600', marginBottom: 20 },
     retryBtn: { backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 },
-    retryText: { color: '#fff', fontWeight: 'bold', fontSize: 14 }
+    retryText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+    progressBadge: {
+        marginTop: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6
+    },
+    bgPending: { backgroundColor: '#fef3c7' }, // Amber 100
+    bgComplete: { backgroundColor: '#dcfce7' }, // Green 100
+    badgeText: { fontSize: 10, fontWeight: 'bold', color: '#1e293b' }
 });
 
 export default CategoryDashboard;

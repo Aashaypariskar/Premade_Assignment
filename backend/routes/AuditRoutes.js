@@ -10,7 +10,6 @@ router.get('/coach-list', verifyToken, controller.getCoaches);
 router.get('/checklist', verifyToken, controller.getQuestions);
 router.get('/activity-types', verifyToken, controller.getActivities);
 router.get('/summary', verifyToken, controller.getCombinedSummary); // Added route
-router.get('/ltr-schedules', verifyToken, controller.getLtrSchedules);
 router.get('/amenity-subcategories', verifyToken, controller.getAmenitySubcategories);
 
 // Restricted Routes

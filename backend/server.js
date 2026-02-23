@@ -38,16 +38,16 @@ app.use((req, res, next) => {
 app.use('/public', express.static('public'));
 
 // Routes
-app.use('/api', auditRoutes);
 app.use('/api', authRoutes);
+app.use('/api', auditRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', questionRoutes);
 app.use('/api', reasonRoutes);
 app.use('/api', require('./routes/ReportRoutes'));
-const commController = require('./controllers/CommissionaryController');
-const { verifyToken } = require('./middleware/auth');
 app.use('/api/commissionary', require('./routes/CommissionaryRoutes'));
 app.use('/api/sickline', require('./routes/SickLineRoutes'));
+app.use('/api/wsp', require('./routes/WspRoutes'));
+app.use('/api/common', require('./routes/CommonRoutes'));
 
 
 // Catch-all for 404
@@ -68,7 +68,7 @@ sequelize.authenticate()
         console.log('--- DATABASE CONNECTED ---');
         // Sync models to update schema (create submission_id column)
         // Sync models (Disabled alter to stop index bloat)
-        return sequelize.sync();
+        return sequelize.sync({ alter: true });
     })
     .then(() => {
         console.log('--- SCHEMA SYNCED ---');

@@ -1,5 +1,6 @@
 const {
-    Train, Coach, Category, Activity, Question, InspectionAnswer, LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem, Role, User, CategoryMaster, sequelize
+    Train, Coach, Category, Activity, Question, InspectionAnswer, LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem, Role, User, CategoryMaster,
+    SickLineSession, SickLineAnswer, sequelize
 } = require('../models');
 const { Op } = require('sequelize');
 
@@ -65,18 +66,35 @@ exports.getTrains = async (req, res) => {
 exports.getCoaches = async (req, res) => {
     try {
         const { train_id, category_name } = req.query;
-        if (!train_id) return res.status(400).json({ error: 'Train ID is mandatory' });
+        // train_id is now optional to support coach-centric selection (WSP, Commissionary, etc.)
 
-        const coaches = await Coach.findAll({
-            where: { train_id },
-            include: [{
+        const where = {};
+        if (train_id && train_id !== 'undefined') where.train_id = train_id;
+
+        const findOptions = {
+            where,
+            include: []
+        };
+
+        // If category_name is WSP, we show ALL coaches because WSP is daily and isolated
+        // For other categories, we stay strict to filtered coaches
+        if (category_name === 'WSP Examination') {
+            findOptions.include = [{
+                model: Category,
+                required: false // Show even if no category record exists
+            }];
+        } else {
+            findOptions.include = [{
                 model: Category,
                 where: category_name ? { name: category_name } : {},
                 required: true
-            }]
-        });
+            }];
+        }
+
+        const coaches = await Coach.findAll(findOptions);
         res.json(coaches);
     } catch (err) {
+        console.error('getCoaches Error:', err);
         res.status(500).json({ error: 'Failed to retrieve coaches' });
     }
 };
@@ -164,22 +182,6 @@ exports.getActivities = async (req, res) => {
     }
 };
 
-// GET /ltr-schedules?category_name=Ltr to Railways&coach_id=Y
-exports.getLtrSchedules = async (req, res) => {
-    try {
-        const { category_name, coach_id } = req.query;
-        if (!category_name || !coach_id) return res.status(400).json({ error: 'coach_id and category_name required' });
-
-        const category = await Category.findOne({ where: { name: category_name, coach_id } });
-        if (!category) return res.status(404).json({ error: 'LTR Category not found for this coach' });
-
-        const schedules = await LtrSchedule.findAll({ where: { category_id: category.id } });
-        res.json(schedules);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed' });
-    }
-};
-
 // GET /amenity-subcategories?category_name=Amenity&coach_id=Y
 exports.getAmenitySubcategories = async (req, res) => {
     try {
@@ -212,28 +214,7 @@ exports.getQuestions = async (req, res) => {
         let where = {};
         let categoryName = '';
 
-        // Rule #14: Final Questions Fetch Logic
-        if (schedule_id) {
-            // LTR Digital Twin Logic: Return grouped by "Item"
-            const items = await LtrItem.findAll({
-                where: { schedule_id },
-                include: [{
-                    model: Question,
-                    required: true, // Only items with questions
-                }],
-                order: [
-                    ['display_order', 'ASC'],
-                    [{ model: Question }, 'display_order', 'ASC']
-                ]
-            });
-
-            const grouped = items.map(item => ({
-                item_name: item.name,
-                questions: item.Questions
-            }));
-
-            return res.json(grouped);
-        } else if (activity_id && subcategory_id) {
+        if (activity_id && subcategory_id) {
             where.activity_id = activity_id;
             where.subcategory_id = subcategory_id;
             categoryName = 'Amenity';
@@ -256,33 +237,39 @@ exports.getQuestions = async (req, res) => {
         }
 
         if (categoryName === 'Amenity') {
-            // Strict Hierarchy: Subcategory -> Activity Type -> Items -> Questions
-            // If activity_type is not provided, try to derive from activity_id (legacy support)
-            let type = req.query.activity_type;
-            if (!type && activity_id) {
-                const act = await Activity.findByPk(activity_id);
-                type = act ? act.type : 'Minor';
-            }
-
-            if (!type) {
-                return res.status(400).json({ error: 'activity_type or activity_id is required for Amenity' });
-            }
-
-            const items = await AmenityItem.findAll({
-                where: { subcategory_id, activity_type: type },
+            // Step 1: Fetch ALL AmenityItems (ignoring activity_type for now)
+            const allItems = await AmenityItem.findAll({
+                where: { subcategory_id },
                 include: [{
                     model: Question,
                     required: true,
-                    where: { subcategory_id } // Validation: Questions must match subcategory
+                    where: { subcategory_id }
                 }]
             });
 
-            const grouped = items.map(item => ({
+            // Step 2: Detect if any item HAS an activity_type
+            const supportsActivityType = allItems.some(item => item.activity_type !== null);
+
+            // Step 3: Filter logic
+            let filteredItems = allItems;
+            if (supportsActivityType) {
+                let type = req.query.activity_type;
+                if (!type && activity_id) {
+                    const act = await Activity.findByPk(activity_id);
+                    type = act ? act.type : 'Minor';
+                }
+                filteredItems = allItems.filter(item => item.activity_type === type);
+            }
+
+            const grouped = filteredItems.map(item => ({
                 item_name: item.name,
                 questions: item.Questions
             }));
 
-            return res.json(grouped);
+            return res.json({
+                supportsActivityType,
+                groupedQuestions: grouped
+            });
         }
 
         const questions = await Question.findAll({ where });
@@ -297,7 +284,7 @@ exports.getQuestions = async (req, res) => {
 exports.submitInspection = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const { train_id, coach_id, activity_id, schedule_id, subcategory_id, compartment, answers, submission_id } = req.body;
+        const { train_id, coach_id, activity_id, schedule_id, subcategory_id, compartment, answers, submission_id, mode } = req.body;
         console.log(`[SUBMIT] Attempting: ${submission_id} (Train: ${train_id}, Coach: ${coach_id}, Act: ${activity_id}, Sch: ${schedule_id}, Sub: ${subcategory_id})`);
 
         if (!answers || !Array.isArray(answers)) {
@@ -390,7 +377,7 @@ exports.submitInspection = async (req, res) => {
                 submission_id: submission_id || `LEGACY-${Date.now()}`,
                 train_number: train.train_number,
                 coach_number: coach.coach_number,
-                category_name: activity?.Category?.name || (schedule ? 'Ltr to Railways' : (subcategory ? 'Amenity' : 'Unknown')),
+                category_name: activity?.Category?.name || (subcategory ? 'Amenity' : 'Audit'),
                 subcategory_name: subcategory ? (compartment ? `${subcategory.name} [${compartment}]` : subcategory.name) : (questionData?.AmenitySubcategory ? (compartment ? `${questionData.AmenitySubcategory.name} [${compartment}]` : questionData.AmenitySubcategory.name) : null),
                 schedule_name: schedule?.name || null,
                 item_name: questionData?.AmenityItem?.name || questionData?.LtrItem?.name || null, // Snapshot Item Name (Amenity or LTR)
@@ -402,8 +389,46 @@ exports.submitInspection = async (req, res) => {
             };
         });
 
-        // 3. Insert
-        const results = await InspectionAnswer.bulkCreate(records, { transaction });
+        if (mode === 'SICKLINE') {
+            const today = new Date().toISOString().split('T')[0];
+            let [session] = await SickLineSession.findOrCreate({
+                where: { coach_id, inspection_date: today },
+                defaults: {
+                    coach_number: coach.coach_number,
+                    inspection_date: today,
+                    created_by: userId,
+                    status: 'IN_PROGRESS'
+                },
+                transaction
+            });
+
+            const sickLineRecords = validAnswers.map(ans => {
+                const questionData = questionsList.find(q => q.id === ans.question_id);
+                // Basic validation is already done above for 'records' array, 
+                // but we need to map to SickLineAnswer schema
+                return {
+                    session_id: session.id,
+                    subcategory_id: subcategory_id || questionData.subcategory_id,
+                    activity_type: activity?.type || 'WSP', // WSP schedules don't have activity_type by default
+                    question_id: ans.question_id,
+                    compartment_id: compartment || 'NA',
+                    status: ans.status,
+                    reasons: ans.reasons || [],
+                    remarks: ans.remarks || '',
+                    photo_url: ans.image_path,
+                    question_text_snapshot: questionData?.text || 'Standard Question'
+                };
+            });
+
+            // For SickLine, we typically use upsert-like behavior per answer to avoid duplicates if user re-submits
+            for (const rec of sickLineRecords) {
+                await SickLineAnswer.upsert(rec, { transaction });
+            }
+        } else {
+            // Standard Flow: Bulk Insert into InspectionAnswer
+            await InspectionAnswer.bulkCreate(records, { transaction });
+        }
+
         await transaction.commit();
 
         res.status(201).json({

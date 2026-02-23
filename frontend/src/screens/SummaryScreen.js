@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
-import { submitInspection } from '../api/api';
+import { submitInspection, saveWspAnswers } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { calculateCompliance } from '../utils/compliance';
 
@@ -34,7 +34,7 @@ const SummaryScreen = ({ route, navigation }) => {
     };
 
     const finalSubmit = async () => {
-        if (!currentDraft.train || !currentDraft.coach) {
+        if ((params.categoryName !== 'WSP Examination' && !currentDraft.train) || !currentDraft.coach) {
             Alert.alert('Error', 'Incomplete inspection data. Please go back.');
             return;
         }
@@ -47,6 +47,7 @@ const SummaryScreen = ({ route, navigation }) => {
             schedule_id: currentDraft.schedule_id,
             subcategory_id: currentDraft.subcategory_id,
             compartment: params.compartment, // Pass compartment to backend
+            mode: params.mode || 'INDEPENDENT',
             submission_id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
             answers: answersList.map(([key, data]) => {
                 const parts = key.split('_');
@@ -63,11 +64,23 @@ const SummaryScreen = ({ route, navigation }) => {
         };
 
         try {
-            await submitInspection(payload);
+            if (params.categoryName === 'WSP Examination') {
+                const wspPayload = {
+                    session_id: params.sessionId,
+                    mode: params.mode || 'INDEPENDENT',
+                    coach_id: currentDraft.coach?.id,
+                    schedule_id: currentDraft.schedule_id,
+                    answers: payload.answers
+                };
+                await saveWspAnswers(wspPayload);
+            } else {
+                await submitInspection(payload);
+            }
+
             Alert.alert('Success!', 'Inspection submitted successfully', [
                 {
                     text: 'Done', onPress: () => {
-                        const submittedTrain = currentDraft.train?.train_number;
+                        const submittedTrain = currentDraft.train?.train_number || 'Audit';
                         const submittedCoach = currentDraft.coach?.coach_number;
                         const now = new Date().toISOString().split('T')[0];
                         const userId = user?.id;

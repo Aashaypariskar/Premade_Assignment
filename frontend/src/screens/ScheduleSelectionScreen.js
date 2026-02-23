@@ -16,7 +16,12 @@ const ScheduleSelectionScreen = ({ route, navigation }) => {
 
     const loadSchedules = async () => {
         try {
-            const data = await getLtrSchedules(params.categoryName, params.coachId);
+            let data = [];
+            if (params.categoryName === 'WSP Examination') {
+                data = await getWspSchedules();
+            } else {
+                console.warn('Legacy flow hit for category:', params.categoryName);
+            }
             setSchedules(data);
         } catch (err) {
             Alert.alert('Error', 'Could not fetch schedules');

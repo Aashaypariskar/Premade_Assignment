@@ -86,32 +86,47 @@ exports.getOrCreateSession = async (req, res) => {
 // GET /api/commissionary/questions?subcategory_id=X&activity_type=Y
 exports.getQuestions = async (req, res) => {
     try {
-        const { subcategory_id, activity_type } = req.query;
-        if (!subcategory_id || !activity_type) {
-            return res.status(400).json({ error: 'Missing parameters' });
-        }
+        const { subcategory_id } = req.query; // Phase 1: Only subcategory_id
+        if (!subcategory_id) return res.status(400).json({ error: 'Missing subcategory_id' });
 
+        console.log(`[STABILIZATION-INPUT] subcategory_id: ${subcategory_id}, query:`, req.query);
+
+        // Step 1: Fetch items with questions using the core subcategory filter
         const items = await AmenityItem.findAll({
-            where: { subcategory_id, activity_type },
+            where: { subcategory_id },
             include: [{
                 model: Question,
-                required: true,
-                where: { subcategory_id }
+                required: false, // Don't hide empty items during debug
+                where: { subcategory_id } // Ensure question belongs to subcategory
             }],
-            order: [
-                ['id', 'ASC'],
-                [{ model: Question }, 'display_order', 'ASC']
-            ]
+            order: [['id', 'ASC']]
         });
 
-        const grouped = items.map(item => ({
-            item_name: item.name,
-            questions: item.Questions
-        }));
+        console.log(`[STABILIZATION-ITEMS] Count: ${items.length}`);
 
-        res.json(grouped);
+        if (items.length === 0) {
+            console.log(`[STABILIZATION-EMPTY] subcategory_id: ${subcategory_id} - EMPTY RESULT – VERIFY DATA`);
+        }
+
+        // Step 2: Group by item_name strictly (Phase 4)
+        const grouped = items
+            .filter(it => it.Questions && it.Questions.length > 0)
+            .map(item => ({
+                item_name: item.name,
+                questions: item.Questions
+            }));
+
+        const totalQ = grouped.reduce((acc, g) => acc + g.questions.length, 0);
+        console.log(`[STABILIZATION-OUTPUT] Total Groups: ${grouped.length}, Total Questions: ${totalQ}`);
+
+        if (grouped.length > 0) {
+            console.log(`[STABILIZATION-PREVIEW] First group item: ${grouped[0].item_name}, Questions: ${grouped[0].questions.length}`);
+        }
+
+        res.json(grouped); // Phase 4: Grouped by item_name only
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch questions' });
+        console.error('[STABILIZATION-FATAL] getQuestions Error:', err);
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -229,49 +244,65 @@ exports.getProgress = async (req, res) => {
             const subName = sub.name;
             const subId = sub.id;
 
-            // Strict Question Counts for this subcategory
-            const totalMajor = await Question.count({
-                where: { subcategory_id: subId },
-                include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
-            });
-            const totalMinor = await Question.count({
-                where: { subcategory_id: subId },
-                include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
-            });
+            // 1. Detect if this subcategory supports activity types
+            const items = await AmenityItem.findAll({ where: { subcategory_id: subId } });
+            const supportsActivityType = items.some(it => it.activity_type !== null);
 
-            // For each compartment, check if ALL questions are answered
-            let compartmentsCompleted = 0;
+            let isFullyComplete = false;
+            let majorDone = false;
+            let minorDone = false;
             const compBreakdown = {};
 
-            for (const compId of COMPARTMENTS) {
-                const answeredMajor = await CommissionaryAnswer.count({
-                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major', compartment_id: compId }
+            if (supportsActivityType) {
+                // Strict Question Counts for this subcategory
+                const totalMajor = await Question.count({
+                    where: { subcategory_id: subId },
+                    include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
                 });
-                const answeredMinor = await CommissionaryAnswer.count({
-                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor', compartment_id: compId }
+                const totalMinor = await Question.count({
+                    where: { subcategory_id: subId },
+                    include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
                 });
 
-                const majorDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
-                const minorDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
+                let compartmentsCompleted = 0;
+                for (const compId of COMPARTMENTS) {
+                    const answeredMajor = await CommissionaryAnswer.count({
+                        where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major', compartment_id: compId }
+                    });
+                    const answeredMinor = await CommissionaryAnswer.count({
+                        where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor', compartment_id: compId }
+                    });
 
-                if (majorDone && minorDone) {
-                    compartmentsCompleted++;
+                    const mDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
+                    const miDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
+
+                    if (mDone && miDone) compartmentsCompleted++;
+                    compBreakdown[compId] = { major: mDone, minor: miDone, isComplete: mDone && miDone };
                 }
-
-                compBreakdown[compId] = { major: majorDone, minor: minorDone, isComplete: majorDone && minorDone };
+                majorDone = compartmentsCompleted > 0;
+                minorDone = compartmentsCompleted > 0;
+                isFullyComplete = (compartmentsCompleted === COMPARTMENTS.length);
+            } else {
+                // Standard: No activity types
+                const totalQuestions = await Question.count({ where: { subcategory_id: subId } });
+                const answeredQuestions = await CommissionaryAnswer.count({
+                    where: { session_id: session.id, subcategory_id: subId }
+                });
+                isFullyComplete = (totalQuestions > 0) ? (answeredQuestions === totalQuestions) : false; // Fix: 0 questions != Complete
+                majorDone = isFullyComplete;
+                minorDone = isFullyComplete;
+                // For breakdown, we just fill with true if complete
+                COMPARTMENTS.forEach(c => {
+                    compBreakdown[c] = { isComplete: isFullyComplete };
+                });
             }
-
-            // In Commissionary, ALMOST EVERYTHING with DUAL check needs all 8 compartments
-            // Exception: If an area has NO questions in either Major or Minor, we effectively treat it as done.
-            // But usually, Exterior, Interior, etc. have questions in all 8.
-            const isFullyComplete = (compartmentsCompleted === COMPARTMENTS.length);
 
             return {
                 subcategory_id: subId,
                 subcategory_name: subName,
                 isComplete: isFullyComplete,
-                hasMajor: compartmentsCompleted > 0, // Partial indicator for UI
-                hasMinor: compartmentsCompleted > 0, // Partial indicator for UI
+                hasMajor: majorDone,
+                hasMinor: minorDone,
                 compartmentStatus: compBreakdown
             };
         }));

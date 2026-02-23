@@ -21,7 +21,7 @@ module.exports = (sequelize) => {
         },
         activity_type: {
             type: DataTypes.ENUM('Major', 'Minor'),
-            allowNull: false
+            allowNull: true
         },
         question_id: {
             type: DataTypes.INTEGER,
