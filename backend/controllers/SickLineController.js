@@ -83,44 +83,55 @@ exports.getQuestions = async (req, res) => {
         const { subcategory_id, activity_type } = req.query;
         if (!subcategory_id) return res.status(400).json({ error: 'Missing subcategory_id' });
 
+        console.log('[SUBCATEGORY REQUESTED]', req.query.subcategory_id);
         console.log(`[STABILIZATION-SL-INPUT] subcategory_id: ${subcategory_id}, activity_type: ${activity_type}`);
 
-        // Step 1: Fetch ALL AmenityItems
-        const allItems = await AmenityItem.findAll({
-            where: { subcategory_id },
-            include: [{ model: Question, required: false, where: { subcategory_id } }],
-            order: [['id', 'ASC']]
+        // Phase 1 & 2: Enforce strict item filtering, remove loose filtering
+        const includeConfig = {
+            model: AmenityItem,
+            required: true,
+            where: {
+                subcategory_id: req.query.subcategory_id
+            }
+        };
+
+        if (activity_type) {
+            includeConfig.where.activity_type = activity_type;
+        }
+
+        const questions = await Question.findAll({
+            where: { subcategory_id: req.query.subcategory_id },
+            include: [includeConfig],
+            order: [['display_order', 'ASC'], ['id', 'ASC']]
         });
 
-        console.log(`[STABILIZATION-SL-ITEMS] Total items: ${allItems.length}`);
+        const groupedMap = new Map();
+        let supportsActivityType = false;
 
-        // Step 2: Detect support
-        const supportsActivityType = allItems.some(item => item.activity_type !== null);
-        console.log(`[STABILIZATION-SL-SUPPORT] subcategory_id: ${subcategory_id}, supports: ${supportsActivityType}`);
+        questions.forEach(q => {
+            const item = q.AmenityItem;
+            if (item && item.activity_type !== null) {
+                supportsActivityType = true;
+            }
+            const key = item ? item.name : 'Unknown';
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, { item_name: key, questions: [] });
+            }
+            groupedMap.get(key).questions.push(q);
+        });
 
-        // Step 3: Filter logic (Strict Phase 7)
-        let filteredItems = allItems;
-        if (supportsActivityType && activity_type) {
-            filteredItems = allItems.filter(item => item.activity_type === activity_type);
-            console.log(`[STABILIZATION-SL-FILTER] Applied ${activity_type}, items: ${filteredItems.length}`);
-        }
+        const groupedResults = Array.from(groupedMap.values());
 
-        // Step 4: Grouping
-        const grouped = filteredItems
-            .filter(it => it.Questions && it.Questions.length > 0)
-            .map(item => ({
-                item_name: item.name,
-                questions: item.Questions
-            }));
+        // Phase 3: Add Diagnostic Log
+        console.log('[ISOLATION CHECK]', {
+            requestedSubcategory: req.query.subcategory_id,
+            returnedItemNames: groupedResults.map(g => g.item_name)
+        });
 
-        const totalQ = grouped.reduce((acc, g) => acc + g.questions.length, 0);
-        console.log(`[STABILIZATION-SL-OUTPUT] Groups: ${grouped.length}, Questions: ${totalQ}`);
-
-        if (grouped.length === 0) {
-            console.log(`[STABILIZATION-SL-EMPTY] subcategory_id: ${subcategory_id} - EMPTY RESULT – VERIFY DATA`);
-        }
-
-        res.json(grouped);
+        res.json({
+            groups: groupedResults,
+            supportsActivityType
+        });
     } catch (err) {
         console.error('[STABILIZATION-SL-FATAL] getQuestions Error:', err);
         res.status(500).json({ error: 'Failed' });
@@ -181,7 +192,7 @@ exports.saveAnswers = async (req, res) => {
 // GET /api/sickline/progress
 exports.getProgress = async (req, res) => {
     try {
-        const { coach_number } = req.query;
+        const { coach_number, subcategory_id } = req.query;
         if (!coach_number) return res.status(400).json({ error: 'Coach number is required' });
 
         const coach = await Coach.findOne({ where: { coach_number } });
@@ -191,6 +202,18 @@ exports.getProgress = async (req, res) => {
         const session = await SickLineSession.findOne({
             where: { coach_id: coach.id, inspection_date: today }
         });
+
+        // 1. Explicit dynamic engine response for Phase 3 integration
+        if (session && subcategory_id) {
+            const progress = await require('../utils/progressEngine').calculateProgress({
+                subcategory_id,
+                session_id: session.id,
+                AnswerModel: SickLineAnswer,
+                AmenityItemModel: AmenityItem,
+                QuestionModel: Question
+            });
+            return res.json(progress);
+        }
 
         const subcategories = await AmenitySubcategory.findAll({ where: { category_id: 6 } });
         const totalAreasCount = subcategories.length;
@@ -211,72 +234,47 @@ exports.getProgress = async (req, res) => {
             });
         }
 
+        // 2. Loop dynamically without hardcoded bounds or manual loops
         const progress = await Promise.all(subcategories.map(async (sub) => {
-            const subName = sub.name;
-            const subId = sub.id;
-
-            // 1. Detect if this subcategory supports activity types
-            const items = await AmenityItem.findAll({ where: { subcategory_id: subId } });
-            const supportsActivityType = items.some(it => it.activity_type !== null);
-
-            let isFullyComplete = false;
-            let majorDone = false;
-            let minorDone = false;
-
-            if (supportsActivityType) {
-                const totalMajor = await Question.count({
-                    where: { subcategory_id: subId },
-                    include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
-                });
-                const totalMinor = await Question.count({
-                    where: { subcategory_id: subId },
-                    include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
-                });
-
-                const answeredMajor = await SickLineAnswer.count({
-                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major' }
-                });
-                const answeredMinor = await SickLineAnswer.count({
-                    where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor' }
-                });
-
-                majorDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
-                minorDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
-                isFullyComplete = majorDone && minorDone;
-            } else {
-                const totalQuestions = await Question.count({ where: { subcategory_id: subId } });
-                const answeredQuestions = await SickLineAnswer.count({
-                    where: { session_id: session.id, subcategory_id: subId }
-                });
-                isFullyComplete = (totalQuestions > 0) ? (answeredQuestions === totalQuestions) : false;
-                majorDone = isFullyComplete;
-                minorDone = isFullyComplete;
-            }
+            const subProg = await require('../utils/progressEngine').calculateProgress({
+                subcategory_id: sub.id,
+                session_id: session.id,
+                AnswerModel: SickLineAnswer,
+                AmenityItemModel: AmenityItem,
+                QuestionModel: Question
+            });
 
             return {
-                subcategory_id: subId,
-                subcategory_name: subName,
-                isComplete: isFullyComplete,
-                hasMajor: majorDone,
-                hasMinor: minorDone
+                subcategory_id: sub.id,
+                subcategory_name: sub.name,
+                isComplete: subProg.status === 'COMPLETED',
+                hasMajor: subProg.completed > 0,
+                hasMinor: subProg.completed > 0,
+                completedItems: subProg.completed,
+                requiredItems: subProg.totalRequired
             };
         }));
 
-        const completedAreasCount = progress.filter(p => p.isComplete).length;
-        const percentage = totalAreasCount > 0 ? Math.round((completedAreasCount / totalAreasCount) * 100) : 0;
+        const totalExpected = progress.reduce((sum, p) => sum + p.requiredItems, 0);
+        const totalCompleted = progress.reduce((sum, p) => sum + p.completedItems, 0);
 
+        let percentage = 0;
+        if (totalExpected > 0) percentage = Math.round((totalCompleted / totalExpected) * 100);
+
+        // Retain specific sickle line overall compliance logic if intact
         const allAnswers = await SickLineAnswer.findAll({ where: { session_id: session.id } });
         const overallCompliance = calculateCompliance(allAnswers);
 
         return res.json({
             session_id: session.id,
-            completed_count: completedAreasCount,
-            total_expected: totalAreasCount,
+            completed_count: totalCompleted,
+            total_expected: totalExpected,
             progress_percentage: percentage,
             overall_compliance: overallCompliance,
-            status: session.status,
+            status: (totalExpected > 0 && totalCompleted === totalExpected) ? 'COMPLETED' : 'IN_PROGRESS',
             perAreaStatus: progress,
-            fully_complete: completedAreasCount === totalAreasCount
+            fully_complete: (totalExpected > 0 && totalCompleted === totalExpected),
+            breakdown: {}
         });
     } catch (err) {
         console.error('SickLine Progress Error:', err);

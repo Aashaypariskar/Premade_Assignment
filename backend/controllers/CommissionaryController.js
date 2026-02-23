@@ -86,44 +86,58 @@ exports.getOrCreateSession = async (req, res) => {
 // GET /api/commissionary/questions?subcategory_id=X&activity_type=Y
 exports.getQuestions = async (req, res) => {
     try {
-        const { subcategory_id } = req.query; // Phase 1: Only subcategory_id
+        const { subcategory_id, activity_type } = req.query;
         if (!subcategory_id) return res.status(400).json({ error: 'Missing subcategory_id' });
 
-        console.log(`[STABILIZATION-INPUT] subcategory_id: ${subcategory_id}, query:`, req.query);
+        console.log('[SUBCATEGORY REQUESTED]', req.query.subcategory_id);
+        console.log(`[STABILIZATION-INPUT] subcategory_id: ${subcategory_id}, activity_type: ${activity_type}`);
 
-        // Step 1: Fetch items with questions using the core subcategory filter
-        const items = await AmenityItem.findAll({
-            where: { subcategory_id },
-            include: [{
-                model: Question,
-                required: false, // Don't hide empty items during debug
-                where: { subcategory_id } // Ensure question belongs to subcategory
-            }],
-            order: [['id', 'ASC']]
+        // Phase 1 & 2: Enforce strict item filtering, remove ANY loose filtering
+        const includeConfig = {
+            model: AmenityItem,
+            required: true,
+            where: {
+                subcategory_id: req.query.subcategory_id
+            }
+        };
+
+        if (activity_type) {
+            includeConfig.where.activity_type = activity_type;
+        }
+
+        const questions = await Question.findAll({
+            where: { subcategory_id: req.query.subcategory_id },
+            include: [includeConfig],
+            order: [['display_order', 'ASC'], ['id', 'ASC']]
         });
 
-        console.log(`[STABILIZATION-ITEMS] Count: ${items.length}`);
+        const groupedMap = new Map();
+        let supportsActivityType = false;
 
-        if (items.length === 0) {
-            console.log(`[STABILIZATION-EMPTY] subcategory_id: ${subcategory_id} - EMPTY RESULT – VERIFY DATA`);
-        }
+        questions.forEach(q => {
+            const item = q.AmenityItem;
+            if (item && item.activity_type !== null) {
+                supportsActivityType = true;
+            }
+            const key = item ? item.name : 'Unknown';
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, { item_name: key, questions: [] });
+            }
+            groupedMap.get(key).questions.push(q);
+        });
 
-        // Step 2: Group by item_name strictly (Phase 4)
-        const grouped = items
-            .filter(it => it.Questions && it.Questions.length > 0)
-            .map(item => ({
-                item_name: item.name,
-                questions: item.Questions
-            }));
+        const groupedResults = Array.from(groupedMap.values());
 
-        const totalQ = grouped.reduce((acc, g) => acc + g.questions.length, 0);
-        console.log(`[STABILIZATION-OUTPUT] Total Groups: ${grouped.length}, Total Questions: ${totalQ}`);
+        // Phase 3: Add Diagnostic Log
+        console.log('[ISOLATION CHECK]', {
+            requestedSubcategory: req.query.subcategory_id,
+            returnedItemNames: groupedResults.map(g => g.item_name)
+        });
 
-        if (grouped.length > 0) {
-            console.log(`[STABILIZATION-PREVIEW] First group item: ${grouped[0].item_name}, Questions: ${grouped[0].questions.length}`);
-        }
-
-        res.json(grouped); // Phase 4: Grouped by item_name only
+        res.json({
+            groups: groupedResults,
+            supportsActivityType
+        });
     } catch (err) {
         console.error('[STABILIZATION-FATAL] getQuestions Error:', err);
         res.status(500).json({ error: 'Failed' });
