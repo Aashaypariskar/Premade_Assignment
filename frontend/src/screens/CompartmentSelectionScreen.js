@@ -3,25 +3,31 @@ import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator }
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { getReports } from '../api/api';
-
 const CompartmentSelectionScreen = ({ route, navigation }) => {
     const params = route.params;
     const { setDraft } = useStore();
     const [existingReports, setExistingReports] = useState({ major: 0, minor: 0 });
+    const [compartments, setCompartments] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Logic to determine compartments
     const isCommissionary = params.categoryName === 'Coach Commissionary';
     const isLavatory = params.subcategoryName?.toLowerCase().includes('lavatory');
 
-    const compartments = isCommissionary
-        ? ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4']
-        : (isLavatory ? ['L1', 'L2', 'L3', 'L4'] : ['D1', 'D2', 'D3', 'D4']);
+    function getCompartments(subcategoryName) {
+        const name = subcategoryName?.toLowerCase() || '';
+        if (name.includes('lavatory')) return ['L1', 'L2', 'L3', 'L4'];
+        if (name.includes('door')) return ['D1', 'D2', 'D3', 'D4'];
+        return [];
+    }
 
     useEffect(() => {
-        if (!isCommissionary) checkExistingReports();
-        else setLoading(false);
-    }, []);
+        setCompartments(getCompartments(params.subcategoryName));
+        if (!isCommissionary) {
+            checkExistingReports();
+        } else {
+            setLoading(false);
+        }
+    }, [params.subcategoryName]);
 
     const checkExistingReports = async () => {
         try {

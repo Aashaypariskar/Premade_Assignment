@@ -202,9 +202,9 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
 
                 <TouchableOpacity
                     style={styles.backBtnInline}
-                    onPress={() => navigation.navigate('CommissionaryCompartment', { sessionId, coachNumber, status: progressStats.status })}
+                    onPress={() => navigation.navigate('AmenitySubcategory', { sessionId, coachId: route.params.coachId, coachNumber, categoryName: route.params.categoryName, status: progressStats.status })}
                 >
-                    <Text style={styles.backBtnTextInline}>Change Compartment</Text>
+                    <Text style={styles.backBtnTextInline}>Back</Text>
                 </TouchableOpacity>
             </View>
 

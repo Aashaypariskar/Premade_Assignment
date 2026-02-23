@@ -105,22 +105,15 @@ exports.getQuestions = async (req, res) => {
             order: [['display_order', 'ASC'], ['id', 'ASC']]
         });
 
-        const groupedMap = new Map();
         let supportsActivityType = false;
+        if (questions.some(q => q.AmenityItem && q.AmenityItem.activity_type !== null)) {
+            supportsActivityType = true;
+        }
 
-        questions.forEach(q => {
-            const item = q.AmenityItem;
-            if (item && item.activity_type !== null) {
-                supportsActivityType = true;
-            }
-            const key = item ? item.name : 'Unknown';
-            if (!groupedMap.has(key)) {
-                groupedMap.set(key, { item_name: key, questions: [] });
-            }
-            groupedMap.get(key).questions.push(q);
-        });
-
-        const groupedResults = Array.from(groupedMap.values());
+        const groupedResults = [{
+            item_name: 'Questions',
+            questions: questions
+        }];
 
         // Phase 3: Add Diagnostic Log
         console.log('[ISOLATION CHECK]', {
@@ -343,7 +336,7 @@ exports.getCombinedReport = async (req, res) => {
 
         const overallCompliance = calculateCompliance(answers);
         const stats = { overall: overallCompliance, subcategories: {}, compartments: {} };
-        const comps = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
+        const comps = [...new Set(answers.map(a => a.compartment_id))].filter(Boolean);
         comps.forEach(c => stats.compartments[c] = calculateCompliance(answers.filter(a => a.compartment_id === c)));
         Object.keys(matrixData).forEach(id => stats.subcategories[id] = calculateCompliance(answers.filter(a => a.subcategory_id == id)));
 

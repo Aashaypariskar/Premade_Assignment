@@ -111,22 +111,15 @@ exports.getQuestions = async (req, res) => {
             order: [['display_order', 'ASC'], ['id', 'ASC']]
         });
 
-        const groupedMap = new Map();
         let supportsActivityType = false;
+        if (questions.some(q => q.AmenityItem && q.AmenityItem.activity_type !== null)) {
+            supportsActivityType = true;
+        }
 
-        questions.forEach(q => {
-            const item = q.AmenityItem;
-            if (item && item.activity_type !== null) {
-                supportsActivityType = true;
-            }
-            const key = item ? item.name : 'Unknown';
-            if (!groupedMap.has(key)) {
-                groupedMap.set(key, { item_name: key, questions: [] });
-            }
-            groupedMap.get(key).questions.push(q);
-        });
-
-        const groupedResults = Array.from(groupedMap.values());
+        const groupedResults = [{
+            item_name: 'Questions',
+            questions: questions
+        }];
 
         // Phase 3: Add Diagnostic Log
         console.log('[ISOLATION CHECK]', {
@@ -252,72 +245,22 @@ exports.getProgress = async (req, res) => {
             });
         }
 
-        const COMPARTMENTS = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
-
         const progress = await Promise.all(subcategories.map(async (sub) => {
-            const subName = sub.name;
-            const subId = sub.id;
-
-            // 1. Detect if this subcategory supports activity types
-            const items = await AmenityItem.findAll({ where: { subcategory_id: subId } });
-            const supportsActivityType = items.some(it => it.activity_type !== null);
-
-            let isFullyComplete = false;
-            let majorDone = false;
-            let minorDone = false;
-            const compBreakdown = {};
-
-            if (supportsActivityType) {
-                // Strict Question Counts for this subcategory
-                const totalMajor = await Question.count({
-                    where: { subcategory_id: subId },
-                    include: [{ model: AmenityItem, where: { activity_type: 'Major' } }]
-                });
-                const totalMinor = await Question.count({
-                    where: { subcategory_id: subId },
-                    include: [{ model: AmenityItem, where: { activity_type: 'Minor' } }]
-                });
-
-                let compartmentsCompleted = 0;
-                for (const compId of COMPARTMENTS) {
-                    const answeredMajor = await CommissionaryAnswer.count({
-                        where: { session_id: session.id, subcategory_id: subId, activity_type: 'Major', compartment_id: compId }
-                    });
-                    const answeredMinor = await CommissionaryAnswer.count({
-                        where: { session_id: session.id, subcategory_id: subId, activity_type: 'Minor', compartment_id: compId }
-                    });
-
-                    const mDone = (totalMajor > 0) ? (answeredMajor === totalMajor) : true;
-                    const miDone = (totalMinor > 0) ? (answeredMinor === totalMinor) : true;
-
-                    if (mDone && miDone) compartmentsCompleted++;
-                    compBreakdown[compId] = { major: mDone, minor: miDone, isComplete: mDone && miDone };
-                }
-                majorDone = compartmentsCompleted > 0;
-                minorDone = compartmentsCompleted > 0;
-                isFullyComplete = (compartmentsCompleted === COMPARTMENTS.length);
-            } else {
-                // Standard: No activity types
-                const totalQuestions = await Question.count({ where: { subcategory_id: subId } });
-                const answeredQuestions = await CommissionaryAnswer.count({
-                    where: { session_id: session.id, subcategory_id: subId }
-                });
-                isFullyComplete = (totalQuestions > 0) ? (answeredQuestions === totalQuestions) : false; // Fix: 0 questions != Complete
-                majorDone = isFullyComplete;
-                minorDone = isFullyComplete;
-                // For breakdown, we just fill with true if complete
-                COMPARTMENTS.forEach(c => {
-                    compBreakdown[c] = { isComplete: isFullyComplete };
-                });
-            }
+            const subProg = await require('../utils/progressEngine').calculateProgress({
+                subcategory_id: sub.id,
+                session_id: session.id,
+                AnswerModel: CommissionaryAnswer,
+                AmenityItemModel: AmenityItem,
+                QuestionModel: Question
+            });
 
             return {
-                subcategory_id: subId,
-                subcategory_name: subName,
-                isComplete: isFullyComplete,
-                hasMajor: majorDone,
-                hasMinor: minorDone,
-                compartmentStatus: compBreakdown
+                subcategory_id: sub.id,
+                subcategory_name: sub.name,
+                isComplete: subProg.status === 'COMPLETED',
+                hasMajor: subProg.status !== 'PENDING',
+                hasMinor: subProg.status !== 'PENDING',
+                compartmentStatus: {}
             };
         }));
 
@@ -437,7 +380,7 @@ exports.getCombinedReport = async (req, res) => {
             compartments: {}
         };
 
-        const compartmentsList = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
+        const compartmentsList = [...new Set(answers.map(a => a.compartment_id))].filter(Boolean);
         compartmentsList.forEach(c => {
             const compRecords = answers.filter(a => a.compartment_id === c);
             stats.compartments[c] = calculateCompliance(compRecords);
