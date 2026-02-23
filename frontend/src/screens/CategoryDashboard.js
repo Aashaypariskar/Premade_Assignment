@@ -89,7 +89,7 @@ const CategoryDashboard = ({ navigation }) => {
                 ) : (
                     <FlatList
                         data={categories}
-                        keyExtractor={(item) => item.id.toString()}
+                        keyExtractor={(item, index) => (item?.id || index).toString()}
                         numColumns={2}
                         renderItem={({ item }) => (
                             <TouchableOpacity

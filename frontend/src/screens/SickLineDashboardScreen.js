@@ -128,7 +128,7 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
 
             <FlatList
                 data={gridData}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={(item, index) => (item?.id || index).toString()}
                 numColumns={2}
                 renderItem={({ item, index }) => {
                     let badgeText = "Pending";

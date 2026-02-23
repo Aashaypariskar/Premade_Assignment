@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
 import { normalizeQuestionResponse } from '../utils/normalization';
+import QuestionProgressHeader from '../components/QuestionProgressHeader';
 
 const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status, subcategories, currentIndex } = route.params;
@@ -45,7 +46,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 // Single fetch model: Fetch questions and existing answers concurrently
                 const [response, savedAnswers] = await Promise.all([
                     getCommissionaryQuestions(subcategoryId, activeTab),
-                    getCommissionaryAnswers(sessionId.toString(), subcategoryId.toString(), activeTab, compartmentId)
+                    getCommissionaryAnswers((sessionId || 'NA').toString(), (subcategoryId || 'NA').toString(), activeTab, compartmentId)
                 ]);
 
                 if (!isMounted) return;
@@ -158,11 +159,11 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             for (const q of answeredQs) {
                 const ans = answers[q.id];
                 const payload = {
-                    session_id: sessionId.toString(),
+                    session_id: (sessionId || 'NA').toString(),
                     compartment_id: compartmentId,
-                    subcategory_id: subcategoryId.toString(),
+                    subcategory_id: (subcategoryId || 'NA').toString(),
                     activity_type: activeTab,
-                    question_id: q.id.toString(),
+                    question_id: (q.id || 'NA').toString(),
                     status: ans.status,
                     reasons: ans.reasons || [],
                     remarks: ans.remarks || ''
@@ -250,6 +251,9 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
         />
     );
 
+    const answeredCount = currentQs.filter(q => answers[q.id]?.status).length;
+    const totalQs = currentQs.length;
+
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
@@ -261,6 +265,11 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 <Text style={styles.headerSub}>{subcategoryName} - {activeTab} ({compartmentId})</Text>
                 <View style={{ width: 26 }} />
             </View>
+
+            <QuestionProgressHeader
+                totalQuestions={totalQs}
+                answeredCount={answeredCount}
+            />
 
             {supportsActivityType && (
                 <View style={styles.tabBar}>

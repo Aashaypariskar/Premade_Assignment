@@ -9,8 +9,8 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
     const params = route.params;
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { setDraft, user } = useStore();
-    const [isMinorDone, setIsMinorDone] = useState(false);
+    const [majorProgress, setMajorProgress] = useState({ answered: 0, total: 0 });
+    const [minorProgress, setMinorProgress] = useState({ answered: 0, total: 0 });
     const [supportsActivityType, setSupportsActivityType] = useState(true);
 
     useEffect(() => {
@@ -42,8 +42,15 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
                 a => a.subcategory_id === (params.subcategoryId || params.subcategory_id)
             );
             if (area) {
-                setIsMajorDone(area.hasMajor);
-                setIsMinorDone(area.hasMinor);
+                // TRUE COMPLETION LOGIC: Derived from counts
+                setMajorProgress({
+                    answered: area.majorAnswered || 0,
+                    total: area.majorTotal || 0
+                });
+                setMinorProgress({
+                    answered: area.minorAnswered || 0,
+                    total: area.minorTotal || 0
+                });
             }
         } catch (err) {
             console.log('Status load error:', err);
@@ -111,11 +118,26 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
                             >
                                 <View style={styles.titleRow}>
                                     <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
-                                    {((act.type === 'Major' && isMajorDone) || (act.type === 'Minor' && isMinorDone)) && (
-                                        <View style={styles.statusBadge}>
-                                            <Text style={styles.badgeText}>Completed</Text>
-                                        </View>
-                                    )}
+                                    {(() => {
+                                        const prog = act.type === 'Major' ? majorProgress : minorProgress;
+                                        const isComplete = prog.total > 0 && prog.answered === prog.total;
+                                        const isInProgress = !isComplete && prog.answered > 0;
+
+                                        if (isComplete) {
+                                            return (
+                                                <View style={styles.statusBadge}>
+                                                    <Text style={styles.badgeText}>Completed</Text>
+                                                </View>
+                                            );
+                                        } else if (isInProgress) {
+                                            return (
+                                                <View style={[styles.statusBadge, { backgroundColor: '#f59e0b' }]}>
+                                                    <Text style={styles.badgeText}>In Progress</Text>
+                                                </View>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </View>
                                 <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
                                 <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>

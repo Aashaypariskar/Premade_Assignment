@@ -4,5 +4,10 @@
   ],
   "android": {
     "package": "com.anonymous.inspectionappexpo"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "b2c9f642-8eef-40e0-8bd4-563db52adf0e"
+    }
   }
 }

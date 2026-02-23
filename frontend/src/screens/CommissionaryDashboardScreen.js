@@ -182,7 +182,7 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
 
             <FlatList
                 data={subcategories}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={(item, index) => (item?.id || index).toString()}
                 numColumns={2}
                 renderItem={renderItem}
                 contentContainerStyle={styles.list}

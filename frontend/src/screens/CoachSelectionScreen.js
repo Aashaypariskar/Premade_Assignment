@@ -71,7 +71,7 @@ const CoachSelectionScreen = ({ route, navigation }) => {
                 data={coaches}
                 numColumns={2}
                 renderItem={renderItem}
-                keyExtractor={item => item.id.toString()}
+                keyExtractor={(item, index) => (item?.id || index).toString()}
                 contentContainerStyle={styles.list}
             />
         </View>

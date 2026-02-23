@@ -6,6 +6,7 @@ import { useStore } from '../store/StoreContext';
 import QuestionCard from '../components/QuestionCard';
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeQuestionResponse } from '../utils/normalization';
+import QuestionProgressHeader from '../components/QuestionProgressHeader';
 
 /**
  * Questions Checklist Screen - PRODUCTION VERSION
@@ -64,7 +65,18 @@ const QuestionsScreen = ({ route, navigation }) => {
         };
     }, [params.activityId, params.subcategoryId, params.subcategory_id, params.scheduleId]);
 
-    const getAnswerKey = (qId) => params.compartment ? `${params.compartment}_${qId}` : qId.toString();
+    const getAnswerKey = (qId) => {
+        if (!qId) {
+            console.warn('[GET ANSWER KEY] Missing qId!');
+            return 'missing_id';
+        }
+        try {
+            return params.compartment ? `${params.compartment}_${qId}` : qId.toString();
+        } catch (err) {
+            console.error('[GET ANSWER KEY ERROR]', err, 'qId:', qId);
+            return 'error_id';
+        }
+    };
 
     const updateAnswer = (qId, data) => {
         if (!qId) return;
@@ -82,27 +94,51 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     const qList = flatQuestions || [];
     const ansMap = currentAnswers || {};
-    const currentQIds = qList.map(q => q?.id?.toString()).filter(Boolean);
+    const currentQIds = qList.map(q => {
+        try {
+            return q?.id?.toString();
+        } catch (e) {
+            console.error('[CURRENT QIDS ERROR]', e, 'q:', q);
+            return null;
+        }
+    }).filter(Boolean);
 
     // FIXED: Define relevantAnswers in scope for both validation and render
     const relevantAnswers = Object.entries(ansMap).filter(([key, ans]) => {
-        const parts = key.split('_');
-        const qId = parts.length > 1 ? parts[1] : parts[0];
-        const comp = parts.length > 1 ? parts[0] : null;
+        try {
+            const parts = key.split('_');
+            const qId = parts.length > 1 ? parts[1] : parts[0];
+            const comp = parts.length > 1 ? parts[0] : null;
 
-        return currentQIds.includes(qId) &&
-            comp === (params.compartment || null) &&
-            (ans?.status || ans?.observed_value);
+            return currentQIds.includes(qId) &&
+                comp === (params.compartment || null) &&
+                (ans?.status || ans?.observed_value);
+        } catch (e) {
+            console.error('[RELEVANT ANSWERS ERROR]', e, 'key:', key);
+            return false;
+        }
     });
 
     const countCompleted = qList.filter(q => {
-        if (!q) return false;
-        const ans = ansMap[getAnswerKey(q.id)];
-        return ans && (ans.status || ans.observed_value);
+        try {
+            if (!q) return false;
+            const ans = ansMap[getAnswerKey(q.id)];
+            return ans && (ans.status || ans.observed_value);
+        } catch (e) {
+            console.error('[COUNT COMPLETED ERROR]', e, 'q:', q);
+            return false;
+        }
     }).length;
 
     const totalQs = qList.length;
-    const progress = totalQs > 0 ? (countCompleted / totalQs) * 100 : 0;
+
+    // Calculate answeredCount following TRUE completion rules
+    const answeredCount = qList.filter(q => {
+        const ans = ansMap[getAnswerKey(q.id)];
+        return ans && ans.status; // True completion requires a status selected
+    }).length;
+
+    const progress = totalQs > 0 ? (answeredCount / totalQs) * 100 : 0;
 
     const goSummary = () => {
         const invalidDeficiency = relevantAnswers.find(([key, ans]) => {
@@ -178,13 +214,11 @@ const QuestionsScreen = ({ route, navigation }) => {
                         )}
                     </View>
                 </View>
-                <View style={styles.progressRow}>
-                    <Text style={styles.progressText}>{countCompleted} / {totalQs} Items</Text>
-                    <Text style={styles.percent}>{Math.round(progress)}%</Text>
-                </View>
-                <View style={styles.barBg}>
-                    <View style={[styles.barFill, { width: `${progress}%` }]} />
-                </View>
+
+                <QuestionProgressHeader
+                    totalQuestions={totalQs}
+                    answeredCount={answeredCount}
+                />
             </View>
 
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
@@ -216,7 +250,7 @@ const QuestionsScreen = ({ route, navigation }) => {
             <TouchableOpacity style={styles.submitBtn} onPress={goSummary}>
                 <Text style={styles.submitText}>Review Inspection ({relevantAnswers.length})</Text>
             </TouchableOpacity>
-        </View>
+        </View >
     );
 };
 

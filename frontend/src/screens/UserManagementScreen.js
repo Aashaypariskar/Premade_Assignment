@@ -135,7 +135,7 @@ const UserManagementScreen = ({ navigation }) => {
 
             <FlatList
                 data={users}
-                keyExtractor={item => item.id.toString()}
+                keyExtractor={(item, index) => (item?.id || index).toString()}
                 renderItem={renderUser}
                 contentContainerStyle={styles.list}
                 refreshControl={

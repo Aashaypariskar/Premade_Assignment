@@ -41,7 +41,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                     return;
                 }
                 const res = await api.get('/commissionary/questions', { params: { subcategory_id: subcategoryId, activity_type: activityType } });
-                data = res.data.groups ? res.data.groups.flatMap(g => g.questions) : res.data;
+                data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : []);
             } else if (categoryName === 'Sick Line Examination') {
                 if (!subcategoryId || !activityType) {
                     Alert.alert('Error', 'Missing subcategory_id or activity_type');
@@ -49,7 +49,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                     return;
                 }
                 const res = await api.get('/sickline/questions', { params: { subcategory_id: subcategoryId, activity_type: activityType } });
-                data = res.data.groups ? res.data.groups.flatMap(g => g.questions) : res.data;
+                data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : []);
             } else if (categoryName === 'WSP Examination') {
                 if (!scheduleId) {
                     Alert.alert('Error', 'schedule_id is missing. Cannot load WSP questions.');
@@ -57,7 +57,8 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                     return;
                 }
                 const res = await api.get('/wsp/questions', { params: { schedule_id: scheduleId, coach_id: coachId } });
-                data = Array.isArray(res.data) ? res.data : (res.data.groups ? res.data.groups.flatMap(g => g.questions) : []);
+                // WSP returns an array of groups [{item_name, questions}] - Flatten it
+                data = Array.isArray(res.data) ? res.data.flatMap(g => g.questions || []) : [];
             } else {
                 data = await getQuestionsByActivity(activityId);
             }
@@ -243,7 +244,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
             ) : (
                 <FlatList
                     data={questions}
-                    keyExtractor={item => item.id.toString()}
+                    keyExtractor={(item, index) => (item?.id || index).toString()}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={

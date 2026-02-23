@@ -81,7 +81,7 @@ const WspScheduleScreen = ({ route, navigation }) => {
 
                 <FlatList
                     data={schedules}
-                    keyExtractor={(item) => item.id.toString()}
+                    keyExtractor={(item, index) => (item?.id || index).toString()}
                     renderItem={({ item }) => (
                         <TouchableOpacity
                             style={styles.scheduleCard}
