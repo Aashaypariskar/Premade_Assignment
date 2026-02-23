@@ -177,18 +177,6 @@ const QuestionsScreen = ({ route, navigation }) => {
                             </>
                         )}
                     </View>
-                    {user?.role === 'Admin' && (
-                        <TouchableOpacity
-                            style={styles.editQuestionsBtn}
-                            onPress={() => navigation.navigate('QuestionManagement', {
-                                activityId: params.activityId,
-                                activityType: params.activityType,
-                                categoryName: params.categoryName
-                            })}
-                        >
-                            <Text style={styles.editQuestionsBtnText}>✏️ Edit Questions</Text>
-                        </TouchableOpacity>
-                    )}
                 </View>
                 <View style={styles.progressRow}>
                     <Text style={styles.progressText}>{countCompleted} / {totalQs} Items</Text>
@@ -224,20 +212,6 @@ const QuestionsScreen = ({ route, navigation }) => {
                     </View>
                 )}
             </ScrollView>
-
-            {user?.role === 'Admin' && (
-                <TouchableOpacity
-                    style={styles.adminEditFab}
-                    onPress={() => navigation.navigate('QuestionManagement', {
-                        activityId: params.activityId,
-                        activityType: params.activityType,
-                        categoryName: params.categoryName
-                    })}
-                >
-                    <Ionicons name="settings" size={20} color="#fff" />
-                    <Text style={styles.fabText}>Edit Questions</Text>
-                </TouchableOpacity>
-            )}
 
             <TouchableOpacity style={styles.submitBtn} onPress={goSummary}>
                 <Text style={styles.submitText}>Review Inspection ({relevantAnswers.length})</Text>

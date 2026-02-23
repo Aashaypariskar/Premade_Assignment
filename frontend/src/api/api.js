@@ -99,6 +99,9 @@ export const createCommissionaryCoach = (data) => api.post('/commissionary/coach
 export const getCommissionaryQuestions = (subId, actType) =>
     api.get('/commissionary/questions', { params: { subcategory_id: subId, activity_type: actType } }).then(r => r.data);
 
+export const getCommissionaryAnswers = (sessionId, subId, actType, compartmentId) =>
+    api.get('/commissionary/answers', { params: { session_id: sessionId, subcategory_id: subId, activity_type: actType, compartment_id: compartmentId } }).then(r => r.data);
+
 export const saveCommissionaryAnswers = async (data) => {
     try {
         const isFormData = data instanceof FormData;
@@ -135,6 +138,9 @@ export const getCommissionaryCombinedReport = (sessionId) =>
 export const getSickLineSession = (coach_number) => api.get(`/sickline/session?coach_number=${coach_number}`).then(res => res.data);
 export const getSickLineQuestions = (subId, actType) =>
     api.get('/sickline/questions', { params: { subcategory_id: subId, activity_type: actType } }).then(r => r.data);
+
+export const getSickLineAnswers = (sessionId, subId, actType, compartmentId) =>
+    api.get('/sickline/answers', { params: { session_id: sessionId, subcategory_id: subId, activity_type: actType, compartment_id: compartmentId } }).then(r => r.data);
 
 export const saveSickLineAnswers = async (data) => {
     try {

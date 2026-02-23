@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { getSickLineQuestions, saveSickLineAnswers, getSickLineProgress } from '../api/api';
+import { getSickLineQuestions, getSickLineAnswers, saveSickLineAnswers, getSickLineProgress } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
@@ -22,6 +22,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
 
     const isLocked = status === 'COMPLETED';
     const [answers, setAnswers] = useState({});
+    const [isDirty, setIsDirty] = useState(false);
 
     const refreshProgress = async () => {
         try {
@@ -56,9 +57,26 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
 
                 console.log(`[FETCHING QUESTIONS] SickLine - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
 
-                const response = await getSickLineQuestions(subcategoryId, activeTab);
+                const [response, savedAnswers] = await Promise.all([
+                    getSickLineQuestions(subcategoryId, activeTab),
+                    getSickLineAnswers(sessionId.toString(), subcategoryId.toString(), activeTab, compartmentId || 'NA')
+                ]);
 
                 if (!isMounted) return;
+
+                const mappedAnswers = {};
+                if (savedAnswers && Array.isArray(savedAnswers)) {
+                    savedAnswers.forEach(ans => {
+                        mappedAnswers[ans.question_id] = {
+                            status: ans.status,
+                            reasons: ans.reasons || [],
+                            remarks: ans.remarks || '',
+                            image_path: ans.photo_url || null
+                        };
+                    });
+                }
+                setAnswers(mappedAnswers);
+                setIsDirty(false);
 
                 console.log(`[RAW QUESTIONS RESPONSE - ${activeTab}]`, response);
 
@@ -94,6 +112,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
     }, [subcategoryId, activeTab]);
 
     const handleAnswerUpdate = (qId, data) => {
+        setIsDirty(true);
         setAnswers(prev => ({ ...prev, [qId]: data }));
     };
 
@@ -167,6 +186,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                     setGuidedBtns('TO_MINOR');
                 }
             }
+            setIsDirty(false);
             Alert.alert('Success', 'Answers saved successfully.');
         } catch (err) {
             console.error('Save Error:', err);
@@ -175,6 +195,44 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
             setSaving(false);
         }
     };
+
+    const navigateToNext = () => {
+        const nextIndex = currentIndex + 1;
+        if (subcategories && nextIndex < subcategories.length) {
+            const nextArea = subcategories[nextIndex];
+            navigation.replace('SickLineQuestions', {
+                ...route.params,
+                subcategoryId: nextArea.id,
+                subcategoryName: nextArea.name,
+                currentIndex: nextIndex
+            });
+        } else {
+            navigation.navigate('SickLineDashboard', { ...route.params });
+        }
+    };
+
+    const currentQs = activeTab === 'Major' ? majorQs : minorQs;
+    const allAnswered = currentQs.length > 0 && currentQs.every(q => answers[q.id]?.status);
+
+    let btnText = 'Save & Sync';
+    let btnAction = handleSave;
+
+    if (isLocked) {
+        btnText = 'Inspection Completed (Read-Only)';
+    } else if (allAnswered && !isDirty) {
+        btnText = activeTab === 'Major' ? 'Go To Minor' : 'Go To Next Area';
+        btnAction = () => {
+            if (activeTab === 'Major') setActiveTab('Minor');
+            else navigateToNext();
+        };
+    } else if (isDirty) {
+        btnText = activeTab === 'Major' ? 'Save & Sync & Go To Minor' : 'Save & Sync & Go To Next Area';
+        btnAction = async () => {
+            await handleSave();
+            if (activeTab === 'Major') setActiveTab('Minor');
+            else navigateToNext();
+        };
+    }
 
     const renderQuestion = (q) => (
         <QuestionCard
@@ -281,6 +339,22 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                     )}
                 </TouchableOpacity>
             </ScrollView>
+
+            {
+                user?.role === 'Admin' && supportsActivityType && (
+                    <TouchableOpacity
+                        style={styles.adminEditFab}
+                        onPress={() => navigation.navigate('QuestionManagement', {
+                            activityId: activeTab === 'Major' ? majorQs[0]?.activity_id : minorQs[0]?.activity_id,
+                            activityType: activeTab,
+                            categoryName: 'Sick Line Examination'
+                        })}
+                    >
+                        <Ionicons name="settings" size={20} color="#fff" />
+                        <Text style={styles.fabText}>Edit Questions</Text>
+                    </TouchableOpacity>
+                )
+            }
         </View>
     );
 };
@@ -302,7 +376,9 @@ const styles = StyleSheet.create({
     saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
     guidedBox: { marginTop: 10, marginBottom: 20, padding: 15, backgroundColor: '#fff', borderRadius: 16, borderLeftWidth: 5, borderLeftColor: '#2563eb', elevation: 2 },
     guideBtn: { backgroundColor: '#2563eb', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, gap: 10 },
-    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    adminEditFab: { position: 'absolute', bottom: 90, right: 20, backgroundColor: '#2563eb', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, elevation: 10 },
+    fabText: { color: '#fff', fontWeight: 'bold', fontSize: 12, marginLeft: 8 }
 });
 
 export default SickLineQuestionsScreen;

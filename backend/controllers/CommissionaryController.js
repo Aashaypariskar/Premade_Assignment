@@ -137,6 +137,25 @@ exports.getQuestions = async (req, res) => {
     }
 };
 
+// GET /api/commissionary/answers
+exports.getAnswers = async (req, res) => {
+    try {
+        const { session_id, subcategory_id, activity_type, compartment_id } = req.query;
+        if (!session_id || !subcategory_id || !compartment_id || !activity_type) {
+            return res.status(400).json({ error: 'Missing parameters' });
+        }
+
+        const answers = await CommissionaryAnswer.findAll({
+            where: { session_id, subcategory_id, activity_type, compartment_id }
+        });
+
+        res.json(answers);
+    } catch (err) {
+        console.error('getAnswers Error:', err);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
 // POST /api/commissionary/save
 exports.saveAnswers = async (req, res) => {
     console.log(`[DEBUG] saveAnswers ENTERED - Question: ${req.body.question_id}, File: ${!!req.file}`);

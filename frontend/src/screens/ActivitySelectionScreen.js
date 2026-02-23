@@ -132,19 +132,6 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                                 <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
                             </TouchableOpacity>
 
-                            {user?.role === 'Admin' && (
-                                <TouchableOpacity
-                                    style={styles.adminEditBtn}
-                                    onPress={() => navigation.navigate('QuestionManagement', {
-                                        activityId: act.id,
-                                        activityType: act.type,
-                                        categoryName: params.categoryName
-                                    })}
-                                >
-                                    <Ionicons name="settings-outline" size={14} color="#2563eb" />
-                                    <Text style={styles.adminEditBtnText}>Edit Questions</Text>
-                                </TouchableOpacity>
-                            )}
                         </View>
                     ))}
                 </View>

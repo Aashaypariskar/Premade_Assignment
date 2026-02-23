@@ -6,6 +6,7 @@ const upload = require('../middleware/upload');
 
 router.get('/session', verifyToken, controller.getOrCreateSession);
 router.get('/questions', verifyToken, controller.getQuestions);
+router.get('/answers', verifyToken, controller.getAnswers);
 router.post('/save', verifyToken, (req, res, next) => {
     upload.single('photo')(req, res, (err) => {
         if (err) return res.status(400).json({ error: `Upload error: ${err.message}` });

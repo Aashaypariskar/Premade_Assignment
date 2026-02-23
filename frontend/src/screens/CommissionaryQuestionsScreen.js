@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
-import { getCommissionaryQuestions, saveCommissionaryAnswers, getCommissionaryProgress } from '../api/api';
+import { getCommissionaryQuestions, getCommissionaryAnswers, saveCommissionaryAnswers, getCommissionaryProgress } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
@@ -24,6 +24,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
     // answers: { questionId: { answer, reason, photo_url } }
     const [answers, setAnswers] = useState({});
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         const key = `${subcategoryId}-${activeTab}`;
@@ -41,10 +42,28 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
                 console.log(`[FETCHING QUESTIONS] Commissionary - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
 
-                // Single fetch model: Only fetch for the current activeTab
-                const response = await getCommissionaryQuestions(subcategoryId, activeTab);
+                // Single fetch model: Fetch questions and existing answers concurrently
+                const [response, savedAnswers] = await Promise.all([
+                    getCommissionaryQuestions(subcategoryId, activeTab),
+                    getCommissionaryAnswers(sessionId.toString(), subcategoryId.toString(), activeTab, compartmentId)
+                ]);
 
                 if (!isMounted) return;
+
+                // Prefill existing answers
+                const mappedAnswers = {};
+                if (savedAnswers && Array.isArray(savedAnswers)) {
+                    savedAnswers.forEach(ans => {
+                        mappedAnswers[ans.question_id] = {
+                            status: ans.status,
+                            reasons: ans.reasons || [],
+                            remarks: ans.remarks || '',
+                            image_path: ans.photo_url || null
+                        };
+                    });
+                }
+                setAnswers(mappedAnswers);
+                setIsDirty(false);
 
                 console.log(`[RAW QUESTIONS RESPONSE - ${activeTab}]`, response);
 
@@ -99,6 +118,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     };
 
     const handleAnswerUpdate = (qId, data) => {
+        setIsDirty(true);
         setAnswers(prev => ({ ...prev, [qId]: data }));
     };
 
@@ -172,6 +192,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                     setGuidedBtns('TO_MINOR');
                 }
             }
+            setIsDirty(false);
             Alert.alert('Success', 'Answers saved successfully.');
         } catch (err) {
             console.error('Save Error:', err);
@@ -180,6 +201,44 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             setSaving(false);
         }
     };
+
+    const navigateToNext = () => {
+        const nextIndex = currentIndex + 1;
+        if (subcategories && nextIndex < subcategories.length) {
+            const nextArea = subcategories[nextIndex];
+            navigation.replace('CommissionaryQuestions', {
+                ...route.params,
+                subcategoryId: nextArea.id,
+                subcategoryName: nextArea.name,
+                currentIndex: nextIndex
+            });
+        } else {
+            navigation.navigate('CommissionaryDashboard', { ...route.params });
+        }
+    };
+
+    const currentQs = activeTab === 'Major' ? majorQs : minorQs;
+    const allAnswered = currentQs.length > 0 && currentQs.every(q => answers[q.id]?.status);
+
+    let btnText = 'Save & Sync';
+    let btnAction = handleSave;
+
+    if (isLocked) {
+        btnText = 'Inspection Completed (Read-Only)';
+    } else if (allAnswered && !isDirty) {
+        btnText = activeTab === 'Major' ? 'Go To Minor' : 'Go To Next Area';
+        btnAction = () => {
+            if (activeTab === 'Major') setActiveTab('Minor');
+            else navigateToNext();
+        };
+    } else if (isDirty) {
+        btnText = activeTab === 'Major' ? 'Save & Sync & Go To Minor' : 'Save & Sync & Go To Next Area';
+        btnAction = async () => {
+            await handleSave();
+            if (activeTab === 'Major') setActiveTab('Minor');
+            else navigateToNext();
+        };
+    }
 
     const renderQuestion = (q) => (
         <QuestionCard
@@ -274,21 +333,21 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
                 <TouchableOpacity
                     style={[styles.saveBtn, isLocked && { backgroundColor: '#f1f5f9' }, saving && { opacity: 0.7 }]}
-                    onPress={handleSave}
+                    onPress={btnAction}
                     disabled={saving || isLocked}
                 >
                     {saving ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
                         <Text style={[styles.saveBtnText, isLocked && { color: '#94a3b8' }]}>
-                            {isLocked ? 'Inspection Completed (Read-Only)' : 'Save & Sync'}
+                            {btnText}
                         </Text>
                     )}
                 </TouchableOpacity>
             </ScrollView>
 
             {
-                user?.role === 'Admin' && (
+                user?.role === 'Admin' && supportsActivityType && (
                     <TouchableOpacity
                         style={styles.adminEditFab}
                         onPress={() => navigation.navigate('QuestionManagement', {
@@ -302,7 +361,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                     </TouchableOpacity>
                 )
             }
-        </View >
+        </View>
     );
 };
 
