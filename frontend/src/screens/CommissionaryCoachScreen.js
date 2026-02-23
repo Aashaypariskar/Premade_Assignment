@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
-import { getCommissionaryCoaches, createCommissionaryCoach, getCommissionarySession } from '../api/api';
+import { getCommissionaryCoaches, createCommissionaryCoach, getCommissionarySession, getCoaches } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 
-const CommissionaryCoachScreen = ({ navigation }) => {
+const CommissionaryCoachScreen = ({ route, navigation }) => {
+    const category = route?.params?.category || 'Coach Commissionary';
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -20,7 +21,12 @@ const CommissionaryCoachScreen = ({ navigation }) => {
     const loadCoaches = async () => {
         try {
             setLoading(true);
-            const data = await getCommissionaryCoaches();
+            let data;
+            if (category === 'Coach Commissionary') {
+                data = await getCommissionaryCoaches();
+            } else {
+                data = await getCoaches(undefined, category);
+            }
             setCoaches(data);
         } catch (err) {
             Alert.alert('Error', 'Failed to fetch coaches');
@@ -53,15 +59,35 @@ const CommissionaryCoachScreen = ({ navigation }) => {
     const handleSelectCoach = async (coach) => {
         try {
             setLoading(true);
-            const session = await getCommissionarySession(coach.coach_number);
-            console.log(`[DEBUG] Coach Selected: ${coach.coach_number}, Session ID: ${session.id}, Status: ${session.status}`);
-            navigation.navigate('AmenitySubcategory', {
-                sessionId: session.id,
-                coachId: coach.id,
-                coachNumber: coach.coach_number,
-                categoryName: 'Coach Commissionary',
-                status: session.status
-            });
+            if (category === 'Coach Commissionary') {
+                const session = await getCommissionarySession(coach.coach_number);
+                navigation.navigate('AmenitySubcategory', {
+                    sessionId: session.id,
+                    coachId: coach.id,
+                    coachNumber: coach.coach_number,
+                    categoryName: category,
+                    status: session.status
+                });
+            } else if (category === 'WSP Examination') {
+                navigation.navigate('WspScheduleScreen', {
+                    coachId: coach.id,
+                    coachNumber: coach.coach_number,
+                    categoryName: category,
+                    mode: 'INDEPENDENT'
+                });
+            } else if (category === 'Amenity') {
+                navigation.navigate('AmenitySubcategory', {
+                    coachId: coach.id,
+                    coachNumber: coach.coach_number,
+                    categoryName: category
+                });
+            } else {
+                navigation.navigate('ActivitySelection', {
+                    coachId: coach.id,
+                    coachNumber: coach.coach_number,
+                    categoryName: category
+                });
+            }
         } catch (err) {
             Alert.alert('Error', 'Failed to initialize session');
         } finally {
@@ -77,7 +103,7 @@ const CommissionaryCoachScreen = ({ navigation }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Coach Commissionary</Text>
+                <Text style={styles.headerTitle}>{category}</Text>
                 <View style={{ width: 26 }} />
             </View>
 

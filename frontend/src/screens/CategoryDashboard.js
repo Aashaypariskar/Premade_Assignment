@@ -98,9 +98,9 @@ const CategoryDashboard = ({ navigation }) => {
                                     if (item.name === 'Sick Line Examination') {
                                         navigation.navigate('SickLineCoach');
                                     } else if (item.name === 'Coach Commissionary') {
-                                        navigation.navigate('CommissionaryCoach');
-                                    } else if (item.name === 'WSP Examination') {
-                                        navigation.navigate('CoachSelection', { categoryName: 'WSP Examination' });
+                                        navigation.navigate('CommissionaryCoach', { category: item.name });
+                                    } else if (item.name === 'WSP Examination' || item.name === 'Amenity') {
+                                        navigation.navigate('CommissionaryCoach', { category: item.name });
                                     } else {
                                         handleSelectCategory(item.name);
                                     }
