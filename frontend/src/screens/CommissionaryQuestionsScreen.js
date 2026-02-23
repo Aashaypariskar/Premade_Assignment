@@ -345,22 +345,6 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                     )}
                 </TouchableOpacity>
             </ScrollView>
-
-            {
-                user?.role === 'Admin' && supportsActivityType && (
-                    <TouchableOpacity
-                        style={styles.adminEditFab}
-                        onPress={() => navigation.navigate('QuestionManagement', {
-                            activityId: activeTab === 'Major' ? majorQs[0]?.activity_id : minorQs[0]?.activity_id,
-                            activityType: activeTab,
-                            categoryName: 'Coach Commissionary'
-                        })}
-                    >
-                        <Ionicons name="settings" size={20} color="#fff" />
-                        <Text style={styles.fabText}>Edit Questions</Text>
-                    </TouchableOpacity>
-                )
-            }
         </View>
     );
 };
@@ -408,26 +392,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         gap: 10
     },
-    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-
-    adminEditFab: {
-        position: 'absolute',
-        bottom: 90,
-        right: 20,
-        backgroundColor: '#2563eb',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 25,
-        elevation: 10
-    },
-    fabText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 12,
-        marginLeft: 8
-    }
+    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });
 
 export default CommissionaryQuestionsScreen;

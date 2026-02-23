@@ -9,7 +9,7 @@ const WspScheduleScreen = ({ route, navigation }) => {
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
     const [wspSession, setWspSession] = useState(null);
-    const { setDraft } = useStore();
+    const { setDraft, user } = useStore();
 
     useEffect(() => {
         init();
@@ -94,6 +94,22 @@ const WspScheduleScreen = ({ route, navigation }) => {
                                 <View style={styles.info}>
                                     <Text style={styles.scheduleName}>{item.name}</Text>
                                     <Text style={styles.scheduleDetail}>Click to start inspection</Text>
+                                    {user?.role === 'Admin' && (
+                                        <TouchableOpacity
+                                            style={styles.wspEditBtn}
+                                            onPress={() => {
+                                                navigation.navigate('QuestionManagement', {
+                                                    categoryName,
+                                                    scheduleId: item.id,
+                                                    coachId,
+                                                    activityType: item.name
+                                                });
+                                            }}
+                                        >
+                                            <Ionicons name="settings-outline" size={14} color="#2563eb" />
+                                            <Text style={styles.wspEditBtnText}>Edit {item.name}</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                                 <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
                             </View>
@@ -154,7 +170,9 @@ const styles = StyleSheet.create({
     info: { flex: 1 },
     scheduleName: { fontSize: 17, fontWeight: 'bold', color: '#1e293b' },
     scheduleDetail: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    wspEditBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#eff6ff', borderRadius: 8, alignSelf: 'flex-start' },
+    wspEditBtnText: { color: '#2563eb', fontSize: 12, fontWeight: 'bold', marginLeft: 4 }
 });
 
 export default WspScheduleScreen;

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getQuestionsByActivity, createQuestion, updateQuestion, deleteQuestion, getReasonsByQuestion, createReason, deleteReason } from '../api/api';
+import api, { getQuestionsByActivity, createQuestion, updateQuestion, deleteQuestion, getReasonsByQuestion, createReason, deleteReason } from '../api/api';
 import { Ionicons } from '@expo/vector-icons'; // Assuming Expo, or use Text symbols if icons not available
 
 const QuestionManagementScreen = ({ route, navigation }) => {
-    const { activityId, activityType, categoryName } = route.params;
+    const { activityId, activityType, categoryName, subcategoryId, scheduleId, coachId } = route.params;
 
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,7 +32,36 @@ const QuestionManagementScreen = ({ route, navigation }) => {
     const fetchQuestions = async () => {
         try {
             setLoading(true);
-            const data = await getQuestionsByActivity(activityId);
+            let data = [];
+
+            if (categoryName === 'Coach Commissionary') {
+                if (!subcategoryId || !activityType) {
+                    Alert.alert('Error', 'Missing subcategory_id or activity_type');
+                    setLoading(false);
+                    return;
+                }
+                const res = await api.get('/commissionary/questions', { params: { subcategory_id: subcategoryId, activity_type: activityType } });
+                data = res.data.groups ? res.data.groups.flatMap(g => g.questions) : res.data;
+            } else if (categoryName === 'Sick Line Examination') {
+                if (!subcategoryId || !activityType) {
+                    Alert.alert('Error', 'Missing subcategory_id or activity_type');
+                    setLoading(false);
+                    return;
+                }
+                const res = await api.get('/sickline/questions', { params: { subcategory_id: subcategoryId, activity_type: activityType } });
+                data = res.data.groups ? res.data.groups.flatMap(g => g.questions) : res.data;
+            } else if (categoryName === 'WSP Examination') {
+                if (!scheduleId) {
+                    Alert.alert('Error', 'schedule_id is missing. Cannot load WSP questions.');
+                    setLoading(false);
+                    return;
+                }
+                const res = await api.get('/wsp/questions', { params: { schedule_id: scheduleId, coach_id: coachId } });
+                data = Array.isArray(res.data) ? res.data : (res.data.groups ? res.data.groups.flatMap(g => g.questions) : []);
+            } else {
+                data = await getQuestionsByActivity(activityId);
+            }
+
             setQuestions(data);
         } catch (err) {
             Alert.alert('Error', 'Failed to fetch questions');
