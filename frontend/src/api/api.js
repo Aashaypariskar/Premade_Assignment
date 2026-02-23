@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { BASE_URL, ENV_NAME } from '../config/environment';
 
-const BASE_URL = 'https://meetofy.in/wsp/api';
 
 const api = axios.create({
     baseURL: BASE_URL,
