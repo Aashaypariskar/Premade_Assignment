@@ -9,6 +9,7 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
     const params = route.params;
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { setDraft, user } = useStore();
     const [majorProgress, setMajorProgress] = useState({ answered: 0, total: 0 });
     const [minorProgress, setMinorProgress] = useState({ answered: 0, total: 0 });
     const [supportsActivityType, setSupportsActivityType] = useState(true);

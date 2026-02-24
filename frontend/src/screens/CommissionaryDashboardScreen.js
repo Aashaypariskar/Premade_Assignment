@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 const CommissionaryDashboardScreen = ({ route, navigation }) => {
     const { sessionId, coachNumber, compartmentId, status } = route.params;
     const [progressStats, setProgressStats] = useState({ completed_count: 0, total_expected: 112, status: 'IN_PROGRESS' });
+    const [subcategories, setSubcategories] = useState([]);
     const [breakdown, setBreakdown] = useState({});
     const [loading, setLoading] = useState(true);
     const [finalizing, setFinalizing] = useState(false);
