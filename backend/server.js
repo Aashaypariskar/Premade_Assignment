@@ -10,7 +10,13 @@ const reasonRoutes = require('./routes/ReasonRoutes');
 const app = express();
 const PORT = 3000;
 
-// Log every request to see if things are working
+app.use(cors()); // Move to top to ensure all responses (including errors) have CORS headers
+app.use(express.json());
+
+// Health check for frontend to verify reachability
+app.get('/health', (req, res) => res.json({ status: 'ok', environment: process.env.NODE_ENV || 'development' }));
+
+// Log every request
 app.use((req, res, next) => {
     const start = Date.now();
     console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url} - INCOMING`);
