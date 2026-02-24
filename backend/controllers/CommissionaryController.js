@@ -265,21 +265,49 @@ exports.getProgress = async (req, res) => {
         }
 
         const progress = await Promise.all(subcategories.map(async (sub) => {
-            const subProg = await require('../utils/progressEngine').calculateProgress({
-                subcategory_id: sub.id,
-                session_id: session.id,
-                AnswerModel: CommissionaryAnswer,
-                AmenityItemModel: AmenityItem,
-                QuestionModel: Question
+            const majorItems = await AmenityItem.findAll({
+                where: { subcategory_id: sub.id, activity_type: 'Major' },
+                include: [{ model: Question, attributes: ['id'] }]
             });
+            const minorItems = await AmenityItem.findAll({
+                where: { subcategory_id: sub.id, activity_type: 'Minor' },
+                include: [{ model: Question, attributes: ['id'] }]
+            });
+
+            const majorIds = majorItems.flatMap(item => (item.Questions || []).map(q => q.id));
+            const minorIds = minorItems.flatMap(item => (item.Questions || []).map(q => q.id));
+
+            const compStatus = {};
+            const compartments = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
+
+            await Promise.all(compartments.map(async (compId) => {
+                const majorAns = await CommissionaryAnswer.count({
+                    where: { session_id: session.id, question_id: majorIds, compartment_id: compId }
+                });
+                const minorAns = await CommissionaryAnswer.count({
+                    where: { session_id: session.id, question_id: minorIds, compartment_id: compId }
+                });
+
+                compStatus[compId] = {
+                    majorTotal: majorIds.length,
+                    majorAnswered: majorAns,
+                    minorTotal: minorIds.length,
+                    minorAnswered: minorAns,
+                    isComplete: (majorIds.length > 0 && majorAns === majorIds.length) && (minorIds.length > 0 && minorAns === minorIds.length)
+                };
+            }));
+
+            const isAreaComplete = Object.values(compStatus).every(c => c.isComplete);
 
             return {
                 subcategory_id: sub.id,
                 subcategory_name: sub.name,
-                isComplete: subProg.status === 'COMPLETED',
-                hasMajor: subProg.status !== 'PENDING',
-                hasMinor: subProg.status !== 'PENDING',
-                compartmentStatus: {}
+                isComplete: isAreaComplete,
+                majorTotal: majorIds.length,
+                majorAnswered: await CommissionaryAnswer.count({ where: { session_id: session.id, question_id: majorIds } }),
+                minorTotal: minorIds.length,
+                minorAnswered: await CommissionaryAnswer.count({ where: { session_id: session.id, question_id: minorIds } }),
+                compartmentStatus: compStatus
             };
         }));
 

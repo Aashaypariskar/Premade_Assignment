@@ -31,9 +31,11 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
             if (prog?.perAreaStatus) {
                 const area = prog.perAreaStatus.find(a => a.subcategory_id === subcategoryId);
                 if (area) {
-                    setIsMajorDone(area.hasMajor);
-                    setIsMinorDone(area.hasMinor);
-                    return area;
+                    const isMjr = area.majorTotal > 0 && area.majorAnswered === area.majorTotal;
+                    const isMnr = area.minorTotal > 0 && area.minorAnswered === area.minorTotal;
+                    setIsMajorDone(isMjr);
+                    setIsMinorDone(isMnr);
+                    return { major: isMjr, minor: isMnr };
                 }
             }
         } catch (err) {
@@ -198,18 +200,8 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
     };
 
     const navigateToNext = () => {
-        const nextIndex = currentIndex + 1;
-        if (subcategories && nextIndex < subcategories.length) {
-            const nextArea = subcategories[nextIndex];
-            navigation.replace('SickLineQuestions', {
-                ...route.params,
-                subcategoryId: nextArea.id,
-                subcategoryName: nextArea.name,
-                currentIndex: nextIndex
-            });
-        } else {
-            navigation.navigate('SickLineDashboard', { ...route.params });
-        }
+        // STRICT NAVIGATION FIX: Always return to Area Selection after finish
+        navigation.pop(2);
     };
 
     const currentQs = activeTab === 'Major' ? majorQs : minorQs;

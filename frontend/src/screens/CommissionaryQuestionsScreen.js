@@ -106,10 +106,12 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             if (prog?.perAreaStatus) {
                 const area = prog.perAreaStatus.find(a => a.subcategory_id === subcategoryId);
                 if (area) {
-                    const compStatus = area.compartmentStatus?.[compartmentId] || { major: false, minor: false };
-                    setIsMajorDone(compStatus.major);
-                    setIsMinorDone(compStatus.minor);
-                    return compStatus;
+                    const compStatus = area.compartmentStatus?.[compartmentId];
+                    const isMjr = compStatus?.majorTotal > 0 && compStatus?.majorAnswered === compStatus?.majorTotal;
+                    const isMnr = compStatus?.minorTotal > 0 && compStatus?.minorAnswered === compStatus?.minorTotal;
+                    setIsMajorDone(isMjr);
+                    setIsMinorDone(isMnr);
+                    return { major: isMjr, minor: isMnr };
                 }
             }
         } catch (err) {
@@ -204,18 +206,8 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     };
 
     const navigateToNext = () => {
-        const nextIndex = currentIndex + 1;
-        if (subcategories && nextIndex < subcategories.length) {
-            const nextArea = subcategories[nextIndex];
-            navigation.replace('CommissionaryQuestions', {
-                ...route.params,
-                subcategoryId: nextArea.id,
-                subcategoryName: nextArea.name,
-                currentIndex: nextIndex
-            });
-        } else {
-            navigation.navigate('CommissionaryDashboard', { ...route.params });
-        }
+        // STRICT NAVIGATION FIX: Always return to Area Selection after finish
+        navigation.pop(2);
     };
 
     const currentQs = activeTab === 'Major' ? majorQs : minorQs;

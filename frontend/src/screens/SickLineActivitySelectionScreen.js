@@ -32,8 +32,9 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
 
     useFocusEffect(
         useCallback(() => {
+            loadActivities();
             loadStatus();
-        }, [])
+        }, [params.coachNumber, params.subcategoryId])
     );
 
     const loadStatus = async () => {

@@ -84,18 +84,18 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
 
     const renderItem = ({ item, index }) => {
         const areaProgress = (progressStats.progress || []).find(p => p.subcategory_id === item.id);
-        const compStatus = areaProgress?.compartmentStatus?.[compartmentId] || { major: false, minor: false, isComplete: false };
+        const compStatus = areaProgress?.compartmentStatus?.[compartmentId];
 
-        const isMajorDone = compStatus.major;
-        const isMinorDone = compStatus.minor;
-        const bothDone = compStatus.isComplete;
+        const isMajorDone = compStatus?.majorTotal > 0 && compStatus?.majorAnswered === compStatus?.majorTotal;
+        const isMinorDone = compStatus?.minorTotal > 0 && compStatus?.minorAnswered === compStatus?.minorTotal;
+        const bothDone = isMajorDone && isMinorDone;
 
         let badgeText = "Pending";
         let badgeColor = "#94a3b8"; // grey
         if (bothDone) {
             badgeText = "Completed";
             badgeColor = "#10b981"; // green
-        } else if (isMajorDone || isMinorDone) {
+        } else if (isMajorDone || isMinorDone || (compStatus?.majorAnswered > 0) || (compStatus?.minorAnswered > 0)) {
             badgeText = "Partial";
             badgeColor = "#f59e0b"; // yellow
         }

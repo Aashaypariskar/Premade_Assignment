@@ -139,22 +139,23 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                     if (item.isWsp) {
                         iconName = "shield-checkmark-outline";
                         iconColor = "#1e293b";
-                        if (wspProgress?.isCompleted) {
+                        const isWspComplete = wspProgress?.totalCount > 0 && wspProgress?.completedCount === wspProgress?.totalCount;
+                        if (isWspComplete) {
                             badgeText = "Completed";
                             badgeColor = "#10b981";
-                        } else if (wspProgress?.hasStarted) {
+                        } else if (wspProgress?.completedCount > 0) {
                             badgeText = "Partial";
                             badgeColor = "#f59e0b";
                         }
                     } else {
                         const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
-                        const hasMajor = status?.hasMajor || false;
-                        const hasMinor = status?.hasMinor || false;
+                        const isMajorDone = status?.majorTotal > 0 && status?.majorAnswered === status?.majorTotal;
+                        const isMinorDone = status?.minorTotal > 0 && status?.minorAnswered === status?.minorTotal;
 
-                        if (hasMajor && hasMinor) {
+                        if (isMajorDone && isMinorDone) {
                             badgeText = "Completed";
                             badgeColor = "#10b981";
-                        } else if (hasMajor || hasMinor) {
+                        } else if (isMajorDone || isMinorDone || (status?.majorAnswered > 0) || (status?.minorAnswered > 0)) {
                             badgeText = "Partial";
                             badgeColor = "#f59e0b";
                         }

@@ -248,22 +248,32 @@ exports.getProgress = async (req, res) => {
 
         // 2. Loop dynamically without hardcoded bounds or manual loops
         const progress = await Promise.all(subcategories.map(async (sub) => {
-            const subProg = await require('../utils/progressEngine').calculateProgress({
-                subcategory_id: sub.id,
-                session_id: session.id,
-                AnswerModel: SickLineAnswer,
-                AmenityItemModel: AmenityItem,
-                QuestionModel: Question
+            const majorItems = await AmenityItem.findAll({
+                where: { subcategory_id: sub.id, activity_type: 'Major' },
+                include: [{ model: Question, attributes: ['id'] }]
             });
+            const minorItems = await AmenityItem.findAll({
+                where: { subcategory_id: sub.id, activity_type: 'Minor' },
+                include: [{ model: Question, attributes: ['id'] }]
+            });
+
+            const majorIds = majorItems.flatMap(item => (item.Questions || []).map(q => q.id));
+            const minorIds = minorItems.flatMap(item => (item.Questions || []).map(q => q.id));
+
+            const majorAns = await SickLineAnswer.count({ where: { session_id: session.id, question_id: majorIds } });
+            const minorAns = await SickLineAnswer.count({ where: { session_id: session.id, question_id: minorIds } });
+
+            const isMajorDone = majorIds.length > 0 && majorAns === majorIds.length;
+            const isMinorDone = minorIds.length > 0 && minorAns === minorIds.length;
 
             return {
                 subcategory_id: sub.id,
                 subcategory_name: sub.name,
-                isComplete: subProg.status === 'COMPLETED',
-                hasMajor: subProg.completed > 0,
-                hasMinor: subProg.completed > 0,
-                completedItems: subProg.completed,
-                requiredItems: subProg.totalRequired
+                majorTotal: majorIds.length,
+                majorAnswered: majorAns,
+                minorTotal: minorIds.length,
+                minorAnswered: minorAns,
+                isComplete: isMajorDone && isMinorDone
             };
         }));
 

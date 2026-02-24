@@ -26,10 +26,11 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     useFocusEffect(
         useCallback(() => {
-            if (params.categoryName === 'Coach Commissionary') {
+            loadActivities();
+            if (params.categoryName === 'Coach Commissionary' || params.categoryName === 'Sick Line Examination') {
                 loadStatus();
             }
-        }, [])
+        }, [params.coachNumber, params.subcategoryId])
     );
 
     const loadStatus = async () => {

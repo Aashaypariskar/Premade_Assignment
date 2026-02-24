@@ -110,15 +110,15 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                 numColumns={2}
                 renderItem={({ item }) => {
                     const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
-                    const hasMajor = status?.hasMajor || false;
-                    const hasMinor = status?.hasMinor || false;
+                    const isMajorDone = status?.majorTotal > 0 && status?.majorAnswered === status?.majorTotal;
+                    const isMinorDone = status?.minorTotal > 0 && status?.minorAnswered === status?.minorTotal;
 
                     let badgeText = "Pending";
                     let badgeColor = "#94a3b8"; // grey
-                    if (hasMajor && hasMinor) {
+                    if (isMajorDone && isMinorDone) {
                         badgeText = "Completed";
                         badgeColor = "#10b981"; // green
-                    } else if (hasMajor || hasMinor) {
+                    } else if (isMajorDone || isMinorDone || (status?.majorAnswered > 0) || (status?.minorAnswered > 0)) {
                         badgeText = "Partial";
                         badgeColor = "#f59e0b"; // yellow
                     }
