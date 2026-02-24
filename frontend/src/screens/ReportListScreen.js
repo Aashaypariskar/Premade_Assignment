@@ -60,7 +60,9 @@ const SearchableInput = ({ label, placeholder, value, onChangeText, options = []
                                     onToggle(false);
                                 }}
                             >
-                                <Text style={styles.dropdownItemText}>{item}</Text>
+                                <Text style={styles.dropdownItemText}>
+                                    {item === 'Coach Commissionary' ? 'Coach Commissioning' : item}
+                                </Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -188,7 +190,9 @@ const ReportListScreen = ({ navigation }) => {
                 <Text style={[styles.cell, { width: 100, fontWeight: '600' }]}>{item.train_number}</Text>
                 <Text style={[styles.cell, { width: 80 }]}>{item.coach_number}</Text>
                 <View style={[styles.cell, { width: 140 }]}>
-                    <Text style={{ fontWeight: '600', color: '#1e293b' }} numberOfLines={1}>{item.category_name}</Text>
+                    <Text style={{ fontWeight: '600', color: '#1e293b' }} numberOfLines={1}>
+                        {item.category_name === 'Coach Commissionary' ? 'Coach Commissioning' : item.category_name}
+                    </Text>
                     {(item.subcategory_name || item.schedule_name) && (
                         <Text style={{ fontSize: 10, color: '#64748b' }} numberOfLines={1}>
                             {item.subcategory_name || item.schedule_name}

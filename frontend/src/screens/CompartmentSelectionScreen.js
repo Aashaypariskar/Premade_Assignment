@@ -98,7 +98,11 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
         <View style={styles.container}>
             <View style={styles.pills}>
                 <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
-                <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+                <View style={[styles.pill, styles.activePill]}>
+                    <Text style={[styles.pillText, { color: '#fff' }]}>
+                        {params.categoryName === 'Coach Commissionary' ? 'Coach Commissioning' : params.categoryName}
+                    </Text>
+                </View>
                 <View style={[styles.pill, { backgroundColor: '#eff6ff' }]}><Text style={[styles.pillText, { color: '#2563eb' }]}>{params.subcategoryName}</Text></View>
             </View>
 

@@ -103,7 +103,9 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{category}</Text>
+                <Text style={styles.headerTitle}>
+                    {category === 'Coach Commissionary' ? 'Coach Commissioning' : category}
+                </Text>
                 <View style={{ width: 26 }} />
             </View>
 

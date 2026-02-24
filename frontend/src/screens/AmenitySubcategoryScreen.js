@@ -51,7 +51,7 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                     try {
                         setSubmitting(true);
                         await completeCommissionarySession(params.coachNumber);
-                        Alert.alert('Success', 'Coach Commissionary Inspection COMPLETED!', [
+                        Alert.alert('Success', 'Coach Commissioning Inspection COMPLETED!', [
                             { text: 'OK', onPress: () => navigation.navigate('Dashboard') }
                         ]);
                     } catch (err) {
@@ -96,7 +96,11 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
                 <View style={styles.pills}>
                     <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
-                    <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+                    <View style={[styles.pill, styles.activePill]}>
+                        <Text style={[styles.pillText, { color: '#fff' }]}>
+                            {params.categoryName === 'Coach Commissionary' ? 'Coach Commissioning' : params.categoryName}
+                        </Text>
+                    </View>
                 </View>
                 <View style={{ width: 26 }} />
             </View>

@@ -113,7 +113,9 @@ const CategoryDashboard = ({ navigation }) => {
                                                 item.name === 'WSP Examination' ? '⚙️' : item.name[0]}
                                     </Text>
                                 </View>
-                                <Text style={styles.cardText}>{item.name}</Text>
+                                <Text style={styles.cardText}>
+                                    {item.name === 'Coach Commissionary' ? 'Coach Commissioning' : item.name}
+                                </Text>
                             </TouchableOpacity>
                         )}
                         ListEmptyComponent={

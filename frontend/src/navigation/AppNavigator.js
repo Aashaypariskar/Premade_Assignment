@@ -143,7 +143,7 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="CommissionaryCoach"
                         component={CommissionaryCoachScreen}
-                        options={{ title: 'Coach Commissionary' }}
+                        options={{ title: 'Coach Commissioning' }}
                     />
                     <Stack.Screen
                         name="CommissionaryCompartment"

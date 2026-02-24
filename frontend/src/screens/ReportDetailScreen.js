@@ -35,9 +35,10 @@ const ReportDetailScreen = ({ route, navigation }) => {
         navigation.navigate('Dashboard');
     };
 
-    const categoryName = details.length > 0 && details[0]?.category_name
+    const categoryNameRaw = details.length > 0 && details[0]?.category_name
         ? details[0].category_name
         : 'Inspection Report';
+    const categoryName = categoryNameRaw === 'Coach Commissionary' ? 'Coach Commissioning' : categoryNameRaw;
 
     const generateHtml = () => {
         const grouped = details.reduce((acc, item) => {

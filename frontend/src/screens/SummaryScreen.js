@@ -118,7 +118,7 @@ const SummaryScreen = ({ route, navigation }) => {
                         {currentDraft.train?.name || 'Unknown Train'} - Coach {currentDraft.coach?.coach_number || 'N/A'}
                     </Text>
                     <Text style={styles.frameworkSub}>
-                        {currentDraft.category} › {params.compartment ? `${currentDraft.subcategory_name} (${params.compartment})` : (currentDraft.schedule_name || currentDraft.subcategory_name || currentDraft.activity?.type)}
+                        {currentDraft.category === 'Coach Commissionary' ? 'Coach Commissioning' : currentDraft.category} › {params.compartment ? `${currentDraft.subcategory_name} (${params.compartment})` : (currentDraft.schedule_name || currentDraft.subcategory_name || currentDraft.activity?.type)}
                     </Text>
 
                     <View style={styles.stats}>
