@@ -53,10 +53,6 @@ api.interceptors.response.use(
             console.warn('Token expired or invalid. Logging out...');
             await SecureStore.deleteItemAsync('user_token');
             await SecureStore.deleteItemAsync('user_data');
-        } else if (error.message === 'Network Error' && error.config?.headers?.Authorization) {
-            console.warn('Network Error on authenticated request. Possible server/token mismatch. Logging out...');
-            await SecureStore.deleteItemAsync('user_token');
-            await SecureStore.deleteItemAsync('user_data');
         }
         return Promise.reject(error);
     }
@@ -98,6 +94,8 @@ export const getAmenitySubcategories = async (categoryName, coachId) => {
 export const getWspSession = (coach_number) => api.get(`wsp/session?coach_number=${coach_number}`).then(res => res.data);
 export const getWspSchedules = () => api.get('wsp/schedules').then(res => res.data);
 export const getWspQuestions = (scheduleId) => api.get(`wsp/questions?schedule_id=${scheduleId}`).then(res => res.data);
+export const getWspAnswers = (sessionId, mode, scheduleId) =>
+    api.get('wsp/answers', { params: { session_id: sessionId, mode, schedule_id: scheduleId } }).then(res => res.data);
 export const saveWspAnswers = (data) => api.post('wsp/save', data).then(res => res.data);
 export const getWspProgress = (coachNumber, mode = 'INDEPENDENT') =>
     api.get('wsp/progress', { params: { coach_number: coachNumber, mode } }).then(res => res.data);
@@ -303,6 +301,27 @@ export const getCombinedReport = async (params) => {
     // params: { coach_id, subcategory_id, activity_type, date }
     const res = await api.get('reports/combined', { params });
     return res.data;
+};
+
+export const getDefects = (params) => api.get('inspection/defects', { params }).then(res => res.data);
+export const resolveDefect = async (data) => {
+    try {
+        const isFormData = data instanceof FormData;
+        const response = await api.post(
+            'inspection/resolve',
+            data,
+            isFormData
+                ? {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    transformRequest: (f) => f,
+                }
+                : {}
+        );
+        return response.data;
+    } catch (error) {
+        console.error("RESOLVE DEFECT API ERROR:", error.response?.data || error.message);
+        throw error;
+    }
 };
 
 export default api;

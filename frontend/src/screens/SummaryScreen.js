@@ -2,7 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
 import { submitInspection, saveWspAnswers } from '../api/api';
 import { useStore } from '../store/StoreContext';
-import { calculateCompliance } from '../utils/compliance';
+import { Ionicons } from '@expo/vector-icons';
+import { BASE_URL } from '../config/environment';
+
+const normalizeUrl = (uri) => {
+    if (!uri) return null;
+    if (uri.startsWith('http') || uri.startsWith('file://') || uri.startsWith('content://')) {
+        return uri;
+    }
+    const cleanBase = BASE_URL.replace('/api/', '');
+    const cleanUri = uri.startsWith('/') ? uri : `/${uri}`;
+    return `${cleanBase}${cleanUri}`;
+}; import { calculateCompliance } from '../utils/compliance';
 
 /**
  * Inspection Summary Screen - PRODUCTION VERSION
@@ -163,7 +174,13 @@ const SummaryScreen = ({ route, navigation }) => {
                                     </View>
                                 ))}
                             </View>
-                            {ans.image_path && <Image source={{ uri: ans.image_path }} style={styles.thumb} />}
+                            {(ans.photo_url || ans.image_path) && <Image source={{ uri: normalizeUrl(ans.photo_url || ans.image_path) }} style={styles.thumb} />}
+                            {(ans.resolved || ans.after_photo_url) && (
+                                <View style={styles.resolvedTag}>
+                                    <Ionicons name="checkmark-circle" size={12} color="#10b981" />
+                                    <Text style={styles.resolvedTagText}>RESOLVED</Text>
+                                </View>
+                            )}
                         </View>
                     ))
                 )}
@@ -213,7 +230,23 @@ const styles = StyleSheet.create({
     editBtn: { flex: 1, paddingVertical: 16, alignItems: 'center' },
     editText: { color: '#64748b', fontWeight: 'bold' },
     submitBtn: { flex: 2, backgroundColor: '#10b981', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    resolvedTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#dcfce7',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        marginTop: 10
+    },
+    resolvedTagText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#10b981',
+        marginLeft: 4
+    }
 });
 
 export default SummaryScreen;

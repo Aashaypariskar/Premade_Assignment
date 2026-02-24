@@ -151,8 +151,12 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                         const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
                         const isMajorDone = status?.majorTotal > 0 && status?.majorAnswered === status?.majorTotal;
                         const isMinorDone = status?.minorTotal > 0 && status?.minorAnswered === status?.minorTotal;
+                        const pendingDefects = status?.pendingDefects || 0;
 
-                        if (isMajorDone && isMinorDone) {
+                        if (pendingDefects > 0) {
+                            badgeText = `${pendingDefects} Defects`;
+                            badgeColor = "#ef4444";
+                        } else if (isMajorDone && isMinorDone) {
                             badgeText = "Completed";
                             badgeColor = "#10b981";
                         } else if (isMajorDone || isMinorDone || (status?.majorAnswered > 0) || (status?.minorAnswered > 0)) {
@@ -173,6 +177,20 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                                 <Ionicons name={iconName} size={24} color={iconColor} />
                             </View>
                             <Text style={styles.subName}>{item.name}</Text>
+
+                            {badgeColor === '#ef4444' && !item.isWsp && (
+                                <TouchableOpacity
+                                    style={styles.fixBtn}
+                                    onPress={() => navigation.navigate('DefectsScreen', {
+                                        ...params,
+                                        sessionId: progress?.session_id,
+                                        subcategoryId: item.id,
+                                        categoryName: 'Sick Line Examination'
+                                    })}
+                                >
+                                    <Text style={styles.fixBtnText}>FIX DEFECTS</Text>
+                                </TouchableOpacity>
+                            )}
                         </TouchableOpacity>
                     );
                 }}
@@ -282,6 +300,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#e2e8f0',
         marginHorizontal: 20,
         marginVertical: 15
+    },
+    fixBtn: {
+        marginTop: 10,
+        backgroundColor: '#fef2f2',
+        borderWidth: 1,
+        borderColor: '#ef4444',
+        borderRadius: 8,
+        paddingVertical: 4,
+        paddingHorizontal: 12
+    },
+    fixBtnText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#ef4444'
     }
 });
 

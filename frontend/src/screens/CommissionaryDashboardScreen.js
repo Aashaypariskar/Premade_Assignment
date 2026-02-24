@@ -92,12 +92,19 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
 
         let badgeText = "Pending";
         let badgeColor = "#94a3b8"; // grey
+        const hasDefects = (compStatus?.pendingDefects || 0) > 0;
+
         if (bothDone) {
             badgeText = "Completed";
             badgeColor = "#10b981"; // green
         } else if (isMajorDone || isMinorDone || (compStatus?.majorAnswered > 0) || (compStatus?.minorAnswered > 0)) {
             badgeText = "Partial";
             badgeColor = "#f59e0b"; // yellow
+        }
+
+        if (hasDefects) {
+            badgeText = `${compStatus.pendingDefects} Defects`;
+            badgeColor = "#ef4444"; // red
         }
 
         return (
@@ -128,6 +135,19 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
                         <Text style={[styles.miniBadgeText, isMajorDone && styles.miniBadgeTextDone]}>Major</Text>
                     </View>
                 </View>
+
+                {hasDefects && (
+                    <TouchableOpacity
+                        style={styles.resolveAreaBtn}
+                        onPress={() => navigation.navigate('DefectsScreen', {
+                            ...route.params,
+                            subcategoryId: item.id,
+                            categoryName: 'Coach Commissionary'
+                        })}
+                    >
+                        <Text style={styles.resolveAreaBtnText}>FIX DEFECTS</Text>
+                    </TouchableOpacity>
+                )}
             </TouchableOpacity>
         );
     };
@@ -282,6 +302,22 @@ const styles = StyleSheet.create({
     miniBadgeDone: { backgroundColor: '#10b981' },
     miniBadgeText: { fontSize: 8, fontWeight: 'bold', color: '#94a3b8' },
     miniBadgeTextDone: { color: '#fff' },
+    resolveAreaBtn: {
+        marginTop: 10,
+        backgroundColor: '#fef2f2',
+        borderWidth: 1,
+        borderColor: '#ef4444',
+        borderRadius: 8,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        width: '100%',
+        alignItems: 'center'
+    },
+    resolveAreaBtnText: {
+        fontSize: 9,
+        fontWeight: '900',
+        color: '#ef4444'
+    },
 
     footer: { position: 'absolute', bottom: 20, left: 20, right: 20 },
     finalizeBtn: { backgroundColor: '#2563eb', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 16, gap: 10, elevation: 4 },

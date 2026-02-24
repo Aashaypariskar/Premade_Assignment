@@ -146,7 +146,11 @@ exports.getAnswers = async (req, res) => {
         }
 
         const answers = await CommissionaryAnswer.findAll({
-            where: { session_id, subcategory_id, activity_type, compartment_id }
+            where: { session_id, subcategory_id, activity_type, compartment_id },
+            attributes: [
+                'id', 'question_id', 'status', 'reasons', 'remarks', 'photo_url',
+                'resolved', 'after_photo_url', 'resolution_remark'
+            ]
         });
 
         res.json(answers);
@@ -277,9 +281,8 @@ exports.getProgress = async (req, res) => {
             const majorIds = majorItems.flatMap(item => (item.Questions || []).map(q => q.id));
             const minorIds = minorItems.flatMap(item => (item.Questions || []).map(q => q.id));
 
+            const compartments = ['A', 'B', 'C', 'D'];
             const compStatus = {};
-            const compartments = ['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3', 'D4'];
-
             await Promise.all(compartments.map(async (compId) => {
                 const majorAns = await CommissionaryAnswer.count({
                     where: { session_id: session.id, question_id: majorIds, compartment_id: compId }
@@ -288,21 +291,45 @@ exports.getProgress = async (req, res) => {
                     where: { session_id: session.id, question_id: minorIds, compartment_id: compId }
                 });
 
+                const pendingDefects = await CommissionaryAnswer.count({
+                    where: {
+                        session_id: session.id,
+                        compartment_id: compId,
+                        status: 'DEFICIENCY',
+                        resolved: false
+                    }
+                });
+
                 compStatus[compId] = {
                     majorTotal: majorIds.length,
                     majorAnswered: majorAns,
                     minorTotal: minorIds.length,
                     minorAnswered: minorAns,
-                    isComplete: (majorIds.length > 0 && majorAns === majorIds.length) && (minorIds.length > 0 && minorAns === minorIds.length)
+                    pendingDefects: pendingDefects,
+                    isComplete: (majorIds.length > 0 && majorAns === majorIds.length) &&
+                        (minorIds.length > 0 && minorAns === minorIds.length) &&
+                        (pendingDefects === 0)
                 };
             }));
 
             const isAreaComplete = Object.values(compStatus).every(c => c.isComplete);
 
+            // Fix: Calculate total pending defects for the whole subcategory at once (including NA, L1-L4, etc)
+            const totalPendingDefects = await CommissionaryAnswer.count({
+                where: {
+                    session_id: session.id,
+                    subcategory_id: sub.id,
+                    status: 'DEFICIENCY',
+                    resolved: { [Op.or]: [false, null] } // Support NULL values as per Step 4
+                }
+            });
+
             return {
                 subcategory_id: sub.id,
                 subcategory_name: sub.name,
-                isComplete: isAreaComplete,
+                isComplete: isAreaComplete && totalPendingDefects === 0,
+                pendingDefects: totalPendingDefects,
+                pending_defects: totalPendingDefects, // Step 7: Parity/Compatibility
                 majorTotal: majorIds.length,
                 majorAnswered: await CommissionaryAnswer.count({ where: { session_id: session.id, question_id: majorIds } }),
                 minorTotal: minorIds.length,

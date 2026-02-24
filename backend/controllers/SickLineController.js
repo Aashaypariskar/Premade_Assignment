@@ -140,7 +140,11 @@ exports.getAnswers = async (req, res) => {
         }
 
         const answers = await SickLineAnswer.findAll({
-            where: { session_id, subcategory_id, activity_type, compartment_id }
+            where: { session_id, subcategory_id, activity_type, compartment_id },
+            attributes: [
+                'id', 'question_id', 'status', 'reasons', 'remarks', 'photo_url',
+                'resolved', 'after_photo_url', 'resolution_remark'
+            ]
         });
 
         res.json(answers);
@@ -263,8 +267,17 @@ exports.getProgress = async (req, res) => {
             const majorAns = await SickLineAnswer.count({ where: { session_id: session.id, question_id: majorIds } });
             const minorAns = await SickLineAnswer.count({ where: { session_id: session.id, question_id: minorIds } });
 
-            const isMajorDone = majorIds.length > 0 && majorAns === majorIds.length;
-            const isMinorDone = minorIds.length > 0 && minorAns === minorIds.length;
+            const pendingDefects = await SickLineAnswer.count({
+                where: {
+                    session_id: session.id,
+                    subcategory_id: sub.id,
+                    status: 'DEFICIENCY',
+                    resolved: { [Op.or]: [false, null] } // Step 4: Robust check
+                }
+            });
+
+            const isMajorDone = majorIds.length > 0 ? (majorAns === majorIds.length) : true;
+            const isMinorDone = minorIds.length > 0 ? (minorAns === minorIds.length) : true;
 
             return {
                 subcategory_id: sub.id,
@@ -273,12 +286,14 @@ exports.getProgress = async (req, res) => {
                 majorAnswered: majorAns,
                 minorTotal: minorIds.length,
                 minorAnswered: minorAns,
-                isComplete: isMajorDone && isMinorDone
+                pendingDefects: pendingDefects,
+                pending_defects: pendingDefects, // Step 7 compatibility
+                isComplete: isMajorDone && isMinorDone && pendingDefects === 0
             };
         }));
 
-        const totalExpected = progress.reduce((sum, p) => sum + p.requiredItems, 0);
-        const totalCompleted = progress.reduce((sum, p) => sum + p.completedItems, 0);
+        const totalExpected = progress.reduce((sum, p) => sum + (p.majorTotal + p.minorTotal), 0);
+        const totalCompleted = progress.reduce((sum, p) => sum + (p.majorAnswered + p.minorAnswered), 0);
 
         let percentage = 0;
         if (totalExpected > 0) percentage = Math.round((totalCompleted / totalExpected) * 100);

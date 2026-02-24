@@ -120,7 +120,7 @@ exports.saveAnswers = async (req, res) => {
                 observed_value: ans.observed_value,
                 reasons: ans.reasons,
                 remarks: ans.remarks,
-                image_path: ans.image_path,
+                photo_url: ans.image_path || ans.photo_url,
 
                 coach_id: coach.id,
                 coach_number: coach.coach_number,
@@ -148,6 +148,52 @@ exports.saveAnswers = async (req, res) => {
         if (transaction) await transaction.rollback();
         console.error('WSP Save Error:', err);
         res.status(500).json({ error: 'Failed to save answers' });
+    }
+};
+
+exports.getAnswers = async (req, res) => {
+    try {
+        const { session_id, mode, schedule_id } = req.query;
+        if (!session_id || !mode || !schedule_id) {
+            return res.status(400).json({ error: 'Missing parameters' });
+        }
+
+        console.log(`[WSP ANSWERS] Fetching - Session: ${session_id}, Mode: ${mode}, Schedule: ${schedule_id}`);
+
+        // Get the session to find the coach number
+        let session;
+        if (mode === 'SICKLINE') {
+            session = await SickLineSession.findByPk(session_id, { include: [Coach] });
+        } else {
+            session = await WspSession.findByPk(session_id, { include: [Coach] });
+        }
+
+        const coach_number = session?.Coach?.coach_number;
+        if (!coach_number) {
+            console.log('[WSP ANSWERS] No coach found for session');
+            return res.json([]);
+        }
+
+        const answers = await InspectionAnswer.findAll({
+            where: {
+                coach_number,
+                category_name: 'WSP Examination',
+                schedule_id,
+                submission_id: {
+                    [Op.like]: `WSP-${mode}-${session_id}-%`
+                }
+            },
+            attributes: [
+                'id', 'question_id', 'status', 'reasons', 'remarks',
+                'photo_url', 'image_path', // Get both, photo_url is standard now
+                'resolved', 'after_photo_url', 'resolution_remark'
+            ]
+        });
+
+        res.json(answers);
+    } catch (err) {
+        console.error('[CRITICAL-WSP] getAnswers Error:', err);
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -211,10 +257,25 @@ exports.getProgress = async (req, res) => {
 
         const completedCount = answers.length;
 
+        // 4. Count pending defects for this WSP session/mode
+        const pendingDefects = await InspectionAnswer.count({
+            where: {
+                coach_number: coach.coach_number,
+                category_name: 'WSP Examination',
+                submission_id: {
+                    [Op.like]: `WSP-${mode}-${session.id}-%`
+                },
+                status: 'DEFICIENCY',
+                resolved: { [Op.or]: [false, null] }
+            }
+        });
+
         res.json({
-            completed: (totalCount > 0) ? (completedCount === totalCount) : false,
+            completed: (totalCount > 0) ? (completedCount === totalCount && pendingDefects === 0) : false,
             completedCount,
-            totalCount
+            totalCount,
+            pendingDefects,
+            pending_defects: pendingDefects
         });
     } catch (err) {
         console.error('[CRITICAL-WSP] getProgress Error:', err);

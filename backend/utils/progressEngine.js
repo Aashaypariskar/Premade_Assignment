@@ -75,15 +75,27 @@ async function calculateProgress({
         }
     });
 
+    // 5. Count pending defects (status='DEFICIENCY' and resolved=false)
+    const pendingDefects = await AnswerModel.count({
+        where: {
+            session_id,
+            subcategory_id,
+            status: 'DEFICIENCY',
+            resolved: false
+        }
+    });
+
     const percentage = Math.round((completed / totalRequired) * 100) || 0;
 
     let status = 'PENDING';
     if (completed > 0 && completed < totalRequired) status = 'IN_PROGRESS';
-    if (completed === totalRequired) status = 'COMPLETED';
+    if (completed === totalRequired && pendingDefects === 0) status = 'COMPLETED';
+    else if (completed === totalRequired && pendingDefects > 0) status = 'IN_PROGRESS'; // Wait for resolution
 
     return {
         totalRequired,
         completed,
+        pendingDefects,
         percentage,
         status
     };

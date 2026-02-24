@@ -2,13 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 import ImagePickerField from './ImagePickerField';
 import { getReasonsByQuestion } from '../api/api';
+import { Ionicons } from '@expo/vector-icons';
+import { BASE_URL } from '../config/environment';
 
+const normalizeUrl = (uri) => {
+    if (!uri) return null;
+    if (uri.startsWith('http') || uri.startsWith('file://') || uri.startsWith('content://')) {
+        return uri;
+    }
+    const cleanBase = BASE_URL.replace('/api/', '');
+    const cleanUri = uri.startsWith('/') ? uri : `/${uri}`;
+    return `${cleanBase}${cleanUri}`;
+};
 /**
  * Modern Question Card Component
  * Handles Toggles, Reasons, and Media
  */
 const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
     const isDeficiency = answerData?.status === 'DEFICIENCY';
+    const isResolved = answerData?.resolved === 1 || answerData?.resolved === true;
     const [reasonsList, setReasonsList] = useState([]);
     const [loadingReasons, setLoadingReasons] = useState(false);
 
@@ -45,7 +57,8 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
         if (current === 'DEFICIENCY' && next !== 'DEFICIENCY') {
             newData.reasons = [];
             newData.remarks = '';
-            newData.image_path = null;
+            newData.photo_url = null;
+            newData.image_path = null; // Clear both just in case
         }
 
         onUpdate(newData);
@@ -61,6 +74,12 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
 
     return (
         <View style={styles.card}>
+            {isResolved ? (
+                <View style={styles.resolvedLabel}>
+                    <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                    <Text style={styles.resolvedLabelText}>RESOLVED ✓</Text>
+                </View>
+            ) : null}
             <Text style={styles.qText}>{question.text}</Text>
 
             {question.specified_value && (
@@ -73,35 +92,36 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
             {question.answer_type === 'VALUE' ? (
                 <View>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, (readOnly || isResolved) && styles.disabledInput]}
                         placeholder={`Enter value ${question.unit ? `(${question.unit})` : ''}`}
                         value={answerData?.observed_value || ''}
                         onChangeText={(val) => onUpdate({ ...answerData, observed_value: val, answer: null })}
                         keyboardType="numeric"
+                        editable={!readOnly && !isResolved}
                     />
                 </View>
             ) : (
                 <View style={styles.toggleRow}>
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.status === 'OK' && styles.btnOk, readOnly && styles.disabledBtn]}
+                        style={[styles.toggleBtn, answerData?.status === 'OK' && styles.btnOk, (readOnly || isResolved) && styles.disabledBtn]}
                         onPress={() => setStatus('OK')}
-                        disabled={readOnly}
+                        disabled={readOnly || isResolved}
                     >
                         <Text style={[styles.toggleText, answerData?.status === 'OK' && styles.textActive]}>OK</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.status === 'DEFICIENCY' && styles.btnDeficiency, readOnly && styles.disabledBtn]}
+                        style={[styles.toggleBtn, answerData?.status === 'DEFICIENCY' && styles.btnDeficiency, (readOnly || isResolved) && styles.disabledBtn]}
                         onPress={() => setStatus('DEFICIENCY')}
-                        disabled={readOnly}
+                        disabled={readOnly || isResolved}
                     >
                         <Text style={[styles.toggleText, answerData?.status === 'DEFICIENCY' && styles.textActive]}>DEFICIENCY</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.toggleBtn, answerData?.status === 'NA' && styles.btnNa, readOnly && styles.disabledBtn]}
+                        style={[styles.toggleBtn, answerData?.status === 'NA' && styles.btnNa, (readOnly || isResolved) && styles.disabledBtn]}
                         onPress={() => setStatus('NA')}
-                        disabled={readOnly}
+                        disabled={readOnly || isResolved}
                     >
                         <Text style={[styles.toggleText, answerData?.status === 'NA' && styles.textActive]}>NA</Text>
                     </TouchableOpacity>
@@ -110,7 +130,7 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
 
             {isDeficiency && (
                 <View style={styles.noSection}>
-                    <Text style={styles.label}>Select Reasons (Mandatory):</Text>
+                    <Text style={styles.label}>Reasons:</Text>
                     <View style={styles.reasonsRow}>
                         {loadingReasons ? (
                             <ActivityIndicator size="small" color="#64748b" />
@@ -118,9 +138,9 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
                             reasonsList.map(r => (
                                 <TouchableOpacity
                                     key={r.id}
-                                    style={[styles.chip, answerData?.reasons?.includes(r.text) && styles.chipActive, readOnly && styles.disabledBtn]}
+                                    style={[styles.chip, answerData?.reasons?.includes(r.text) && styles.chipActive, (readOnly || isResolved) && styles.disabledBtn]}
                                     onPress={() => toggleReason(r.text)}
-                                    disabled={readOnly}
+                                    disabled={readOnly || isResolved}
                                 >
                                     <Text style={[styles.chipText, answerData?.reasons?.includes(r.text) && styles.textActive]}>{r.text}</Text>
                                 </TouchableOpacity>
@@ -128,27 +148,58 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
                         )}
                         {!loadingReasons && reasonsList.length === 0 && (
                             <View style={styles.emptyReasonBox}>
-                                <Text style={styles.noReasonsText}>⚠️ No reasons configured. Contact Admin.</Text>
+                                <Text style={styles.noReasonsText}>⚠️ No reasons configured.</Text>
                             </View>
                         )}
                     </View>
 
+                    <Text style={styles.label}>Remarks:</Text>
                     <TextInput
-                        style={[styles.input, readOnly && styles.disabledInput]}
+                        style={[styles.input, (readOnly || isResolved) && styles.disabledInput]}
                         placeholder="Additional remarks..."
                         value={answerData?.remarks || ''}
                         onChangeText={(t) => onUpdate({ ...answerData, remarks: t })}
                         multiline
-                        editable={!readOnly}
+                        editable={!readOnly && !isResolved}
                     />
 
-                    <Text style={styles.label}>Attach Photo (Mandatory):</Text>
-                    <ImagePickerField
-                        image={answerData?.image_path}
-                        onImagePicked={(uri) => onUpdate({ ...answerData, image_path: uri })}
-                        onRemove={() => onUpdate({ ...answerData, image_path: null })}
-                        disabled={readOnly}
-                    />
+                    <View style={styles.photoContainer}>
+                        <View style={styles.photoBox}>
+                            <Text style={styles.label}>Before Photo:</Text>
+                            {(() => {
+                                const beforeUri = normalizeUrl(answerData?.photo_url || answerData?.image_path);
+                                return (
+                                    <ImagePickerField
+                                        image={beforeUri}
+                                        onImagePicked={(uri) => {
+                                            onUpdate({ ...answerData, photo_url: uri, image_path: uri });
+                                        }}
+                                        onRemove={() => onUpdate({ ...answerData, photo_url: null, image_path: null })}
+                                        disabled={readOnly || isResolved}
+                                    />
+                                );
+                            })()}
+                        </View>
+
+                        {isResolved && (
+                            <View style={styles.photoBox}>
+                                <Text style={styles.label}>After Photo:</Text>
+                                <ImagePickerField
+                                    image={normalizeUrl(answerData?.after_photo_url)}
+                                    disabled={true}
+                                />
+                            </View>
+                        )}
+                    </View>
+
+                    {isResolved && (
+                        <View style={styles.resolutionSection}>
+                            <Text style={[styles.label, { color: '#059669' }]}>Resolution Remark:</Text>
+                            <View style={styles.resolutionRemarkBox}>
+                                <Text style={styles.resolutionRemarkText}>{answerData?.resolution_remark || 'No resolution remark provided.'}</Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
             )}
         </View>
@@ -195,7 +246,49 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#1e293b'
-    }
+    },
+    resolvedLabel: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ecfdf5',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#10b981'
+    },
+    resolvedLabelText: {
+        color: '#059669',
+        fontSize: 10,
+        fontWeight: 'bold',
+        marginLeft: 4
+    },
+    photoContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10
+    },
+    photoBox: {
+        flex: 1,
+        marginHorizontal: 2
+    },
+    resolutionSection: {
+        marginTop: 10,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#e2e8f0',
+        borderStyle: 'dashed'
+    },
+    resolutionRemarkBox: {
+        backgroundColor: '#f0fdf4',
+        padding: 10,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#bbf7d0'
+    },
+    resolutionRemarkText: { fontSize: 13, color: '#166534', fontStyle: 'italic' }
 });
 
 export default QuestionCard;

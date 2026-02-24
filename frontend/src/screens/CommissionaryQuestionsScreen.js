@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getCommissionaryQuestions, getCommissionaryAnswers, saveCommissionaryAnswers, getCommissionaryProgress } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
@@ -23,82 +24,74 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
     const isLocked = status === 'COMPLETED';
 
-    // answers: { questionId: { answer, reason, photo_url } }
     const [answers, setAnswers] = useState({});
     const [isDirty, setIsDirty] = useState(false);
 
-    useEffect(() => {
-        const key = `${subcategoryId}-${activeTab}`;
-        if (fetchRef.current === key) return;
-        fetchRef.current = key;
+    const isMounted = useRef(true);
 
-        let isMounted = true;
+    const loadData = useCallback(async () => {
+        try {
+            setLoading(true);
+            setMajorQs([]);
+            setMinorQs([]);
 
-        const load = async () => {
-            try {
-                setLoading(true);
-                // State Reset: Clear existing questions before fetch
-                setMajorQs([]);
-                setMinorQs([]);
+            console.log(`[FETCHING QUESTIONS] Commissionary - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
 
-                console.log(`[FETCHING QUESTIONS] Commissionary - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
+            const [response, savedAnswers] = await Promise.all([
+                getCommissionaryQuestions(subcategoryId, activeTab),
+                getCommissionaryAnswers((sessionId || 'NA').toString(), (subcategoryId || 'NA').toString(), activeTab, compartmentId)
+            ]);
 
-                // Single fetch model: Fetch questions and existing answers concurrently
-                const [response, savedAnswers] = await Promise.all([
-                    getCommissionaryQuestions(subcategoryId, activeTab),
-                    getCommissionaryAnswers((sessionId || 'NA').toString(), (subcategoryId || 'NA').toString(), activeTab, compartmentId)
-                ]);
+            if (!isMounted.current) return;
 
-                if (!isMounted) return;
-
-                // Prefill existing answers
-                const mappedAnswers = {};
-                if (savedAnswers && Array.isArray(savedAnswers)) {
-                    savedAnswers.forEach(ans => {
-                        mappedAnswers[ans.question_id] = {
-                            status: ans.status,
-                            reasons: ans.reasons || [],
-                            remarks: ans.remarks || '',
-                            image_path: ans.photo_url || null
-                        };
-                    });
-                }
-                setAnswers(mappedAnswers);
-                setIsDirty(false);
-
-                console.log(`[RAW QUESTIONS RESPONSE - ${activeTab}]`, response);
-
-                const normalized = normalizeQuestionResponse(response);
-                setSupportsActivityType(normalized.supportsActivityType);
-
-                if (activeTab === 'Major') {
-                    setMajorQs(normalized.groups.flatMap(g => g.questions || []));
-                } else if (activeTab === 'Minor') {
-                    setMinorQs(normalized.groups.flatMap(g => g.questions || []));
-                } else {
-                    // Fallback for subcategories without specific tab logic
-                    setMajorQs(normalized.groups.flatMap(g => g.questions || []));
-                }
-
-                await refreshProgress();
-            } catch (err) {
-                console.error("[QUESTION FETCH ERROR]", err);
-                if (isMounted) {
-                    Alert.alert('Error', 'Failed to load questions');
-                    setMajorQs([]);
-                    setMinorQs([]);
-                }
-            } finally {
-                if (isMounted) setLoading(false);
+            const mappedAnswers = {};
+            if (savedAnswers && Array.isArray(savedAnswers)) {
+                savedAnswers.forEach(ans => {
+                    mappedAnswers[ans.question_id] = {
+                        status: ans.status,
+                        reasons: ans.reasons || [],
+                        remarks: ans.remarks || '',
+                        photo_url: ans.photo_url || null,
+                        resolved: ans.resolved,
+                        after_photo_url: ans.after_photo_url,
+                        resolution_remark: ans.resolution_remark
+                    };
+                });
             }
-        };
+            setAnswers(mappedAnswers);
+            setIsDirty(false);
 
-        load();
+            const normalized = normalizeQuestionResponse(response);
+            setSupportsActivityType(normalized.supportsActivityType);
 
-        return () => {
-            isMounted = false;
-        };
-    }, [subcategoryId, activeTab]);
+            if (activeTab === 'Major') {
+                setMajorQs(normalized.groups.flatMap(g => g.questions || []));
+            } else if (activeTab === 'Minor') {
+                setMinorQs(normalized.groups.flatMap(g => g.questions || []));
+            } else {
+                setMajorQs(normalized.groups.flatMap(g => g.questions || []));
+            }
+
+            await refreshProgress();
+        } catch (err) {
+            console.error("[QUESTION FETCH ERROR]", err);
+            if (isMounted.current) {
+                Alert.alert('Error', 'Failed to load questions');
+            }
+        } finally {
+            if (isMounted.current) setLoading(false);
+        }
+    }, [subcategoryId, activeTab, sessionId, compartmentId]);
+
+    useFocusEffect(
+        useCallback(() => {
+            isMounted.current = true;
+            loadData();
+            return () => {
+                isMounted.current = false;
+            };
+        }, [loadData])
+    );
 
     const refreshProgress = async () => {
         try {
@@ -174,12 +167,17 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 const formData = new FormData();
                 let hasPhoto = false;
                 if (ans.image_path && typeof ans.image_path === 'string') {
-                    Object.keys(payload).forEach(key => {
-                        formData.append(key, key === 'reasons' ? JSON.stringify(payload[key]) : payload[key]);
-                    });
-                    const cleanUri = ans.image_path.startsWith('file://') ? ans.image_path : `file://${ans.image_path}`;
-                    formData.append('photo', { uri: cleanUri, name: cleanUri.split('/').pop(), type: 'image/jpeg' });
-                    hasPhoto = true;
+                    if (ans.image_path.startsWith('http')) {
+                        // Already a remote URL, send in payload string
+                        payload.photo_url = ans.image_path;
+                    } else {
+                        Object.keys(payload).forEach(key => {
+                            formData.append(key, key === 'reasons' ? JSON.stringify(payload[key]) : payload[key]);
+                        });
+                        const cleanUri = ans.image_path.startsWith('file://') ? ans.image_path : `file://${ans.image_path}`;
+                        formData.append('photo', { uri: cleanUri, name: cleanUri.split('/').pop(), type: 'image/jpeg' });
+                        hasPhoto = true;
+                    }
                 }
 
                 await saveCommissionaryAnswers(hasPhoto ? formData : payload);

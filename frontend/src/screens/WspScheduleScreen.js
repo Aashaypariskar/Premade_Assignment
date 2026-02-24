@@ -9,6 +9,7 @@ const WspScheduleScreen = ({ route, navigation }) => {
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
     const [wspSession, setWspSession] = useState(null);
+    const [pendingDefectsCount, setPendingDefectsCount] = useState(0);
     const { setDraft, user } = useStore();
 
     useEffect(() => {
@@ -24,6 +25,18 @@ const WspScheduleScreen = ({ route, navigation }) => {
             if (mode === 'INDEPENDENT') {
                 const session = await getWspSession(coachNumber);
                 setWspSession(session);
+
+                if (session) {
+                    const progress = await getWspProgress(coachNumber, mode);
+                    const count = progress.pendingDefects || progress.pending_defects || 0;
+                    console.log('[DEFECT COUNT] WSP', count);
+                    setPendingDefectsCount(count);
+                }
+            } else if (mode === 'SICKLINE' && sickLineSessionId) {
+                const progress = await getWspProgress(coachNumber, mode);
+                const count = progress.pendingDefects || progress.pending_defects || 0;
+                console.log('[DEFECT COUNT] WSP SICKLINE', count);
+                setPendingDefectsCount(count);
             }
         } catch (err) {
             Alert.alert('Error', 'Failed to initialize WSP flow');
@@ -78,6 +91,22 @@ const WspScheduleScreen = ({ route, navigation }) => {
 
                 <Text style={styles.title}>Select Schedule</Text>
                 <Text style={styles.subtitle}>Choose an inspection schedule for WSP Examination</Text>
+
+                {pendingDefectsCount > 0 && (
+                    <TouchableOpacity
+                        style={styles.defectsTab}
+                        onPress={() => navigation.navigate('DefectsScreen', {
+                            coachId, coachNumber, categoryName, mode,
+                            sessionId: mode === 'SICKLINE' ? sickLineSessionId : wspSession?.id
+                        })}
+                    >
+                        <Ionicons name="build-outline" size={20} color="#ef4444" />
+                        <Text style={styles.defectsTabText}>
+                            Resolve {pendingDefectsCount} Pending Defects
+                        </Text>
+                        <Ionicons name="chevron-forward" size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                )}
 
                 <FlatList
                     data={schedules}
@@ -172,7 +201,25 @@ const styles = StyleSheet.create({
     scheduleDetail: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     wspEditBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#eff6ff', borderRadius: 8, alignSelf: 'flex-start' },
-    wspEditBtnText: { color: '#2563eb', fontSize: 12, fontWeight: 'bold', marginLeft: 4 }
+    wspEditBtnText: { color: '#2563eb', fontSize: 12, fontWeight: 'bold', marginLeft: 4 },
+    defectsTab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fef2f2',
+        padding: 15,
+        borderRadius: 12,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#fecaca',
+        borderStyle: 'dashed'
+    },
+    defectsTabText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#ef4444',
+        marginLeft: 10
+    }
 });
 
 export default WspScheduleScreen;

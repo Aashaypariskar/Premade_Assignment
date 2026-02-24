@@ -31,6 +31,7 @@ import SickLineCoachScreen from '../screens/SickLineCoachScreen';
 import SickLineDashboardScreen from '../screens/SickLineDashboardScreen';
 import SickLineActivitySelectionScreen from '../screens/SickLineActivitySelectionScreen';
 import SickLineQuestionsScreen from '../screens/SickLineQuestionsScreen';
+import DefectsScreen from '../screens/DefectsScreen';
 
 const Stack = createStackNavigator();
 
@@ -138,6 +139,11 @@ const AppNavigator = () => {
                         name="CombinedReport"
                         component={CombinedReportScreen}
                         options={{ title: 'Combined Compartment Report' }}
+                    />
+                    <Stack.Screen
+                        name="DefectsScreen"
+                        component={DefectsScreen}
+                        options={{ title: 'Resolve Defects' }}
                     />
 
                     <Stack.Screen

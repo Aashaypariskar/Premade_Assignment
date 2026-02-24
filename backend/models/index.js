@@ -89,7 +89,8 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     observed_value: { type: DataTypes.TEXT },
     reasons: { type: DataTypes.JSON },
     remarks: { type: DataTypes.TEXT },
-    image_path: { type: DataTypes.STRING },
+    image_path: { type: DataTypes.STRING }, // Legacy
+    photo_url: { type: DataTypes.STRING },  // New standard for BEFORE image
     submission_id: { type: DataTypes.STRING(100), allowNull: true },
     train_number: { type: DataTypes.STRING(50) },
     coach_number: { type: DataTypes.STRING(50) },
@@ -102,7 +103,12 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     inspection_status: { type: DataTypes.STRING(50), defaultValue: 'Completed' },
     role_snapshot: { type: DataTypes.STRING(100) },
     user_name: { type: DataTypes.STRING(100) },
-    user_id: { type: DataTypes.INTEGER }
+    user_id: { type: DataTypes.INTEGER },
+    // Defect Tracking Columns
+    resolved: { type: DataTypes.BOOLEAN, defaultValue: false },
+    after_photo_url: { type: DataTypes.TEXT },
+    resolution_remark: { type: DataTypes.TEXT },
+    resolved_at: { type: DataTypes.DATE }
 }, { tableName: 'inspection_answers', updatedAt: false });
 
 // Associations - RBAC

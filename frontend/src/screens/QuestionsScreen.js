@@ -20,50 +20,48 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     const fetchRef = useRef(null);
 
-    useEffect(() => {
+    const isMounted = useRef(true);
+
+    const loadData = useCallback(async () => {
         const subId = params.subcategoryId || params.subcategory_id;
-        const key = `${subId}-${params.activityId}-${params.scheduleId}`;
+        try {
+            setLoading(true);
+            setQuestions([]); // State Reset
 
-        if (fetchRef.current === key) return;
-        fetchRef.current = key;
+            console.log(`[FETCHING QUESTIONS] Generic - Subcategory: ${subId}, Activity: ${params.activityId}`);
 
-        let isMounted = true;
-
-        const load = async () => {
-            try {
-                setLoading(true);
-                setQuestions([]); // State Reset
-
-                console.log(`[FETCHING QUESTIONS] Generic - Subcategory: ${subId}, Activity: ${params.activityId}`);
-
-                let rawResponse;
-                if (params.categoryName === 'WSP Examination') {
-                    rawResponse = await getWspQuestions(params.scheduleId);
-                } else {
-                    rawResponse = await getQuestions(params.activityId, params.scheduleId, subId);
-                }
-
-                if (!isMounted) return;
-
-                const normalized = normalizeQuestionResponse(rawResponse);
-                setQuestions(normalized.groups);
-            } catch (error) {
-                console.error("[QUESTION FETCH ERROR]", error);
-                if (isMounted) {
-                    Alert.alert('Network Error', 'Check if backend is running');
-                    setQuestions([]);
-                }
-            } finally {
-                if (isMounted) setLoading(false);
+            let rawResponse;
+            if (params.categoryName === 'WSP Examination') {
+                rawResponse = await getWspQuestions(params.scheduleId);
+            } else {
+                rawResponse = await getQuestions(params.activityId, params.scheduleId, subId);
             }
-        };
 
-        load();
+            if (!isMounted.current) return;
 
-        return () => {
-            isMounted = false;
-        };
-    }, [params.activityId, params.subcategoryId, params.subcategory_id, params.scheduleId]);
+            const normalized = normalizeQuestionResponse(rawResponse);
+            setQuestions(normalized.groups);
+        } catch (error) {
+            console.error("[QUESTION FETCH ERROR]", error);
+            if (isMounted.current) {
+                Alert.alert('Network Error', 'Check if backend is running');
+                setQuestions([]);
+            }
+        } finally {
+            if (isMounted.current) setLoading(false);
+        }
+    }, [params.subcategoryId, params.subcategory_id, params.activityId, params.scheduleId, params.categoryName]);
+
+    useFocusEffect(
+        useCallback(() => {
+            isMounted.current = true;
+            fetchRef.current = null;
+            loadData();
+            return () => {
+                isMounted.current = false;
+            };
+        }, [loadData])
+    );
 
     const getAnswerKey = (qId) => {
         if (!qId) {

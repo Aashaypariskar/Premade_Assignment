@@ -55,6 +55,17 @@ app.use('/api/sickline', require('./routes/SickLineRoutes'));
 app.use('/api/wsp', require('./routes/WspRoutes'));
 app.use('/api/common', require('./routes/CommonRoutes'));
 
+// Inspection Lifecycle
+const inspectionController = require('./controllers/InspectionController');
+const upload = require('./middleware/upload');
+app.post('/api/inspection/resolve', (req, res, next) => {
+    upload.single('photo')(req, res, (err) => {
+        if (err) return res.status(400).json({ error: `Upload error: ${err.message}` });
+        next();
+    });
+}, inspectionController.resolveDefect);
+app.get('/api/inspection/defects', inspectionController.getPendingDefects);
+
 
 // Catch-all for 404
 app.use((req, res) => {

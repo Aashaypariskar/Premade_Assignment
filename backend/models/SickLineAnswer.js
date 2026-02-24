@@ -46,7 +46,12 @@ module.exports = (sequelize) => {
         photo_url: {
             type: DataTypes.STRING,
             allowNull: true
-        }
+        },
+        // Defect Tracking
+        resolved: { type: DataTypes.BOOLEAN, defaultValue: false },
+        after_photo_url: { type: DataTypes.TEXT, allowNull: true },
+        resolution_remark: { type: DataTypes.TEXT, allowNull: true },
+        resolved_at: { type: DataTypes.DATE, allowNull: true }
     }, {
         tableName: 'sickline_answers',
         timestamps: true

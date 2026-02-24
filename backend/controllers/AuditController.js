@@ -362,7 +362,7 @@ exports.submitInspection = async (req, res) => {
                 observed_value: ans.observed_value,
                 reasons: ans.reasons,
                 remarks: ans.remarks,
-                image_path: ans.image_path,
+                photo_url: ans.image_path || ans.photo_url,
 
                 // Foreign Keys
                 train_id,
@@ -415,7 +415,7 @@ exports.submitInspection = async (req, res) => {
                     status: ans.status,
                     reasons: ans.reasons || [],
                     remarks: ans.remarks || '',
-                    photo_url: ans.image_path,
+                    photo_url: ans.image_path || ans.photo_url,
                     question_text_snapshot: questionData?.text || 'Standard Question'
                 };
             });

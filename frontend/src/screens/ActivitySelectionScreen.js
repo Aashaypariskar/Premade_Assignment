@@ -16,6 +16,8 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     const { setDraft, user } = useStore();
     const [majorProgress, setMajorProgress] = useState({ answered: 0, total: 0 });
     const [minorProgress, setMinorProgress] = useState({ answered: 0, total: 0 });
+    const [pendingDefectsCount, setPendingDefectsCount] = useState(0);
+    const [sessionId, setSessionId] = useState(null);
 
     const [supportsActivityType, setSupportsActivityType] = useState(true);
 
@@ -49,7 +51,11 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                     answered: area.minorAnswered || 0,
                     total: area.minorTotal || 0
                 });
+                const count = area.pendingDefects || area.pending_defects || 0;
+                console.log('[DEFECT COUNT]', area.subcategory_id, count);
+                setPendingDefectsCount(count);
             }
+            setSessionId(prog.session_id);
         } catch (err) {
             console.log('Status load error:', err);
         }
@@ -173,6 +179,28 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                     ))}
                 </View>
             )}
+
+            {pendingDefectsCount > 0 && (
+                <TouchableOpacity
+                    style={styles.defectsBtnFull}
+                    onPress={() => navigation.navigate('DefectsScreen', {
+                        ...params,
+                        session_id: sessionId,
+                        subcategoryId: params.subcategoryId || params.subcategory_id
+                    })}
+                >
+                    <View style={styles.defectsBtnContent}>
+                        <View style={styles.defectsBtnLeading}>
+                            <Ionicons name="build" size={24} color="#ef4444" />
+                            <Text style={styles.defectsBtnTitle}>View Pending Defects</Text>
+                        </View>
+                        <View style={styles.defectsBadge}>
+                            <Text style={styles.defectsBadgeText}>{pendingDefectsCount}</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.defectsBtnSub}>Tap to resolve {pendingDefectsCount} reported issues</Text>
+                </TouchableOpacity>
+            )}
         </View>
     );
 };
@@ -218,6 +246,52 @@ const styles = StyleSheet.create({
     },
     tabMinor: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#e2e8f0' },
     tabMajor: { backgroundColor: '#1e293b' },
+    defectsBtnFull: {
+        marginTop: 30,
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        borderWidth: 2,
+        borderColor: '#ef4444',
+        borderStyle: 'dashed',
+        elevation: 4,
+        shadowColor: '#ef4444',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4
+    },
+    defectsBtnContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8
+    },
+    defectsBtnLeading: {
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    defectsBtnTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#ef4444',
+        marginLeft: 10
+    },
+    defectsBadge: {
+        backgroundColor: '#ef4444',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12
+    },
+    defectsBadgeText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold'
+    },
+    defectsBtnSub: {
+        fontSize: 13,
+        color: '#7f1d1d',
+        opacity: 0.7
+    },
     tabIcon: { fontSize: 32, marginBottom: 12 },
     tabText: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
     tabMajorText: { color: '#fff' }, // added logic for colors
