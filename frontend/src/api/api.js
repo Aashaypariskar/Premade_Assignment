@@ -324,4 +324,14 @@ export const resolveDefect = async (data) => {
     }
 };
 
+// --- UNIVERSAL AUTO-SAVE & CHECKPOINT ---
+export const autosaveInspection = (payload) =>
+    api.post('inspection/autosave', payload).then(res => res.data);
+
+export const saveInspectionCheckpoint = (payload) =>
+    api.post('inspection/save-checkpoint', payload).then(res => res.data);
+
+export const submitSickLineInspection = (sessionId) =>
+    api.post('sickline/submit', { session_id: sessionId }).then(res => res.data);
+
 export default api;

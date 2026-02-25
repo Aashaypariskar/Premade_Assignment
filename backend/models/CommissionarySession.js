@@ -21,9 +21,13 @@ module.exports = (sequelize) => {
             allowNull: false
         },
         status: {
-            type: DataTypes.ENUM('DRAFT', 'COMPLETED'),
+            type: DataTypes.ENUM('DRAFT', 'SUBMITTED', 'COMPLETED'),
             defaultValue: 'DRAFT',
             allowNull: false
+        },
+        last_saved_at: {
+            type: DataTypes.DATE,
+            allowNull: true
         },
         created_by: {
             type: DataTypes.INTEGER,

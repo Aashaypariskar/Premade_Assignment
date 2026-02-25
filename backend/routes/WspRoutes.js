@@ -9,5 +9,6 @@ router.get('/questions', verifyToken, controller.getQuestions);
 router.post('/save', verifyToken, controller.saveAnswers);
 router.get('/answers', verifyToken, controller.getAnswers);
 router.get('/progress', verifyToken, controller.getProgress);
+router.post('/submit', verifyToken, controller.submitSession);
 
 module.exports = router;

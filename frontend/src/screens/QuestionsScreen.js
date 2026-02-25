@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getQuestions, getWspQuestions } from '../api/api';
+import {
+    getQuestions,
+    getWspQuestions,
+    autosaveInspection,
+    saveInspectionCheckpoint
+} from '../api/api';
 import { useStore } from '../store/StoreContext';
 import QuestionCard from '../components/QuestionCard';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +22,9 @@ const QuestionsScreen = ({ route, navigation }) => {
     const { draft, setDraft, user } = useStore();
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [savingCheckpoint, setSavingCheckpoint] = useState(false);
+    const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+    const autoSaveTimer = useRef(null);
 
     const fetchRef = useRef(null);
 
@@ -76,6 +84,41 @@ const QuestionsScreen = ({ route, navigation }) => {
         }
     };
 
+    const triggerAutoSave = (qId, data) => {
+        // Enforce lock if session is submitted
+        if (params.status === 'SUBMITTED' || params.status === 'COMPLETED') return;
+
+        setSaveStatus('saving');
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+
+        autoSaveTimer.current = setTimeout(async () => {
+            try {
+                // Determine module_type
+                let moduleType = 'wsp';
+                if (params.categoryName === 'Amenity') moduleType = 'amenity';
+                if (params.categoryName === 'Pit Line Examination') moduleType = 'pitline';
+                if (params.categoryName === 'WSP Examination') moduleType = 'wsp';
+
+                await autosaveInspection({
+                    module_type: moduleType,
+                    session_id: params.sessionId,
+                    question_id: qId,
+                    status: data.status,
+                    remarks: data.remarks,
+                    reason_ids: data.reasons,
+                    photo_url: data.photo_url || data.image_path,
+                    compartment_id: params.compartment || 'NA',
+                    subcategory_id: params.subcategoryId || 0,
+                    activity_type: params.activityType || 'Major'
+                });
+                setSaveStatus('saved');
+            } catch (err) {
+                console.error('AutoSave Error:', err);
+                setSaveStatus('error');
+            }
+        }, 1000);
+    };
+
     const updateAnswer = (qId, data) => {
         if (!qId) return;
         const key = getAnswerKey(qId);
@@ -83,6 +126,7 @@ const QuestionsScreen = ({ route, navigation }) => {
             ...prev,
             answers: { ...(prev?.answers || {}), [key]: data }
         }));
+        triggerAutoSave(qId, data);
     };
 
     const currentAnswers = draft?.answers || {};
@@ -213,10 +257,17 @@ const QuestionsScreen = ({ route, navigation }) => {
                     </View>
                 </View>
 
-                <QuestionProgressHeader
-                    totalQuestions={totalQs}
-                    answeredCount={answeredCount}
-                />
+                <View style={styles.headerFeedback}>
+                    <QuestionProgressHeader
+                        totalQuestions={totalQs}
+                        answeredCount={answeredCount}
+                    />
+                    <View style={styles.saveIndicator}>
+                        {saveStatus === 'saving' && <Text style={styles.savingText}>Saving...</Text>}
+                        {saveStatus === 'saved' && <Text style={styles.savedText}>Saved ✓</Text>}
+                        {saveStatus === 'error' && <Text style={styles.errorText}>Save Error ❌</Text>}
+                    </View>
+                </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
@@ -245,9 +296,49 @@ const QuestionsScreen = ({ route, navigation }) => {
                 )}
             </ScrollView>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={goSummary}>
-                <Text style={styles.submitText}>Review Inspection ({relevantAnswers.length})</Text>
-            </TouchableOpacity>
+            <View style={styles.bottomButtons}>
+                <TouchableOpacity
+                    style={[styles.checkpointBtn, savingCheckpoint && { opacity: 0.7 }]}
+                    onPress={async () => {
+                        try {
+                            setSavingCheckpoint(true);
+                            // Determine module_type
+                            let moduleType = 'wsp';
+                            if (params.categoryName === 'Amenity') moduleType = 'amenity';
+                            if (params.categoryName === 'Pit Line Examination') moduleType = 'pitline';
+
+                            await saveInspectionCheckpoint({
+                                module_type: moduleType,
+                                session_id: params.sessionId,
+                                answers: relevantAnswers.map(([key, data]) => {
+                                    const parts = key.split('_');
+                                    const qId = parts.length > 1 ? parts[1] : parts[0];
+                                    return {
+                                        question_id: qId,
+                                        compartment_id: params.compartment || 'NA',
+                                        subcategory_id: params.subcategoryId || 0,
+                                        activity_type: params.activityType || 'Major',
+                                        ...data
+                                    };
+                                })
+                            });
+                            Alert.alert('Checkpoint', 'Session checkpoint saved successfully.');
+                        } catch (e) {
+                            console.error('Checkpoint Error:', e);
+                            Alert.alert('Error', 'Failed to save checkpoint.');
+                        } finally {
+                            setSavingCheckpoint(false);
+                        }
+                    }}
+                    disabled={savingCheckpoint}
+                >
+                    <Text style={styles.checkpointBtnText}>SAVE CHECKPOINT</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.submitBtn} onPress={goSummary}>
+                    <Text style={styles.submitText}>Review Inspection ({relevantAnswers.length})</Text>
+                </TouchableOpacity>
+            </View>
         </View >
     );
 };
@@ -260,10 +351,17 @@ const styles = StyleSheet.create({
     percent: { fontSize: 13, fontWeight: 'bold', color: '#2563eb' },
     barBg: { height: 8, backgroundColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' },
     barFill: { height: '100%', backgroundColor: '#2563eb' },
-    list: { padding: 15, paddingBottom: 150 }, // More padding for FAB
-    submitBtn: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#1e293b', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 8 },
-    btnDisabled: { backgroundColor: '#cbd5e1' },
+    list: { padding: 15, paddingBottom: 180 }, // More padding for dual buttons
+    bottomButtons: { position: 'absolute', bottom: 20, left: 20, right: 20, gap: 10 },
+    checkpointBtn: { backgroundColor: '#f59e0b', paddingVertical: 14, borderRadius: 12, alignItems: 'center', elevation: 2 },
+    checkpointBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+    submitBtn: { backgroundColor: '#1e293b', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 8 },
     submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    headerFeedback: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    saveIndicator: { marginLeft: 10, minWidth: 60 },
+    savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 10 },
+    savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 10 },
+    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 10 },
     adminEditFab: {
         position: 'absolute',
         bottom: 90,

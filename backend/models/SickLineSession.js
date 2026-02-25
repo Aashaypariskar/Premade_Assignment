@@ -21,9 +21,13 @@ module.exports = (sequelize) => {
             allowNull: false
         },
         status: {
-            type: DataTypes.ENUM('IN_PROGRESS', 'COMPLETED'),
+            type: DataTypes.ENUM('IN_PROGRESS', 'SUBMITTED', 'COMPLETED'),
             defaultValue: 'IN_PROGRESS',
             allowNull: false
+        },
+        last_saved_at: {
+            type: DataTypes.DATE,
+            allowNull: true
         },
         created_by: {
             type: DataTypes.INTEGER,

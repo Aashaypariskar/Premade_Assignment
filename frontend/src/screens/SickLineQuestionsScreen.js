@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getSickLineQuestions, getSickLineAnswers, saveSickLineAnswers, getSickLineProgress } from '../api/api';
+import {
+    getSickLineQuestions,
+    getSickLineAnswers,
+    getSickLineProgress,
+    autosaveInspection,
+    saveInspectionCheckpoint,
+    submitSickLineInspection
+} from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
@@ -17,9 +24,11 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
     const [progress, setProgress] = useState({ answeredCount: 0, totalQuestions: 0 });
     const isMounted = useRef(true);
 
-    const isLocked = status === 'COMPLETED';
+    const isLocked = status === 'SUBMITTED' || status === 'COMPLETED';
     const [answers, setAnswers] = useState({});
     const [isDirty, setIsDirty] = useState(false);
+    const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+    const autoSaveTimer = useRef(null);
 
     const refreshProgress = async () => {
         try {
@@ -89,9 +98,35 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         }, [loadData])
     );
 
+    const triggerAutoSave = (qId, data) => {
+        if (isLocked) return;
+
+        setSaveStatus('saving');
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+
+        autoSaveTimer.current = setTimeout(async () => {
+            try {
+                await autosaveInspection({
+                    module_type: 'sickline',
+                    session_id: sessionId,
+                    question_id: qId,
+                    status: data.status,
+                    remarks: data.remarks,
+                    reason_ids: data.reasons,
+                    photo_url: data.photo_url
+                });
+                setSaveStatus('saved');
+                refreshProgress();
+            } catch (err) {
+                console.error('AutoSave Error:', err);
+                setSaveStatus('error');
+            }
+        }, 1000);
+    };
+
     const handleAnswerUpdate = (qId, data) => {
-        setIsDirty(true);
         setAnswers(prev => ({ ...prev, [qId]: data }));
+        triggerAutoSave(qId, data);
     };
 
     const validate = () => {
@@ -193,13 +228,19 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                         style={styles.editQuestionsBtn}
                         onPress={() => navigation.navigate('QuestionManagement', {
                             categoryName: 'Sick Line Examination',
-                            activityType: 'NA', // Unused but kept for route compat
-                            subcategoryId: 'NA' // Unused but kept for route compat
+                            activityType: 'NA',
+                            subcategoryId: 'NA'
                         })}
                     >
                         <Text style={styles.editQuestionsBtnText}>Edit Questions</Text>
                     </TouchableOpacity>
                 ) : <View style={{ width: 26 }} />}
+
+                <View style={styles.saveIndicator}>
+                    {saveStatus === 'saving' && <Text style={styles.savingText}>Saving...</Text>}
+                    {saveStatus === 'saved' && <Text style={styles.savedText}>Saved ✓</Text>}
+                    {saveStatus === 'error' && <Text style={styles.errorText}>Save Error ❌</Text>}
+                </View>
             </View>
 
             <QuestionProgressHeader
@@ -224,21 +265,66 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
-                <TouchableOpacity
-                    style={[styles.saveBtn, isLocked && { backgroundColor: '#f1f5f9' }, saving && { opacity: 0.7 }]}
-                    onPress={handleSave}
-                    disabled={saving || isLocked}
-                >
-                    {saving ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={[styles.saveBtnText, isLocked && { color: '#94a3b8' }]}>
-                            {isLocked ? 'Inspection Completed (Read-Only)' : 'Save & Sync'}
-                        </Text>
-                    )}
-                </TouchableOpacity>
+                <View style={styles.bottomButtons}>
+                    <TouchableOpacity
+                        style={[styles.checkpointBtn, isLocked && styles.disabledBtn]}
+                        onPress={async () => {
+                            try {
+                                setSaving(true);
+                                await saveInspectionCheckpoint({
+                                    module_type: 'sickline',
+                                    session_id: sessionId,
+                                    answers: Object.entries(answers).map(([id, data]) => ({
+                                        question_id: id,
+                                        ...data
+                                    }))
+                                });
+                                Alert.alert('Checkpoint', 'Session checkpoint saved successfully.');
+                            } catch (e) {
+                                Alert.alert('Error', 'Failed to save checkpoint.');
+                            } finally {
+                                setSaving(false);
+                            }
+                        }}
+                        disabled={saving || isLocked}
+                    >
+                        <Text style={styles.checkpointBtnText}>SAVE CHECKPOINT</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.submitBtn, isLocked && styles.disabledBtn]}
+                        onPress={() => {
+                            Alert.alert(
+                                'Final Submit',
+                                'Are you sure? This will lock the inspection for further editing.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Submit',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                            try {
+                                                setSaving(true);
+                                                await submitSickLineInspection(sessionId);
+                                                Alert.alert('Success', 'Inspection submitted successfully.');
+                                                navigation.goBack();
+                                            } catch (e) {
+                                                Alert.alert('Error', 'Submission failed.');
+                                            } finally {
+                                                setSaving(false);
+                                            }
+                                        }
+                                    }
+                                ]
+                            );
+                        }}
+                        disabled={saving || isLocked}
+                    >
+                        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>FINAL SUBMIT</Text>}
+                    </TouchableOpacity>
+                </View>
             </ScrollView>
-        </View>
+        </View >
     );
 };
 
@@ -255,8 +341,16 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
     emptyText: { marginTop: 10, color: '#64748b', fontSize: 14, textAlign: 'center' },
-    saveBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 30, elevation: 4 },
-    saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+    bottomButtons: { marginTop: 30, gap: 10 },
+    checkpointBtn: { backgroundColor: '#f59e0b', padding: 16, borderRadius: 12, alignItems: 'center', elevation: 2 },
+    checkpointBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+    submitBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', elevation: 4 },
+    submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    disabledBtn: { backgroundColor: '#f1f5f9', opacity: 0.6 },
+    saveIndicator: { position: 'absolute', top: 52, right: 20 },
+    savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 12 },
+    savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 12 },
+    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 }
 });
 
 export default SickLineQuestionsScreen;

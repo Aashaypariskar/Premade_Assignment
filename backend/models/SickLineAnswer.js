@@ -13,14 +13,18 @@ module.exports = (sequelize) => {
         },
         compartment_id: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: true
         },
         subcategory_id: {
             type: DataTypes.INTEGER,
-            allowNull: false
+            allowNull: true
         },
         activity_type: {
             type: DataTypes.ENUM('Major', 'Minor'),
+            allowNull: true
+        },
+        coach_id: {
+            type: DataTypes.INTEGER,
             allowNull: true
         },
         question_id: {

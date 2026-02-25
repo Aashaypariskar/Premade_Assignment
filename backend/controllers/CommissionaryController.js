@@ -477,3 +477,25 @@ exports.getCombinedReport = async (req, res) => {
         res.status(500).json({ error: 'Failed to generate combined report' });
     }
 };
+// POST /api/commissionary/submit
+exports.submitSession = async (req, res) => {
+    try {
+        const { coach_number } = req.body;
+        if (!coach_number) return res.status(400).json({ error: 'coach_number is required' });
+
+        const today = new Date().toISOString().split('T')[0];
+        const coach = await Coach.findOne({ where: { coach_number } });
+        const session = await CommissionarySession.findOne({
+            where: { coach_id: coach.id, inspection_date: today }
+        });
+
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+
+        session.status = 'SUBMITTED';
+        await session.save();
+        res.json({ success: true, message: 'Commissionary Inspection submitted and locked' });
+    } catch (err) {
+        console.error('Commissionary Submit Error:', err);
+        res.status(500).json({ error: 'Failed' });
+    }
+};

@@ -237,6 +237,24 @@ exports.completeSession = async (req, res) => {
     }
 };
 
+// POST /api/sickline/submit
+exports.submitSession = async (req, res) => {
+    try {
+        const { session_id } = req.body;
+        if (!session_id) return res.status(400).json({ error: 'session_id is required' });
+
+        const session = await SickLineSession.findByPk(session_id);
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+
+        session.status = 'SUBMITTED';
+        await session.save();
+        res.json({ success: true, message: 'Inspection submitted and locked' });
+    } catch (err) {
+        console.error('SickLine Submit Error:', err);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
 // GET /api/sickline/combined-report
 exports.getCombinedReport = async (req, res) => {
     try {

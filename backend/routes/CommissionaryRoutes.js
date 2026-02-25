@@ -24,6 +24,7 @@ router.post('/save', verifyToken, (req, res, next) => {
 }, controller.saveAnswers);
 router.get('/progress', verifyToken, controller.getProgress);
 router.post('/complete', verifyToken, controller.completeSession);
+router.post('/submit', verifyToken, controller.submitSession);
 router.get('/combined-report', verifyToken, controller.getCombinedReport);
 
 module.exports = router;

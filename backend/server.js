@@ -6,6 +6,7 @@ const authRoutes = require('./routes/AuthRoutes');
 const adminRoutes = require('./routes/AdminRoutes');
 const questionRoutes = require('./routes/QuestionRoutes');
 const reasonRoutes = require('./routes/ReasonRoutes');
+const { verifyToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = 3000;
@@ -29,9 +30,6 @@ app.use((req, res, next) => {
 
     next();
 });
-
-app.use(cors());
-app.use(express.json());
 
 // Log body after parsing for JSON requests
 app.use((req, res, next) => {
@@ -65,6 +63,8 @@ app.post('/api/inspection/resolve', (req, res, next) => {
     });
 }, inspectionController.resolveDefect);
 app.get('/api/inspection/defects', inspectionController.getPendingDefects);
+app.post('/api/inspection/autosave', verifyToken, inspectionController.autosave);
+app.post('/api/inspection/save-checkpoint', verifyToken, inspectionController.saveCheckpoint);
 
 
 // Catch-all for 404
@@ -83,9 +83,8 @@ app.use((err, req, res, next) => {
 sequelize.authenticate()
     .then(() => {
         console.log('--- DATABASE CONNECTED ---');
-        // Sync models to update schema (create submission_id column)
-        // Sync models (Disabled alter to stop index bloat)
-        return sequelize.sync({ alter: true });
+        // Sync models (Disabled alter to prevent "Too many keys" error)
+        return sequelize.sync({ alter: false });
     })
     .then(() => {
         console.log('--- SCHEMA SYNCED ---');
@@ -96,7 +95,8 @@ sequelize.authenticate()
         });
     })
     .catch(err => {
-        console.error('FATAL DB ERROR:', err);
+        console.error('FATAL DB/SYNC ERROR:', err.message, err.stack);
+        console.error('Server process will now exit.');
         process.exit(1);
     });
 
