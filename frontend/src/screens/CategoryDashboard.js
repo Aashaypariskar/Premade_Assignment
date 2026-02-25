@@ -14,7 +14,29 @@ const CategoryDashboard = ({ navigation }) => {
     const fetchCategories = async () => {
         try {
             const data = await getUserCategories();
-            setCategories(data);
+
+            // Transform data or ensure CAI is present in specific position
+            let finalCategories = [...data];
+
+            // Remove CAI if it comes from server to manually position it
+            finalCategories = finalCategories.filter(c => c.name !== 'CAI / Modifications');
+
+            // Find Sick Line index
+            const sickLineIdx = finalCategories.findIndex(c => c.name === 'Sick Line Examination');
+            const caiCard = {
+                id: 'cai_manual',
+                title: 'CAI / Modifications',
+                icon: 'gear', // As requested
+                route: 'CaiCoachScreen'
+            };
+
+            if (sickLineIdx !== -1) {
+                finalCategories.splice(sickLineIdx + 1, 0, caiCard);
+            } else {
+                finalCategories.push(caiCard);
+            }
+
+            setCategories(finalCategories);
             setError(null);
         } catch (err) {
             console.error('Dash Error:', err);
@@ -101,6 +123,8 @@ const CategoryDashboard = ({ navigation }) => {
                                         navigation.navigate('CommissionaryCoach', { category: item.name });
                                     } else if (item.name === 'WSP Examination' || item.name === 'Amenity') {
                                         navigation.navigate('CommissionaryCoach', { category: item.name });
+                                    } else if (item.name === 'CAI / Modifications' || item.title === 'CAI / Modifications') {
+                                        navigation.navigate('CaiCoachScreen');
                                     } else {
                                         handleSelectCategory(item.name);
                                     }
@@ -108,13 +132,14 @@ const CategoryDashboard = ({ navigation }) => {
                             >
                                 <View style={styles.iconCircle}>
                                     <Text style={styles.icon}>
-                                        {item.name === 'Coach Commissionary' ? '📋' :
-                                            item.name === 'Sick Line Examination' ? '🏥' :
-                                                item.name === 'WSP Examination' ? '⚙️' : item.name[0]}
+                                        {(item.name === 'Coach Commissionary' || item.title === 'Coach Commissionary') ? '📋' :
+                                            (item.name === 'Sick Line Examination' || item.title === 'Sick Line Examination') ? '🏥' :
+                                                (item.name === 'WSP Examination' || item.title === 'WSP Examination') ? '⚙️' :
+                                                    (item.name === 'CAI / Modifications' || item.title === 'CAI / Modifications') ? '⚙️' : (item.icon === 'clipboard-check' ? '📋' : (item.name ? item.name[0] : 'I'))}
                                     </Text>
                                 </View>
                                 <Text style={styles.cardText}>
-                                    {item.name === 'Coach Commissionary' ? 'Coach Commissioning' : item.name}
+                                    {item.name === 'Coach Commissionary' ? 'Coach Commissioning' : (item.title || item.name)}
                                 </Text>
                             </TouchableOpacity>
                         )}

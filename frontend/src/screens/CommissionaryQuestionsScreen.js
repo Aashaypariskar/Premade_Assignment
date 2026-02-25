@@ -32,6 +32,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const [answers, setAnswers] = useState({});
     const [isDirty, setIsDirty] = useState(false);
     const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+    const [pendingDefectsCount, setPendingDefectsCount] = useState(0);
     const autoSaveTimer = useRef(null);
 
     const isMounted = useRef(true);
@@ -67,6 +68,12 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             }
             setAnswers(mappedAnswers);
             setIsDirty(false);
+
+            // Calculate pending defects count
+            const pendingCount = Object.values(mappedAnswers).filter(a =>
+                a.status === 'DEFICIENCY' && Number(a.resolved) === 0
+            ).length;
+            setPendingDefectsCount(pendingCount);
 
             const normalized = normalizeQuestionResponse(response);
             setSupportsActivityType(normalized.supportsActivityType);
@@ -302,6 +309,21 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 answeredCount={answeredCount}
             />
 
+            {/* View Defects Button - Stricter Visibility */}
+            {pendingDefectsCount > 0 && (
+                <TouchableOpacity
+                    style={styles.defectsHeaderBtn}
+                    onPress={() => navigation.navigate('Defects', {
+                        session_id: sessionId,
+                        module_type: 'commissionary',
+                        coach_number: coachNumber
+                    })}
+                >
+                    <Ionicons name="warning-outline" size={18} color="#ef4444" />
+                    <Text style={styles.defectsBtnText}>View Defects ({pendingDefectsCount})</Text>
+                </TouchableOpacity>
+            )}
+
             {supportsActivityType && (
                 <View style={styles.tabBar}>
                     <TouchableOpacity
@@ -469,7 +491,26 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         gap: 10
     },
-    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    defectsHeaderBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        marginHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#ef4444',
+        marginBottom: 10,
+        gap: 8,
+        elevation: 2
+    },
+    defectsBtnText: {
+        color: '#ef4444',
+        fontWeight: 'bold',
+        fontSize: 14
+    }
 });
 
 export default CommissionaryQuestionsScreen;

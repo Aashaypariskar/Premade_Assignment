@@ -9,6 +9,9 @@ const {
     Coach,
     User,
     Role,
+    CaiQuestion,
+    CaiSession,
+    CaiAnswer,
     sequelize
 } = require('../models');
 
@@ -36,6 +39,9 @@ exports.resolveDefect = async (req, res) => {
         } else if (type === 'SICKLINE') {
             Model = SickLineAnswer;
             SessionModel = SickLineSession;
+        } else if (type === 'CAI') {
+            Model = CaiAnswer;
+            SessionModel = CaiSession;
         } else {
             Model = InspectionAnswer; // For Generic/Amenity/WSP
             SessionModel = WspSession;
@@ -53,12 +59,23 @@ exports.resolveDefect = async (req, res) => {
         }
 
         // Update defect status
-        answer.resolved = true;
-        answer.resolution_remark = resolution_remark;
-        answer.after_photo_url = after_photo_url;
-        answer.resolved_at = new Date();
-
-        await answer.save();
+        if (type === 'CAI') {
+            await CaiAnswer.update({
+                resolved: 1, // Store as integer 1
+                resolution_remark: resolution_remark,
+                after_photo_url: after_photo_url,
+                resolved_at: new Date()
+            }, {
+                where: { id: answer_id }
+            });
+        } else {
+            // Standardize: Use integer 1 for resolved across ALL modules
+            answer.resolved = 1;
+            answer.resolution_remark = resolution_remark;
+            answer.after_photo_url = after_photo_url;
+            answer.resolved_at = new Date();
+            await answer.save();
+        }
 
         res.json({
             success: true,
@@ -85,7 +102,8 @@ exports.getPendingDefects = async (req, res) => {
         }
 
         let Model;
-        let where = { session_id, status: 'DEFICIENCY', resolved: false };
+        // Standardize: ALWAYS filter by status='DEFICIENCY' and resolved=0
+        let where = { session_id, status: 'DEFICIENCY', resolved: 0 };
 
         if (type === 'COMMISSIONARY') {
             Model = CommissionaryAnswer;
@@ -94,6 +112,8 @@ exports.getPendingDefects = async (req, res) => {
         } else if (type === 'SICKLINE') {
             Model = SickLineAnswer;
             if (subcategory_id) where.subcategory_id = subcategory_id;
+        } else if (type === 'CAI') {
+            Model = CaiAnswer;
         } else if (type === 'WSP') {
             Model = InspectionAnswer;
             const subIdMatch = `WSP-${mode}-${session_id}-%`;
@@ -137,6 +157,10 @@ exports.autosave = async (req, res) => {
                 AnswerModel = SickLineAnswer;
                 SessionModel = SickLineSession;
                 break;
+            case 'cai':
+                AnswerModel = CaiAnswer;
+                SessionModel = CaiSession;
+                break;
             case 'wsp':
             case 'amenity':
             case 'pitline':
@@ -154,7 +178,12 @@ exports.autosave = async (req, res) => {
         }
 
         // 2. Fetch Question for snapshot
-        const qData = await Question.findByPk(question_id);
+        let qData;
+        if (module_type === 'cai') {
+            qData = await CaiQuestion.findByPk(question_id);
+        } else {
+            qData = await Question.findByPk(question_id);
+        }
         if (!qData) return res.status(404).json({ error: 'Question not found' });
 
         // 3. Upsert Logic with Module Specialized Routing
@@ -184,11 +213,47 @@ exports.autosave = async (req, res) => {
                     photo_url: photo_url || ansRecord.photo_url
                 });
             }
+        } else if (module_type === 'cai') {
+            console.log('[AUTOSAVE CAI]', { session_id, coach_id: session.coach_id, question_id });
+
+            const [ansRecord, created] = await AnswerModel.findOrCreate({
+                where: {
+                    session_id,
+                    question_id
+                },
+                defaults: {
+                    coach_id: session.coach_id,
+                    status: status, // Saved exactly
+                    remarks: remarks || '',
+                    reason_ids: Array.isArray(reason_ids) ? reason_ids : [],
+                    before_photo_url: photo_url || null,
+                    question_text_snapshot: qData.question_text || qData.text
+                }
+            });
+
+            if (!created) {
+                await ansRecord.update({
+                    status: status, // Saved exactly
+                    remarks: remarks !== undefined ? remarks : ansRecord.remarks,
+                    reason_ids: Array.isArray(reason_ids) ? reason_ids : ansRecord.reason_ids,
+                    before_photo_url: photo_url || ansRecord.before_photo_url
+                });
+            }
         } else {
-            // Standard multi-context routing (Commissionary, etc.)
-            const compartment_id = req.body.compartment_id || 'NA';
-            const subcategory_id = req.body.subcategory_id || 0;
-            const activity_type = req.body.activity_type || 'Major';
+            // Standardized reason handling to prevent crashes
+            let finalReasons = [];
+            if (reason_ids) {
+                if (Array.isArray(reason_ids)) {
+                    finalReasons = reason_ids;
+                } else if (typeof reason_ids === 'string') {
+                    try {
+                        const parsed = JSON.parse(reason_ids);
+                        finalReasons = Array.isArray(parsed) ? parsed : [parsed];
+                    } catch (e) {
+                        finalReasons = reason_ids.split(',').map(r => r.trim()).filter(Boolean);
+                    }
+                }
+            }
 
             const [ansRecord, created] = await AnswerModel.findOrCreate({
                 where: {
@@ -201,7 +266,7 @@ exports.autosave = async (req, res) => {
                 defaults: {
                     status: status || 'OK',
                     remarks: remarks || '',
-                    reasons: Array.isArray(reason_ids) ? reason_ids : [],
+                    reasons: finalReasons,
                     photo_url: photo_url || null,
                     question_text_snapshot: qData.text
                 }
@@ -211,7 +276,7 @@ exports.autosave = async (req, res) => {
                 await ansRecord.update({
                     status: status || ansRecord.status,
                     remarks: remarks !== undefined ? remarks : ansRecord.remarks,
-                    reasons: Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons,
+                    reasons: finalReasons,
                     photo_url: photo_url || ansRecord.photo_url
                 });
             }
@@ -245,6 +310,7 @@ exports.saveCheckpoint = async (req, res) => {
         switch (module_type) {
             case 'commissionary': SessionModel = CommissionarySession; break;
             case 'sickline': SessionModel = SickLineSession; break;
+            case 'cai': SessionModel = CaiSession; break;
             case 'wsp':
             case 'amenity':
             case 'pitline': SessionModel = WspSession; break;
@@ -269,22 +335,45 @@ exports.saveCheckpoint = async (req, res) => {
                     switch (module_type) {
                         case 'commissionary': AnswerModel = CommissionaryAnswer; break;
                         case 'sickline': AnswerModel = SickLineAnswer; break;
+                        case 'cai': AnswerModel = CaiAnswer; break;
                         default: AnswerModel = InspectionAnswer; break;
                     }
 
-                    const qData = await Question.findByPk(question_id);
+                    let qData;
+                    if (module_type === 'cai') {
+                        qData = await CaiQuestion.findByPk(question_id);
+                    } else {
+                        qData = await Question.findByPk(question_id);
+                    }
+
+                    // Robust reason handling for checkpointing
+                    let finalReasons = [];
+                    if (reason_ids) {
+                        if (Array.isArray(reason_ids)) {
+                            finalReasons = reason_ids;
+                        } else if (typeof reason_ids === 'string') {
+                            try {
+                                const parsed = JSON.parse(reason_ids);
+                                finalReasons = Array.isArray(parsed) ? parsed : [parsed];
+                            } catch (e) {
+                                finalReasons = reason_ids.split(',').map(r => r.trim()).filter(Boolean);
+                            }
+                        }
+                    }
 
                     let searchCriteria, defaultData;
 
-                    if (module_type === 'sickline') {
+                    if (module_type === 'sickline' || module_type === 'cai') {
                         searchCriteria = { session_id, question_id };
                         defaultData = {
                             coach_id: session.coach_id,
-                            status: status || 'OK',
+                            status: status, // Saved exactly
                             remarks: remarks || '',
-                            reasons: Array.isArray(reason_ids) ? reason_ids : [],
+                            reasons: finalReasons,
+                            reason_ids: finalReasons, // Map reasons -> reason_ids for CAI
                             photo_url: photo_url || null,
-                            question_text_snapshot: qData?.text || 'Checkpointed Answer'
+                            before_photo_url: photo_url || null, // Map photo_url -> before_photo_url for CAI
+                            question_text_snapshot: qData?.question_text || qData?.text || 'Checkpointed Answer'
                         };
                     } else {
                         const compartment_id = ans.compartment_id || 'NA';
@@ -301,7 +390,7 @@ exports.saveCheckpoint = async (req, res) => {
                         defaultData = {
                             status: status || 'OK',
                             remarks: remarks || '',
-                            reasons: Array.isArray(reason_ids) ? reason_ids : [],
+                            reasons: finalReasons,
                             photo_url: photo_url || null,
                             question_text_snapshot: qData?.text || 'Checkpointed Answer'
                         };
@@ -314,12 +403,23 @@ exports.saveCheckpoint = async (req, res) => {
                     });
 
                     if (!created) {
-                        await ansRecord.update({
-                            status: status || ansRecord.status,
+                        let updateData = {
+                            status: status, // Saved exactly
                             remarks: remarks !== undefined ? remarks : ansRecord.remarks,
-                            reasons: Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons,
-                            photo_url: photo_url || ansRecord.photo_url
-                        }, { transaction });
+                        };
+
+                        if (module_type === 'sickline') {
+                            updateData.reasons = Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons;
+                            updateData.photo_url = photo_url || ansRecord.photo_url;
+                        } else if (module_type === 'cai') {
+                            updateData.reason_ids = Array.isArray(reason_ids) ? reason_ids : ansRecord.reason_ids;
+                            updateData.before_photo_url = photo_url || ansRecord.before_photo_url;
+                        } else {
+                            updateData.reasons = Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons;
+                            updateData.photo_url = photo_url || ansRecord.photo_url;
+                        }
+
+                        await ansRecord.update(updateData, { transaction });
                     }
                 }
                 await transaction.commit();

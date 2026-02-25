@@ -334,4 +334,14 @@ export const saveInspectionCheckpoint = (payload) =>
 export const submitSickLineInspection = (sessionId) =>
     api.post('sickline/submit', { session_id: sessionId }).then(res => res.data);
 
+// --- CAI / MODIFICATIONS ENDPOINTS ---
+export const getCaiQuestions = () => api.get('cai/questions').then(res => res.data);
+export const getCaiAnswers = (sessionId) => api.get('cai/answers', { params: { session_id: sessionId } }).then(res => res.data);
+export const startCaiSession = (coachId) => api.post('cai/session/start', { coach_id: coachId }).then(res => res.data);
+export const submitCaiSession = (sessionId) => api.post('cai/submit', { session_id: sessionId }).then(res => res.data);
+
+// Admin
+export const addCaiQuestion = (data) => api.post('cai/questions/add', data).then(res => res.data);
+export const updateCaiQuestion = (data) => api.post('cai/questions/update', data).then(res => res.data);
+
 export default api;

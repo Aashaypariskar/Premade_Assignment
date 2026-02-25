@@ -56,6 +56,9 @@ const CommissionaryAnswer = require('./CommissionaryAnswer')(sequelize);
 const SickLineSession = require('./SickLineSession')(sequelize);
 const SickLineAnswer = require('./SickLineAnswer')(sequelize);
 const WspSession = require('./WspSession')(sequelize);
+const CaiQuestion = require('./CaiQuestion')(sequelize);
+const CaiSession = require('./CaiSession')(sequelize);
+const CaiAnswer = require('./CaiAnswer')(sequelize);
 
 const AmenityItem = sequelize.define('AmenityItem', {
     name: { type: DataTypes.STRING, allowNull: false },
@@ -109,7 +112,7 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     user_name: { type: DataTypes.STRING(100) },
     user_id: { type: DataTypes.INTEGER },
     // Defect Tracking Columns
-    resolved: { type: DataTypes.BOOLEAN, defaultValue: false },
+    resolved: { type: DataTypes.INTEGER, defaultValue: 0 },
     after_photo_url: { type: DataTypes.TEXT },
     resolution_remark: { type: DataTypes.TEXT },
     resolved_at: { type: DataTypes.DATE }
@@ -214,6 +217,22 @@ AmenitySubcategory.hasMany(SickLineAnswer, { foreignKey: 'subcategory_id' });
 SickLineAnswer.belongsTo(Question, { foreignKey: 'question_id' });
 Question.hasMany(SickLineAnswer, { foreignKey: 'question_id' });
 
+// CAI Associations (Isolated Module)
+User.hasMany(CaiSession, { foreignKey: 'inspector_id' });
+CaiSession.belongsTo(User, { foreignKey: 'inspector_id' });
+
+Coach.hasMany(CaiSession, { foreignKey: 'coach_id' });
+CaiSession.belongsTo(Coach, { foreignKey: 'coach_id' });
+
+CaiSession.hasMany(CaiAnswer, { foreignKey: 'session_id' });
+CaiAnswer.belongsTo(CaiSession, { foreignKey: 'session_id' });
+
+CaiAnswer.belongsTo(CaiQuestion, { foreignKey: 'question_id' });
+CaiQuestion.hasMany(CaiAnswer, { foreignKey: 'question_id' });
+
+CaiAnswer.belongsTo(Coach, { foreignKey: 'coach_id' });
+Coach.hasMany(CaiAnswer, { foreignKey: 'coach_id' });
+
 module.exports = {
     Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
     LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem,
@@ -221,5 +240,6 @@ module.exports = {
     CommissionarySession, CommissionaryAnswer,
     SickLineSession, SickLineAnswer,
     WspSession,
+    CaiQuestion, CaiSession, CaiAnswer,
     sequelize
 };

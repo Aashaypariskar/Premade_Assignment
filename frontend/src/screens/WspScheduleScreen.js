@@ -95,9 +95,10 @@ const WspScheduleScreen = ({ route, navigation }) => {
                 {pendingDefectsCount > 0 && (
                     <TouchableOpacity
                         style={styles.defectsTab}
-                        onPress={() => navigation.navigate('DefectsScreen', {
-                            coachId, coachNumber, categoryName, mode,
-                            sessionId: mode === 'SICKLINE' ? sickLineSessionId : wspSession?.id
+                        onPress={() => navigation.navigate('Defects', {
+                            session_id: mode === 'SICKLINE' ? sickLineSessionId : wspSession?.id,
+                            module_type: 'wsp',
+                            coach_number: coachNumber
                         })}
                     >
                         <Ionicons name="build-outline" size={20} color="#ef4444" />

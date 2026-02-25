@@ -28,6 +28,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
     const [answers, setAnswers] = useState({});
     const [isDirty, setIsDirty] = useState(false);
     const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+    const [pendingDefectsCount, setPendingDefectsCount] = useState(0);
     const autoSaveTimer = useRef(null);
 
     const refreshProgress = async () => {
@@ -74,6 +75,12 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
             }
             setAnswers(mappedAnswers);
             setIsDirty(false);
+
+            // Calculate pending defects count
+            const pendingCount = Object.values(mappedAnswers).filter(a =>
+                a.status === 'DEFICIENCY' && Number(a.resolved) === 0
+            ).length;
+            setPendingDefectsCount(pendingCount);
 
             setGroups(Array.isArray(response) ? response : []);
 
@@ -248,6 +255,21 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                 answeredCount={progress.answeredCount}
             />
 
+            {/* View Defects Button - Stricter Visibility */}
+            {pendingDefectsCount > 0 && (
+                <TouchableOpacity
+                    style={styles.defectsHeaderBtn}
+                    onPress={() => navigation.navigate('Defects', {
+                        session_id: sessionId,
+                        module_type: 'sickline',
+                        coach_number: coachName
+                    })}
+                >
+                    <Ionicons name="warning-outline" size={18} color="#ef4444" />
+                    <Text style={styles.defectsBtnText}>View Defects ({pendingDefectsCount})</Text>
+                </TouchableOpacity>
+            )}
+
             <ScrollView contentContainerStyle={styles.scroll}>
                 {groups.length > 0 ? (
                     groups.map((group, gIdx) => (
@@ -350,7 +372,26 @@ const styles = StyleSheet.create({
     saveIndicator: { position: 'absolute', top: 52, right: 20 },
     savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 12 },
     savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 12 },
-    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 }
+    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
+    defectsHeaderBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        marginHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#ef4444',
+        marginTop: 10,
+        gap: 8,
+        elevation: 2
+    },
+    defectsBtnText: {
+        color: '#ef4444',
+        fontWeight: 'bold',
+        fontSize: 14
+    }
 });
 
 export default SickLineQuestionsScreen;

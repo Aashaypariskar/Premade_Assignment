@@ -34,6 +34,51 @@ async function syncSchema() {
         await sequelize.query(`ALTER TABLE sickline_answers MODIFY COLUMN subcategory_id INT NULL`);
         await sequelize.query(`ALTER TABLE sickline_answers MODIFY COLUMN activity_type ENUM('Major', 'Minor') NULL`);
 
+        // 3. CAI Module Tables (Standalone creation)
+        console.log('Creating CAI tables if they do not exist...');
+
+        await sequelize.query(`
+            CREATE TABLE IF NOT EXISTS cai_questions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                cai_code VARCHAR(50) NOT NULL,
+                question_text TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT 1,
+                createdAt DATETIME NOT NULL,
+                updatedAt DATETIME NOT NULL
+            ) ENGINE=InnoDB;
+        `);
+
+        await sequelize.query(`
+            CREATE TABLE IF NOT EXISTS cai_sessions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coach_id INT NOT NULL,
+                inspector_id INT NOT NULL,
+                status ENUM('DRAFT', 'SUBMITTED') DEFAULT 'DRAFT' NOT NULL,
+                last_saved_at DATETIME NULL,
+                createdAt DATETIME NOT NULL,
+                updatedAt DATETIME NOT NULL
+            ) ENGINE=InnoDB;
+        `);
+
+        await sequelize.query(`
+            CREATE TABLE IF NOT EXISTS cai_answers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                session_id INT NOT NULL,
+                coach_id INT NOT NULL,
+                question_id INT NOT NULL,
+                status VARCHAR(20) NULL,
+                remarks TEXT NULL,
+                reason_ids JSON NULL,
+                before_photo_url TEXT NULL,
+                resolved BOOLEAN DEFAULT 0,
+                after_photo_url TEXT NULL,
+                resolution_remark TEXT NULL,
+                resolved_at DATETIME NULL,
+                createdAt DATETIME NOT NULL,
+                updatedAt DATETIME NOT NULL
+            ) ENGINE=InnoDB;
+        `);
+
         console.log('--- MANUAL SYNC COMPLETED SUCCESSFULLY ---');
         process.exit(0);
     } catch (err) {

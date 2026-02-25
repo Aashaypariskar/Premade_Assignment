@@ -139,10 +139,10 @@ const CommissionaryDashboardScreen = ({ route, navigation }) => {
                 {hasDefects && (
                     <TouchableOpacity
                         style={styles.resolveAreaBtn}
-                        onPress={() => navigation.navigate('DefectsScreen', {
-                            ...route.params,
-                            subcategoryId: item.id,
-                            categoryName: 'Coach Commissionary'
+                        onPress={() => navigation.navigate('Defects', {
+                            session_id: progressStats.session_id || sessionId,
+                            module_type: 'commissionary',
+                            coach_number: coachNumber
                         })}
                     >
                         <Text style={styles.resolveAreaBtnText}>FIX DEFECTS</Text>

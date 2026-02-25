@@ -24,6 +24,7 @@ const QuestionsScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(true);
     const [savingCheckpoint, setSavingCheckpoint] = useState(false);
     const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+    const [pendingDefectsCount, setPendingDefectsCount] = useState(0);
     const autoSaveTimer = useRef(null);
 
     const fetchRef = useRef(null);
@@ -49,6 +50,27 @@ const QuestionsScreen = ({ route, navigation }) => {
 
             const normalized = normalizeQuestionResponse(rawResponse);
             setQuestions(normalized.groups);
+
+            // Fetch actual pending defects from server
+            const moduleType = params.categoryName === 'Amenity' ? 'AMENITY' :
+                (params.categoryName === 'Pit Line Examination' ? 'PITLINE' :
+                    (params.categoryName === 'WSP Examination' ? 'WSP' : 'GENERIC'));
+
+            const defectsRes = await require('../api/api').getDefects({
+                session_id: params.sessionId,
+                subcategory_id: params.subcategoryId || params.subcategory_id,
+                schedule_id: params.scheduleId || params.schedule_id,
+                compartment_id: params.compartment,
+                mode: params.mode,
+                type: moduleType
+            });
+
+            if (defectsRes.success && isMounted.current) {
+                const count = (defectsRes.defects || []).filter(a =>
+                    a.status === 'DEFICIENCY' && Number(a.resolved) === 0
+                ).length;
+                setPendingDefectsCount(count);
+            }
         } catch (error) {
             console.error("[QUESTION FETCH ERROR]", error);
             if (isMounted.current) {
@@ -268,6 +290,26 @@ const QuestionsScreen = ({ route, navigation }) => {
                         {saveStatus === 'error' && <Text style={styles.errorText}>Save Error ❌</Text>}
                     </View>
                 </View>
+
+                {/* View Defects Button - Stricter Visibility */}
+                {pendingDefectsCount > 0 && (
+                    <TouchableOpacity
+                        style={styles.defectsHeaderBtn}
+                        onPress={() => navigation.navigate('Defects', {
+                            session_id: params.sessionId,
+                            module_type: params.categoryName === 'WSP Examination' ? 'wsp' : 'generic',
+                            coach_number: params.coachNumber,
+                            mode: params.mode,
+                            categoryName: params.categoryName,
+                            subcategoryId: params.subcategoryId || params.subcategory_id,
+                            scheduleId: params.scheduleId || params.schedule_id,
+                            compartment: params.compartment
+                        })}
+                    >
+                        <Ionicons name="warning-outline" size={18} color="#ef4444" />
+                        <Text style={styles.defectsBtnText}>View Defects ({pendingDefectsCount})</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
@@ -362,6 +404,26 @@ const styles = StyleSheet.create({
     savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 10 },
     savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 10 },
     errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 10 },
+    defectsHeaderBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        marginHorizontal: 15,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#ef4444',
+        marginTop: 5,
+        marginBottom: 10,
+        gap: 8,
+        elevation: 2
+    },
+    defectsBtnText: {
+        color: '#ef4444',
+        fontWeight: 'bold',
+        fontSize: 14
+    },
     adminEditFab: {
         position: 'absolute',
         bottom: 90,

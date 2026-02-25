@@ -187,11 +187,10 @@ const SickLineActivitySelectionScreen = ({ route, navigation }) => {
             {pendingDefectsCount > 0 && (
                 <TouchableOpacity
                     style={styles.defectsBtnFull}
-                    onPress={() => navigation.navigate('DefectsScreen', {
-                        ...params,
+                    onPress={() => navigation.navigate('Defects', {
                         session_id: sessionId,
-                        subcategoryId: params.subcategoryId || params.subcategory_id,
-                        categoryName: 'Sick Line Examination'
+                        module_type: 'sickline',
+                        coach_number: params.coachNumber
                     })}
                 >
                     <View style={styles.defectsBtnContent}>

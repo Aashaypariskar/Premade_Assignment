@@ -183,10 +183,10 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
             {pendingDefectsCount > 0 && (
                 <TouchableOpacity
                     style={styles.defectsBtnFull}
-                    onPress={() => navigation.navigate('DefectsScreen', {
-                        ...params,
+                    onPress={() => navigation.navigate('Defects', {
                         session_id: sessionId,
-                        subcategoryId: params.subcategoryId || params.subcategory_id
+                        module_type: params.categoryName === 'Coach Commissionary' ? 'commissionary' : (params.categoryName === 'Sick Line Examination' ? 'sickline' : 'amenity'),
+                        coach_number: params.coachNumber
                     })}
                 >
                     <View style={styles.defectsBtnContent}>

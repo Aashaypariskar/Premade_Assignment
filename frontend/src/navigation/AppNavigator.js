@@ -33,6 +33,10 @@ import SickLineActivitySelectionScreen from '../screens/SickLineActivitySelectio
 import SickLineQuestionsScreen from '../screens/SickLineQuestionsScreen';
 import DefectsScreen from '../screens/DefectsScreen';
 
+import CaiCoachScreen from '../screens/CaiCoachScreen';
+import CaiQuestionsScreen from '../screens/CaiQuestionsScreen';
+import EditCaiQuestionsScreen from '../screens/EditCaiQuestionsScreen';
+
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
@@ -141,7 +145,7 @@ const AppNavigator = () => {
                         options={{ title: 'Combined Compartment Report' }}
                     />
                     <Stack.Screen
-                        name="DefectsScreen"
+                        name="Defects"
                         component={DefectsScreen}
                         options={{ title: 'Resolve Defects' }}
                     />
@@ -194,6 +198,18 @@ const AppNavigator = () => {
                         options={{ title: 'Inspection Form' }}
                     />
 
+                    {/* CAI / Modifications */}
+                    <Stack.Screen
+                        name="CaiCoachScreen"
+                        component={CaiCoachScreen}
+                        options={{ title: 'CAI / Modifications' }}
+                    />
+                    <Stack.Screen
+                        name="CaiQuestionsScreen"
+                        component={CaiQuestionsScreen}
+                        options={{ title: 'CAI Checklist' }}
+                    />
+
                     {user.role === 'Admin' && (
                         <>
                             <Stack.Screen
@@ -210,6 +226,11 @@ const AppNavigator = () => {
                                 name="QuestionManagement"
                                 component={QuestionManagementScreen}
                                 options={{ title: 'Question Management' }}
+                            />
+                            <Stack.Screen
+                                name="EditCaiQuestionsScreen"
+                                component={EditCaiQuestionsScreen}
+                                options={{ title: 'Manage CAI Questions' }}
                             />
                         </>
                     )}

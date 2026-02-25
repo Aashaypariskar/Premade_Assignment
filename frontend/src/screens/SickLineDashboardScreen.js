@@ -181,11 +181,10 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                             {badgeColor === '#ef4444' && !item.isWsp && (
                                 <TouchableOpacity
                                     style={styles.fixBtn}
-                                    onPress={() => navigation.navigate('DefectsScreen', {
-                                        ...params,
-                                        sessionId: progress?.session_id,
-                                        subcategoryId: item.id,
-                                        categoryName: 'Sick Line Examination'
+                                    onPress={() => navigation.navigate('Defects', {
+                                        session_id: progress?.session_id || params.sessionId,
+                                        module_type: 'sickline',
+                                        coach_number: params.coachNumber
                                     })}
                                 >
                                     <Text style={styles.fixBtnText}>FIX DEFECTS</Text>

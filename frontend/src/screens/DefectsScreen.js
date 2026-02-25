@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getDefects, resolveDefect } from '../api/api';
+import { useFocusEffect } from '@react-navigation/native';
+import { getDefects, resolveDefect, getCaiAnswers } from '../api/api';
 import QuestionCard from '../components/QuestionCard';
 import ImagePickerField from '../components/ImagePickerField';
 import { BASE_URL } from '../config/environment';
@@ -27,14 +28,23 @@ const DefectsScreen = ({ route, navigation }) => {
         photo: null
     });
 
-    useEffect(() => {
-        fetchDefects();
-    }, []);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchDefects();
+        }, [params.session_id])
+    );
 
     const fetchDefects = async () => {
         try {
             setLoading(true);
-            const type = params.mode === 'WSP' ? 'WSP' : (params.categoryName === 'Coach Commissionary' ? 'COMMISSIONARY' : (params.categoryName === 'Sick Line Examination' ? 'SICKLINE' : 'GENERIC'));
+            const { session_id, module_type } = params;
+
+            // Standardize module type for backend
+            let type = 'GENERIC';
+            if (module_type === 'cai' || params.type === 'CAI') type = 'CAI';
+            else if (module_type === 'commissionary' || params.categoryName === 'Coach Commissionary') type = 'COMMISSIONARY';
+            else if (module_type === 'sickline' || params.categoryName === 'Sick Line Examination') type = 'SICKLINE';
+            else if (params.mode === 'WSP' || params.categoryName === 'WSP Examination') type = 'WSP';
 
             const response = await getDefects({
                 session_id: params.sessionId || params.session_id,
@@ -42,14 +52,15 @@ const DefectsScreen = ({ route, navigation }) => {
                 schedule_id: params.scheduleId || params.schedule_id,
                 compartment_id: params.compartmentId || params.compartment,
                 mode: params.mode,
-                type
+                type: type
             });
 
             if (response.success) {
-                setDefects(response.defects || []);
-                if (response.defects?.length === 0) {
-                    navigation.goBack();
-                }
+                // Number() handles 0, "0", null consistently for equivalence to 0
+                const foundDefects = (response.defects || []).filter(a =>
+                    a.status === 'DEFICIENCY' && Number(a.resolved) === 0
+                );
+                setDefects(foundDefects);
             }
         } catch (error) {
             console.error('Fetch Defects Error:', error);
@@ -67,7 +78,13 @@ const DefectsScreen = ({ route, navigation }) => {
 
         try {
             setResolvingId(defectId);
-            const type = params.mode === 'WSP' ? 'WSP' : (params.categoryName === 'Coach Commissionary' ? 'COMMISSIONARY' : (params.categoryName === 'Sick Line Examination' ? 'SICKLINE' : 'GENERIC'));
+            const { session_id, module_type } = params;
+
+            let type = 'GENERIC';
+            if (module_type === 'cai' || params.type === 'CAI') type = 'CAI';
+            else if (module_type === 'commissionary' || params.categoryName === 'Coach Commissionary') type = 'COMMISSIONARY';
+            else if (module_type === 'sickline' || params.categoryName === 'Sick Line Examination') type = 'SICKLINE';
+            else if (params.mode === 'WSP' || params.categoryName === 'WSP Examination') type = 'WSP';
 
             const formData = new FormData();
             formData.append('answer_id', defectId);
@@ -86,9 +103,7 @@ const DefectsScreen = ({ route, navigation }) => {
             const response = await resolveDefect(formData);
 
             if (response.success) {
-                // Clear local resolution state
                 setResolutionData({ remark: '', photo: null });
-                // Refresh list
                 const remaining = defects.filter(d => d.id !== defectId);
                 setDefects(remaining);
 
@@ -96,6 +111,8 @@ const DefectsScreen = ({ route, navigation }) => {
                     Alert.alert('Success', 'All defects resolved!', [
                         { text: 'OK', onPress: () => navigation.goBack() }
                     ]);
+                } else {
+                    navigation.goBack(); // Trigger refresh on previous screen
                 }
             }
         } catch (error) {

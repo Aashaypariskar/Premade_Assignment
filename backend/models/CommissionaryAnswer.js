@@ -48,7 +48,7 @@ module.exports = (sequelize) => {
             allowNull: true
         },
         // Defect Tracking
-        resolved: { type: DataTypes.BOOLEAN, defaultValue: false },
+        resolved: { type: DataTypes.INTEGER, defaultValue: 0 },
         after_photo_url: { type: DataTypes.TEXT, allowNull: true },
         resolution_remark: { type: DataTypes.TEXT, allowNull: true },
         resolved_at: { type: DataTypes.DATE, allowNull: true }
