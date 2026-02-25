@@ -52,6 +52,7 @@ app.use('/api', require('./routes/ReportRoutes'));
 app.use('/api/commissionary', require('./routes/CommissionaryRoutes'));
 app.use('/api/sickline', require('./routes/SickLineRoutes'));
 app.use('/api/wsp', require('./routes/WspRoutes'));
+app.use('/api/pitline', require('./routes/PitLineRoutes'));
 app.use('/api/common', require('./routes/CommonRoutes'));
 
 // CAI Routes (Explicit Registration)

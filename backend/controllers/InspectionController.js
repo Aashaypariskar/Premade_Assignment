@@ -42,6 +42,8 @@ exports.resolveDefect = async (req, res) => {
         } else if (type === 'CAI') {
             Model = CaiAnswer;
             SessionModel = CaiSession;
+        } else if (type === 'PITLINE') {
+            Model = InspectionAnswer;
         } else {
             Model = InspectionAnswer; // For Generic/Amenity/WSP
             SessionModel = WspSession;
@@ -52,10 +54,11 @@ exports.resolveDefect = async (req, res) => {
             return res.status(404).json({ error: 'Defect record not found' });
         }
 
-        const session = await SessionModel.findByPk(answer.session_id);
-        if (!session) return res.status(404).json({ error: 'Session not found for this defect' });
-        if (session.status === 'SUBMITTED' || session.status === 'COMPLETED') {
-            return res.status(403).json({ error: 'Cannot edit a submitted inspection' });
+        if (SessionModel) {
+            const session = await SessionModel.findByPk(answer.session_id);
+            if (session && (session.status === 'SUBMITTED' || session.status === 'COMPLETED')) {
+                return res.status(403).json({ error: 'Cannot edit a submitted inspection' });
+            }
         }
 
         // Update defect status
@@ -95,15 +98,18 @@ exports.resolveDefect = async (req, res) => {
  */
 exports.getPendingDefects = async (req, res) => {
     try {
-        const { session_id, subcategory_id, type, schedule_id, mode, compartment_id } = req.query;
+        const { session_id, subcategory_id, type, schedule_id, mode, compartment_id, train_id, coach_id } = req.query;
 
-        if (!session_id || !type) {
-            return res.status(400).json({ error: 'Missing session_id or type' });
+        if (!type || (!session_id && !train_id && !coach_id)) {
+            return res.status(400).json({ error: 'Missing session_id or type (or train/coach context for PitLine)' });
         }
 
         let Model;
         // Standardize: ALWAYS filter by status='DEFICIENCY' and resolved=0
-        let where = { session_id, status: 'DEFICIENCY', resolved: 0 };
+        let where = { status: 'DEFICIENCY', resolved: 0 };
+        if (session_id) where.session_id = session_id;
+        if (train_id) where.train_id = train_id;
+        if (coach_id) where.coach_id = coach_id;
 
         if (type === 'COMMISSIONARY') {
             Model = CommissionaryAnswer;
@@ -119,6 +125,12 @@ exports.getPendingDefects = async (req, res) => {
             const subIdMatch = `WSP-${mode}-${session_id}-%`;
             where.submission_id = { [require('sequelize').Op.like]: subIdMatch };
             if (schedule_id) where.schedule_id = schedule_id;
+        } else if (type === 'PITLINE') {
+            Model = InspectionAnswer;
+            where.module_type = 'PITLINE';
+            if (session_id) where.session_id = session_id;
+            if (train_id) where.train_id = train_id;
+            if (coach_id) where.coach_id = coach_id;
         } else {
             Model = InspectionAnswer;
             if (subcategory_id) where.subcategory_id = subcategory_id;
@@ -140,32 +152,48 @@ exports.getPendingDefects = async (req, res) => {
  */
 exports.autosave = async (req, res) => {
     try {
-        const { module_type, session_id, question_id, status, remarks, reason_ids, photo_url } = req.body;
+        const {
+            module_type,
+            session_id,
+            question_id,
+            status,
+            remarks,
+            reason_ids,
+            photo_url,
+            train_id,
+            coach_id
+        } = req.body;
+        const moduleType = (req.body.module_type || '').toUpperCase().trim();
 
         if (!module_type || !session_id || !question_id) {
             return res.status(400).json({ error: 'Missing module_type, session_id or question_id' });
         }
 
+        console.log('[AUTOSAVE MODULE]', moduleType);
+
         // 1. Resolve Models and Session Locking
         let AnswerModel, SessionModel;
-        switch (module_type) {
-            case 'commissionary':
+        switch (moduleType) {
+            case 'COMMISSIONARY':
                 AnswerModel = CommissionaryAnswer;
                 SessionModel = CommissionarySession;
                 break;
-            case 'sickline':
+            case 'SICKLINE':
                 AnswerModel = SickLineAnswer;
                 SessionModel = SickLineSession;
                 break;
-            case 'cai':
+            case 'CAI':
                 AnswerModel = CaiAnswer;
                 SessionModel = CaiSession;
                 break;
-            case 'wsp':
-            case 'amenity':
-            case 'pitline':
+            case 'WSP':
+            case 'AMENITY':
                 AnswerModel = InspectionAnswer;
                 SessionModel = WspSession; // Generic for WSP/Amenity
+                break;
+            case 'PITLINE':
+                AnswerModel = InspectionAnswer;
+                SessionModel = PitLineSession;
                 break;
             default:
                 return res.status(400).json({ error: 'Invalid module_type' });
@@ -179,7 +207,7 @@ exports.autosave = async (req, res) => {
 
         // 2. Fetch Question for snapshot
         let qData;
-        if (module_type === 'cai') {
+        if (moduleType === 'CAI') {
             qData = await CaiQuestion.findByPk(question_id);
         } else {
             qData = await Question.findByPk(question_id);
@@ -187,33 +215,7 @@ exports.autosave = async (req, res) => {
         if (!qData) return res.status(404).json({ error: 'Question not found' });
 
         // 3. Upsert Logic with Module Specialized Routing
-        if (module_type === 'sickline') {
-            console.log('[AUTOSAVE SICKLINE]', { session_id, coach_id: session.coach_id, question_id });
-
-            const [ansRecord, created] = await AnswerModel.findOrCreate({
-                where: {
-                    session_id,
-                    question_id
-                },
-                defaults: {
-                    coach_id: session.coach_id,
-                    status: status || 'OK',
-                    remarks: remarks || '',
-                    reasons: Array.isArray(reason_ids) ? reason_ids : [],
-                    photo_url: photo_url || null,
-                    question_text_snapshot: qData.text
-                }
-            });
-
-            if (!created) {
-                await ansRecord.update({
-                    status: status || ansRecord.status,
-                    remarks: remarks !== undefined ? remarks : ansRecord.remarks,
-                    reasons: Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons,
-                    photo_url: photo_url || ansRecord.photo_url
-                });
-            }
-        } else if (module_type === 'cai') {
+        if (moduleType === 'CAI') {
             console.log('[AUTOSAVE CAI]', { session_id, coach_id: session.coach_id, question_id });
 
             const [ansRecord, created] = await AnswerModel.findOrCreate({
@@ -239,7 +241,7 @@ exports.autosave = async (req, res) => {
                     before_photo_url: photo_url || ansRecord.before_photo_url
                 });
             }
-        } else {
+        } else if (moduleType === 'COMMISSIONARY') {
             // Standardized reason handling to prevent crashes
             let finalReasons = [];
             if (reason_ids) {
@@ -254,6 +256,176 @@ exports.autosave = async (req, res) => {
                     }
                 }
             }
+
+            const compartment_id = req.body.compartment_id || 'NA';
+            const subcategory_id = req.body.subcategory_id || 0;
+            const activity_type = req.body.activity_type || 'Major';
+
+            const [ansRecord, created] = await AnswerModel.findOrCreate({
+                where: {
+                    session_id,
+                    question_id,
+                    compartment_id,
+                    subcategory_id,
+                    activity_type
+                },
+                defaults: {
+                    status: status || 'OK',
+                    remarks: remarks || '',
+                    reasons: finalReasons,
+                    photo_url: photo_url || null,
+                    question_text_snapshot: qData.text
+                }
+            });
+
+            if (!created) {
+                await ansRecord.update({
+                    status: status || ansRecord.status,
+                    remarks: remarks !== undefined ? remarks : ansRecord.remarks,
+                    reasons: finalReasons,
+                    photo_url: photo_url || ansRecord.photo_url
+                });
+            }
+        } else if (moduleType === 'SICKLINE') {
+            console.log('[AUTOSAVE SICKLINE]', { session_id, coach_id: session.coach_id, question_id });
+
+            const [ansRecord, created] = await AnswerModel.findOrCreate({
+                where: {
+                    session_id,
+                    question_id
+                },
+                defaults: {
+                    coach_id: session.coach_id,
+                    status: status || 'OK',
+                    remarks: remarks || '',
+                    reasons: Array.isArray(reason_ids) ? reason_ids : [],
+                    photo_url: photo_url || null,
+                    question_text_snapshot: qData.text
+                }
+            });
+
+            if (!created) {
+                await ansRecord.update({
+                    status: status || ansRecord.status,
+                    remarks: remarks !== undefined ? remarks : ansRecord.remarks,
+                    reasons: Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons,
+                    photo_url: photo_url || ansRecord.photo_url
+                });
+            }
+        } else if (moduleType === 'WSP') {
+            console.log('[AUTOSAVE WSP BLOCK ENTERED]');
+
+            const {
+                coach_id,
+            } = session;
+
+            const finalReasons = Array.isArray(reason_ids)
+                ? JSON.stringify(reason_ids)
+                : JSON.stringify([]);
+
+            const [answer, created] = await InspectionAnswer.findOrCreate({
+                where: {
+                    session_id,
+                    question_id
+                },
+                defaults: {
+                    session_id,
+                    question_id,
+                    coach_id,
+                    status,
+                    remarks,
+                    reasons: finalReasons,
+                    photo_url: photo_url,
+                    resolved: 0
+                }
+            });
+
+            if (!created) {
+                await InspectionAnswer.update({
+                    status,
+                    remarks,
+                    reasons: finalReasons,
+                    photo_url: photo_url
+                }, {
+                    where: { id: answer.id }
+                });
+            }
+
+            return res.json({
+                success: true
+            });
+        } else if (module_type && module_type.toUpperCase() === 'PITLINE') {
+            const { train_id, coach_id, session_id, question_id } = req.body;
+            console.log('[AUTOSAVE PITLINE] Isolated block entered', { train_id, coach_id, session_id, question_id });
+
+            if (!train_id || !coach_id || !session_id) {
+                return res.status(400).json({ error: 'train_id, coach_id and session_id required for PITLINE' });
+            }
+
+            // Standardized reason handling
+            let finalReasons = [];
+            if (reason_ids) {
+                if (Array.isArray(reason_ids)) {
+                    finalReasons = reason_ids;
+                } else {
+                    try {
+                        const parsed = JSON.parse(reason_ids);
+                        finalReasons = Array.isArray(parsed) ? parsed : [parsed];
+                    } catch (e) {
+                        finalReasons = reason_ids.toString().split(',').map(r => r.trim()).filter(Boolean);
+                    }
+                }
+            }
+
+            // STRICT lookup: session_id, train_id, coach_id, question_id
+            const [ansRecord, created] = await InspectionAnswer.findOrCreate({
+                where: {
+                    session_id,
+                    train_id,
+                    coach_id,
+                    question_id
+                },
+                defaults: {
+                    status: status || 'OK',
+                    remarks: remarks || '',
+                    reasons: finalReasons,
+                    photo_url: photo_url || null,
+                    module_type: 'PITLINE',
+                    resolved: 0
+                }
+            });
+
+            if (!created) {
+                await ansRecord.update({
+                    status: status || ansRecord.status,
+                    remarks: remarks !== undefined ? remarks : ansRecord.remarks,
+                    reasons: finalReasons,
+                    photo_url: photo_url || ansRecord.photo_url,
+                    module_type: 'PITLINE'
+                });
+            }
+
+            return res.json({ success: true, message: 'PitLine autosave successful' });
+        } else {
+            // EXISTING Amenity logic
+            // Standardized reason handling to prevent crashes
+            let finalReasons = [];
+            if (reason_ids) {
+                if (Array.isArray(reason_ids)) {
+                    finalReasons = reason_ids;
+                } else if (typeof reason_ids === 'string') {
+                    try {
+                        const parsed = JSON.parse(reason_ids);
+                        finalReasons = Array.isArray(parsed) ? parsed : [parsed];
+                    } catch (e) {
+                        finalReasons = reason_ids.split(',').map(r => r.trim()).filter(Boolean);
+                    }
+                }
+            }
+
+            const compartment_id = req.body.compartment_id || 'NA';
+            const subcategory_id = req.body.subcategory_id || 0;
+            const activity_type = req.body.activity_type || 'Major';
 
             const [ansRecord, created] = await AnswerModel.findOrCreate({
                 where: {
@@ -301,19 +473,20 @@ exports.autosave = async (req, res) => {
 exports.saveCheckpoint = async (req, res) => {
     try {
         const { module_type, session_id, answers } = req.body;
+        const type = (module_type || '').toUpperCase();
 
         if (!module_type || !session_id) {
             return res.status(400).json({ error: 'Missing module_type or session_id' });
         }
 
         let SessionModel;
-        switch (module_type) {
-            case 'commissionary': SessionModel = CommissionarySession; break;
-            case 'sickline': SessionModel = SickLineSession; break;
-            case 'cai': SessionModel = CaiSession; break;
-            case 'wsp':
-            case 'amenity':
-            case 'pitline': SessionModel = WspSession; break;
+        switch (type) {
+            case 'COMMISSIONARY': SessionModel = CommissionarySession; break;
+            case 'SICKLINE': SessionModel = SickLineSession; break;
+            case 'CAI': SessionModel = CaiSession; break;
+            case 'WSP':
+            case 'AMENITY':
+            case 'PITLINE': SessionModel = WspSession; break;
             default: return res.status(400).json({ error: 'Invalid module_type' });
         }
 
@@ -332,15 +505,15 @@ exports.saveCheckpoint = async (req, res) => {
                     if (!question_id) continue;
 
                     let AnswerModel;
-                    switch (module_type) {
-                        case 'commissionary': AnswerModel = CommissionaryAnswer; break;
-                        case 'sickline': AnswerModel = SickLineAnswer; break;
-                        case 'cai': AnswerModel = CaiAnswer; break;
+                    switch (type) {
+                        case 'COMMISSIONARY': AnswerModel = CommissionaryAnswer; break;
+                        case 'SICKLINE': AnswerModel = SickLineAnswer; break;
+                        case 'CAI': AnswerModel = CaiAnswer; break;
                         default: AnswerModel = InspectionAnswer; break;
                     }
 
                     let qData;
-                    if (module_type === 'cai') {
+                    if (type === 'CAI') {
                         qData = await CaiQuestion.findByPk(question_id);
                     } else {
                         qData = await Question.findByPk(question_id);
@@ -363,7 +536,7 @@ exports.saveCheckpoint = async (req, res) => {
 
                     let searchCriteria, defaultData;
 
-                    if (module_type === 'sickline' || module_type === 'cai') {
+                    if (type === 'SICKLINE' || type === 'CAI') {
                         searchCriteria = { session_id, question_id };
                         defaultData = {
                             coach_id: session.coach_id,
@@ -374,6 +547,16 @@ exports.saveCheckpoint = async (req, res) => {
                             photo_url: photo_url || null,
                             before_photo_url: photo_url || null, // Map photo_url -> before_photo_url for CAI
                             question_text_snapshot: qData?.question_text || qData?.text || 'Checkpointed Answer'
+                        };
+                    } else if (type === 'WSP') {
+                        searchCriteria = { session_id, question_id };
+                        defaultData = {
+                            status: status || 'OK',
+                            remarks: remarks || '',
+                            reasons: Array.isArray(finalReasons) ? JSON.stringify(finalReasons) : finalReasons,
+                            photo_url: photo_url || null,
+                            question_text_snapshot: qData?.text || 'Checkpointed Answer',
+                            resolved: 0
                         };
                     } else {
                         const compartment_id = ans.compartment_id || 'NA';
@@ -408,12 +591,15 @@ exports.saveCheckpoint = async (req, res) => {
                             remarks: remarks !== undefined ? remarks : ansRecord.remarks,
                         };
 
-                        if (module_type === 'sickline') {
+                        if (type === 'SICKLINE') {
                             updateData.reasons = Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons;
                             updateData.photo_url = photo_url || ansRecord.photo_url;
-                        } else if (module_type === 'cai') {
+                        } else if (type === 'CAI') {
                             updateData.reason_ids = Array.isArray(reason_ids) ? reason_ids : ansRecord.reason_ids;
                             updateData.before_photo_url = photo_url || ansRecord.before_photo_url;
+                        } else if (type === 'WSP') {
+                            updateData.reasons = Array.isArray(reason_ids) ? JSON.stringify(reason_ids) : ansRecord.reasons;
+                            updateData.photo_url = photo_url || ansRecord.photo_url;
                         } else {
                             updateData.reasons = Array.isArray(reason_ids) ? reason_ids : ansRecord.reasons;
                             updateData.photo_url = photo_url || ansRecord.photo_url;

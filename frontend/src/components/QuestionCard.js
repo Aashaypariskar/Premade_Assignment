@@ -35,6 +35,7 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
             setLoadingReasons(true);
             const response = await getReasonsByQuestion(question.id);
             const data = response.reasons || response || [];
+            console.log('[WSP REASONS LOADED]', data);
             if (Array.isArray(data)) {
                 setReasonsList(data);
             } else {

@@ -125,6 +125,8 @@ const CategoryDashboard = ({ navigation }) => {
                                         navigation.navigate('CommissionaryCoach', { category: item.name });
                                     } else if (item.name === 'CAI / Modifications' || item.title === 'CAI / Modifications') {
                                         navigation.navigate('CaiCoachScreen');
+                                    } else if (item.name === 'Pit Line Examination') {
+                                        navigation.navigate('PitLineTrainList');
                                     } else {
                                         handleSelectCategory(item.name);
                                     }

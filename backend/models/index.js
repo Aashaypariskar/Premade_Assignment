@@ -59,6 +59,9 @@ const WspSession = require('./WspSession')(sequelize);
 const CaiQuestion = require('./CaiQuestion')(sequelize);
 const CaiSession = require('./CaiSession')(sequelize);
 const CaiAnswer = require('./CaiAnswer')(sequelize);
+const PitLineTrain = require('./PitLineTrain')(sequelize);
+const PitLineCoach = require('./PitLineCoach')(sequelize);
+const PitLineSession = require('./PitLineSession')(sequelize);
 
 const AmenityItem = sequelize.define('AmenityItem', {
     name: { type: DataTypes.STRING, allowNull: false },
@@ -115,7 +118,11 @@ const InspectionAnswer = sequelize.define('InspectionAnswer', {
     resolved: { type: DataTypes.INTEGER, defaultValue: 0 },
     after_photo_url: { type: DataTypes.TEXT },
     resolution_remark: { type: DataTypes.TEXT },
-    resolved_at: { type: DataTypes.DATE }
+    resolved_at: { type: DataTypes.DATE },
+    // Pit Line Metadata (Isolated)
+    train_id: { type: DataTypes.INTEGER, allowNull: true },
+    coach_id: { type: DataTypes.INTEGER, allowNull: true },
+    module_type: { type: DataTypes.STRING(50), allowNull: true }
 }, { tableName: 'inspection_answers', updatedAt: false });
 
 // Associations - RBAC
@@ -233,6 +240,21 @@ CaiQuestion.hasMany(CaiAnswer, { foreignKey: 'question_id' });
 CaiAnswer.belongsTo(Coach, { foreignKey: 'coach_id' });
 Coach.hasMany(CaiAnswer, { foreignKey: 'coach_id' });
 
+// Pit Line Associations
+PitLineTrain.hasMany(PitLineCoach, { foreignKey: 'train_id', onDelete: 'CASCADE' });
+PitLineCoach.belongsTo(PitLineTrain, { foreignKey: 'train_id' });
+
+PitLineTrain.hasMany(PitLineSession, { foreignKey: 'train_id', onDelete: 'CASCADE' });
+PitLineCoach.hasMany(PitLineSession, { foreignKey: 'coach_id', onDelete: 'CASCADE' });
+PitLineSession.belongsTo(PitLineCoach, { foreignKey: 'coach_id' });
+PitLineSession.belongsTo(PitLineTrain, { foreignKey: 'train_id' });
+
+// Link InspectionAnswer to PitLine entities
+InspectionAnswer.belongsTo(PitLineTrain, { foreignKey: 'train_id' });
+InspectionAnswer.belongsTo(PitLineCoach, { foreignKey: 'coach_id' });
+InspectionAnswer.belongsTo(PitLineSession, { foreignKey: 'session_id' });
+PitLineSession.hasMany(InspectionAnswer, { foreignKey: 'session_id' });
+
 module.exports = {
     Train, Coach, Category, Activity, Question, Reason, InspectionAnswer,
     LtrSchedule, LtrItem, AmenitySubcategory, AmenityItem,
@@ -241,5 +263,6 @@ module.exports = {
     SickLineSession, SickLineAnswer,
     WspSession,
     CaiQuestion, CaiSession, CaiAnswer,
+    PitLineTrain, PitLineCoach, PitLineSession,
     sequelize
 };

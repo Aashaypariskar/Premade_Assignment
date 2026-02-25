@@ -32,6 +32,9 @@ import SickLineDashboardScreen from '../screens/SickLineDashboardScreen';
 import SickLineActivitySelectionScreen from '../screens/SickLineActivitySelectionScreen';
 import SickLineQuestionsScreen from '../screens/SickLineQuestionsScreen';
 import DefectsScreen from '../screens/DefectsScreen';
+import PitLineTrainListScreen from '../screens/PitLineTrainListScreen';
+import PitLineTrainDetailScreen from '../screens/PitLineTrainDetailScreen';
+import PitLineSelectAreaScreen from '../screens/PitLineSelectAreaScreen';
 
 import CaiCoachScreen from '../screens/CaiCoachScreen';
 import CaiQuestionsScreen from '../screens/CaiQuestionsScreen';
@@ -148,6 +151,21 @@ const AppNavigator = () => {
                         name="Defects"
                         component={DefectsScreen}
                         options={{ title: 'Resolve Defects' }}
+                    />
+                    <Stack.Screen
+                        name="PitLineTrainList"
+                        component={PitLineTrainListScreen}
+                        options={{ title: 'Pit Line Trains' }}
+                    />
+                    <Stack.Screen
+                        name="PitLineTrainDetail"
+                        component={PitLineTrainDetailScreen}
+                        options={{ title: 'Rake Diagram' }}
+                    />
+                    <Stack.Screen
+                        name="PitLineSelectArea"
+                        component={PitLineSelectAreaScreen}
+                        options={{ title: 'Select Area' }}
                     />
 
                     <Stack.Screen

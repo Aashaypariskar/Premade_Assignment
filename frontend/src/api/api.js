@@ -325,8 +325,12 @@ export const resolveDefect = async (data) => {
 };
 
 // --- UNIVERSAL AUTO-SAVE & CHECKPOINT ---
-export const autosaveInspection = (payload) =>
-    api.post('inspection/autosave', payload).then(res => res.data);
+export const autosaveInspection = (payload) => {
+    if (payload.module_type === 'WSP' || payload.module_type === 'wsp') {
+        console.log('[WSP AUTOSAVE PAYLOAD]', payload);
+    }
+    return api.post('inspection/autosave', payload).then(res => res.data);
+};
 
 export const saveInspectionCheckpoint = (payload) =>
     api.post('inspection/save-checkpoint', payload).then(res => res.data);

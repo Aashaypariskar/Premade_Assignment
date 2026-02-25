@@ -116,10 +116,16 @@ const QuestionsScreen = ({ route, navigation }) => {
         autoSaveTimer.current = setTimeout(async () => {
             try {
                 // Determine module_type
-                let moduleType = 'wsp';
-                if (params.categoryName === 'Amenity') moduleType = 'amenity';
-                if (params.categoryName === 'Pit Line Examination') moduleType = 'pitline';
-                if (params.categoryName === 'WSP Examination') moduleType = 'wsp';
+                let moduleType = params.module_type || params.type;
+                if (moduleType && moduleType.toUpperCase() === 'PITLINE') {
+                    // Safe PitLine detection
+                } else {
+                    // Existing fallback logic
+                    moduleType = 'wsp';
+                    if (params.categoryName === 'Amenity') moduleType = 'amenity';
+                    if (params.categoryName === 'Pit Line Examination') moduleType = 'pitline';
+                    if (params.categoryName === 'WSP Examination') moduleType = 'wsp';
+                }
 
                 await autosaveInspection({
                     module_type: moduleType,
