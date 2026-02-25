@@ -33,7 +33,7 @@ exports.getQuestionsByActivity = async (req, res) => {
 exports.createQuestion = async (req, res) => {
     try {
         console.log('[DEBUG] createQuestion Body:', req.body);
-        const { activity_id, schedule_id, subcategory_id, text, specified_value, answer_type, unit } = req.body;
+        const { activity_id, schedule_id, subcategory_id, section_code, item_name, text, specified_value, answer_type, unit } = req.body;
 
         if (!text) {
             return res.status(400).json({ error: 'text is required' });
@@ -43,6 +43,8 @@ exports.createQuestion = async (req, res) => {
         if (activity_id) questionData.activity_id = activity_id;
         if (schedule_id) questionData.schedule_id = schedule_id;
         if (subcategory_id) questionData.subcategory_id = subcategory_id;
+        if (section_code) questionData.section_code = section_code;
+        if (item_name) questionData.item_name = item_name;
 
         const question = await Question.create(questionData);
 

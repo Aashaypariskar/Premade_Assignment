@@ -9,18 +9,13 @@ import { normalizeQuestionResponse } from '../utils/normalization';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
 
 const SickLineQuestionsScreen = ({ route, navigation }) => {
-    const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status, subcategories, currentIndex } = route.params;
+    const { sessionId, coachId, coachName, status } = route.params;
     const { user } = useStore();
-    const [majorQs, setMajorQs] = useState([]);
-    const [minorQs, setMinorQs] = useState([]);
-    const [activeTab, setActiveTab] = useState('Major');
+    const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [guidedBtns, setGuidedBtns] = useState(null);
-    const [isMajorDone, setIsMajorDone] = useState(false);
-    const [isMinorDone, setIsMinorDone] = useState(false);
-    const fetchRef = useRef(null);
-    const [supportsActivityType, setSupportsActivityType] = useState(true);
+    const [progress, setProgress] = useState({ answeredCount: 0, totalQuestions: 0 });
+    const isMounted = useRef(true);
 
     const isLocked = status === 'COMPLETED';
     const [answers, setAnswers] = useState({});
@@ -28,36 +23,28 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
 
     const refreshProgress = async () => {
         try {
-            const prog = await getSickLineProgress(coachNumber);
-            if (prog?.perAreaStatus) {
-                const area = prog.perAreaStatus.find(a => a.subcategory_id === subcategoryId);
-                if (area) {
-                    const isMjr = area.majorTotal > 0 && area.majorAnswered === area.majorTotal;
-                    const isMnr = area.minorTotal > 0 && area.minorAnswered === area.minorTotal;
-                    setIsMajorDone(isMjr);
-                    setIsMinorDone(isMnr);
-                    return { major: isMjr, minor: isMnr };
-                }
+            const prog = await getSickLineProgress(sessionId);
+            if (prog && prog.totalQuestions !== undefined) {
+                setProgress({
+                    answeredCount: prog.answeredCount || 0,
+                    totalQuestions: prog.totalQuestions || 0
+                });
             }
         } catch (err) {
             console.log('Progress Refresh Error:', err);
         }
-        return null;
     };
-
-    const isMounted = useRef(true);
 
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            setMajorQs([]);
-            setMinorQs([]);
+            setGroups([]);
 
-            console.log(`[FETCHING QUESTIONS] SickLine - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
+            console.log(`[SICKLINE] Loading single checklist questions for coach ${coachName}`);
 
             const [response, savedAnswers] = await Promise.all([
-                getSickLineQuestions(subcategoryId, activeTab),
-                getSickLineAnswers((sessionId || 'NA').toString(), (subcategoryId || 'NA').toString(), activeTab, compartmentId || 'NA')
+                getSickLineQuestions({ coach_id: coachId }),
+                getSickLineAnswers((sessionId || 'NA').toString())
             ]);
 
             if (!isMounted.current) return;
@@ -79,16 +66,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
             setAnswers(mappedAnswers);
             setIsDirty(false);
 
-            const normalized = normalizeQuestionResponse(response);
-            setSupportsActivityType(normalized.supportsActivityType);
-
-            if (activeTab === 'Major') {
-                setMajorQs(normalized.groups.flatMap(g => g.questions || []));
-            } else if (activeTab === 'Minor') {
-                setMinorQs(normalized.groups.flatMap(g => g.questions || []));
-            } else {
-                setMajorQs(normalized.groups.flatMap(g => g.questions || []));
-            }
+            setGroups(Array.isArray(response) ? response : []);
 
             await refreshProgress();
         } catch (err) {
@@ -99,7 +77,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         } finally {
             if (isMounted.current) setLoading(false);
         }
-    }, [subcategoryId, activeTab, sessionId, compartmentId]);
+    }, [sessionId]);
 
     useFocusEffect(
         useCallback(() => {
@@ -117,14 +95,14 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
     };
 
     const validate = () => {
-        const currentQs = activeTab === 'Major' ? majorQs : minorQs;
-        for (const q of currentQs) {
+        const flatQs = groups.flatMap(g => g.questions || []);
+        for (const q of flatQs) {
             const ans = answers[q.id];
             if (!ans || !ans.status) return { valid: false, msg: `Status is required for "${q.text}".` };
             if (ans.status === 'DEFICIENCY') {
                 const hasReasons = Array.isArray(ans.reasons) && ans.reasons.length > 0;
                 const hasRemarks = ans.remarks && ans.remarks.trim().length > 0;
-                const hasPhoto = !!ans.image_path;
+                const hasPhoto = !!ans.image_path || !!ans.photo_url;
                 if (!hasReasons || !hasRemarks || !hasPhoto) {
                     let missing = [];
                     if (!hasReasons) missing.push('Reasons');
@@ -146,16 +124,13 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
 
         setSaving(true);
         try {
-            const currentQs = activeTab === 'Major' ? majorQs : minorQs;
-            const answeredQs = currentQs.filter(q => answers[q.id]?.status);
+            const flatQs = groups.flatMap(g => g.questions || []);
+            const answeredQs = flatQs.filter(q => answers[q.id]?.status);
 
             for (const q of answeredQs) {
                 const ans = answers[q.id];
                 const payload = {
                     session_id: (sessionId || 'NA').toString(),
-                    compartment_id: compartmentId || 'NA',
-                    subcategory_id: (subcategoryId || 'NA').toString(),
-                    activity_type: activeTab,
                     question_id: (q.id || 'NA').toString(),
                     status: ans.status,
                     reasons: ans.reasons || [],
@@ -166,7 +141,6 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                 let hasPhoto = false;
                 if (ans.image_path && typeof ans.image_path === 'string') {
                     if (ans.image_path.startsWith('http')) {
-                        // Remote URL already on server, send as payload field
                         payload.photo_url = ans.image_path;
                     } else {
                         Object.keys(payload).forEach(key => {
@@ -181,16 +155,7 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                 await saveSickLineAnswers(hasPhoto ? formData : payload);
             }
 
-            const freshStatus = await refreshProgress();
-            if (freshStatus) {
-                if (freshStatus.hasMajor && freshStatus.hasMinor) {
-                    setGuidedBtns('TO_NEXT');
-                } else if (!freshStatus.hasMajor) {
-                    setGuidedBtns('TO_MAJOR');
-                } else if (!freshStatus.hasMinor) {
-                    setGuidedBtns('TO_MINOR');
-                }
-            }
+            await refreshProgress();
             setIsDirty(false);
             Alert.alert('Success', 'Answers saved successfully.');
         } catch (err) {
@@ -200,34 +165,6 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
             setSaving(false);
         }
     };
-
-    const navigateToNext = () => {
-        // STRICT NAVIGATION FIX: Always return to Area Selection after finish
-        navigation.pop(2);
-    };
-
-    const currentQs = activeTab === 'Major' ? majorQs : minorQs;
-    const allAnswered = currentQs.length > 0 && currentQs.every(q => answers[q.id]?.status);
-
-    let btnText = 'Save & Sync';
-    let btnAction = handleSave;
-
-    if (isLocked) {
-        btnText = 'Inspection Completed (Read-Only)';
-    } else if (allAnswered && !isDirty) {
-        btnText = activeTab === 'Major' ? 'Go To Minor' : 'Go To Next Area';
-        btnAction = () => {
-            if (activeTab === 'Major') setActiveTab('Minor');
-            else navigateToNext();
-        };
-    } else if (isDirty) {
-        btnText = activeTab === 'Major' ? 'Save & Sync & Go To Minor' : 'Save & Sync & Go To Next Area';
-        btnAction = async () => {
-            await handleSave();
-            if (activeTab === 'Major') setActiveTab('Minor');
-            else navigateToNext();
-        };
-    }
 
     const renderQuestion = (q) => (
         <QuestionCard
@@ -239,9 +176,6 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         />
     );
 
-    const answeredCount = currentQs.filter(q => answers[q.id]?.status).length;
-    const totalQs = currentQs.length;
-
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
@@ -250,81 +184,43 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
-                <Text style={styles.headerSub}>{subcategoryName} {supportsActivityType ? `- ${activeTab}` : ''}</Text>
-                <View style={{ width: 26 }} />
+                <View style={styles.breadcrumb}>
+                    <Text style={styles.breadcrumbText}>Coach: {coachName} → </Text>
+                    <Text style={[styles.breadcrumbText, { fontWeight: 'bold' }]}>Sick Line Examination</Text>
+                </View>
+                {user?.role === 'Admin' ? (
+                    <TouchableOpacity
+                        style={styles.editQuestionsBtn}
+                        onPress={() => navigation.navigate('QuestionManagement', {
+                            categoryName: 'Sick Line Examination',
+                            activityType: 'NA', // Unused but kept for route compat
+                            subcategoryId: 'NA' // Unused but kept for route compat
+                        })}
+                    >
+                        <Text style={styles.editQuestionsBtnText}>Edit Questions</Text>
+                    </TouchableOpacity>
+                ) : <View style={{ width: 26 }} />}
             </View>
 
             <QuestionProgressHeader
-                totalQuestions={totalQs}
-                answeredCount={answeredCount}
+                totalQuestions={progress.totalQuestions}
+                answeredCount={progress.answeredCount}
             />
 
-            {supportsActivityType && (
-                <View style={styles.tabBar}>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'Major' && styles.activeTab]}
-                        onPress={() => setActiveTab('Major')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'Major' && styles.activeTabText]}>
-                            MAJOR {isMajorDone && '✓'}
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'Minor' && styles.activeTab]}
-                        onPress={() => setActiveTab('Minor')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'Minor' && styles.activeTabText]}>
-                            MINOR {isMinorDone && '✓'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
             <ScrollView contentContainerStyle={styles.scroll}>
-                {Array.isArray(activeTab === 'Major' ? majorQs : minorQs) && (activeTab === 'Major' ? majorQs : minorQs).length > 0 ? (
-                    (activeTab === 'Major' ? majorQs : minorQs).map(renderQuestion)
+                {groups.length > 0 ? (
+                    groups.map((group, gIdx) => (
+                        <View key={group.item_name || gIdx}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitleText}>{group.item_name || 'General'}</Text>
+                            </View>
+                            {group.questions.map(renderQuestion)}
+                        </View>
+                    ))
                 ) : (
                     <View style={styles.emptyContainer}>
                         <Ionicons name="information-circle-outline" size={48} color="#94a3b8" />
-                        <Text style={styles.emptyText}>No questions available for this selection.</Text>
-                    </View>
-                )}
-
-                {guidedBtns && (
-                    <View style={styles.guidedBox}>
-                        {guidedBtns === 'TO_MAJOR' && (
-                            <TouchableOpacity style={styles.guideBtn} onPress={() => { setActiveTab('Major'); setGuidedBtns(null); }}>
-                                <Text style={styles.guideBtnText}>Continue to Major</Text>
-                                <Ionicons name="arrow-forward" size={18} color="#fff" />
-                            </TouchableOpacity>
-                        )}
-                        {guidedBtns === 'TO_MINOR' && (
-                            <TouchableOpacity style={styles.guideBtn} onPress={() => { setActiveTab('Minor'); setGuidedBtns(null); }}>
-                                <Text style={styles.guideBtnText}>Continue to Minor</Text>
-                                <Ionicons name="arrow-forward" size={18} color="#fff" />
-                            </TouchableOpacity>
-                        )}
-                        {guidedBtns === 'TO_NEXT' && (
-                            <TouchableOpacity style={[styles.guideBtn, { backgroundColor: '#10b981' }]} onPress={() => {
-                                const nextIndex = currentIndex + 1;
-
-                                if (subcategories && nextIndex < subcategories.length) {
-                                    const nextArea = subcategories[nextIndex];
-
-                                    navigation.replace('SickLineQuestions', {
-                                        ...route.params,
-                                        subcategoryId: nextArea.id,
-                                        subcategoryName: nextArea.name,
-                                        currentIndex: nextIndex
-                                    });
-                                } else {
-                                    navigation.navigate('SickLineDashboard', { ...route.params });
-                                }
-                            }}>
-                                <Text style={styles.guideBtnText}>Go to Next Area</Text>
-                                <Ionicons name="apps-outline" size={18} color="#fff" />
-                            </TouchableOpacity>
-                        )}
+                        <Text style={styles.emptyText}>No questions available for SS1-C.</Text>
                     </View>
                 )}
 
@@ -348,22 +244,19 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 40, paddingHorizontal: 20, marginBottom: 10 },
-    headerSub: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
-    tabBar: { flexDirection: 'row', backgroundColor: '#fff', margin: 20, borderRadius: 12, padding: 4, elevation: 2 },
-    tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 10 },
-    activeTab: { backgroundColor: '#2563eb' },
-    tabText: { fontSize: 14, fontWeight: 'bold', color: '#64748b' },
-    activeTabText: { color: '#fff' },
-    scroll: { padding: 20, paddingBottom: 60 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    breadcrumb: { flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 15 },
+    breadcrumbText: { fontSize: 13, color: '#64748b' },
+    editQuestionsBtn: { backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#2563eb' },
+    editQuestionsBtnText: { fontSize: 11, fontWeight: 'bold', color: '#2563eb' },
+    sectionHeader: { backgroundColor: '#f1f5f9', padding: 12, borderRadius: 10, marginVertical: 15, borderLeftWidth: 4, borderLeftColor: '#2563eb' },
+    sectionTitleText: { fontSize: 14, fontWeight: 'bold', color: '#1e293b', textTransform: 'uppercase', letterSpacing: 0.5 },
+    scroll: { padding: 15, paddingBottom: 60 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
     emptyText: { marginTop: 10, color: '#64748b', fontSize: 14, textAlign: 'center' },
-    saveBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20, elevation: 4 },
-    saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    guidedBox: { marginTop: 10, marginBottom: 20, padding: 15, backgroundColor: '#fff', borderRadius: 16, borderLeftWidth: 5, borderLeftColor: '#2563eb', elevation: 2 },
-    guideBtn: { backgroundColor: '#2563eb', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, gap: 10 },
-    guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+    saveBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 30, elevation: 4 },
+    saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });
 
 export default SickLineQuestionsScreen;

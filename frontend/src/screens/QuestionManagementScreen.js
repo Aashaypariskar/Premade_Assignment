@@ -43,12 +43,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                 const res = await api.get('/commissionary/questions', { params: { subcategory_id: subcategoryId, activity_type: activityType } });
                 data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : []);
             } else if (categoryName === 'Sick Line Examination') {
-                if (!subcategoryId || !activityType) {
-                    Alert.alert('Error', 'Missing subcategory_id or activity_type');
-                    setLoading(false);
-                    return;
-                }
-                const res = await api.get('/sickline/questions', { params: { subcategory_id: subcategoryId, activity_type: activityType } });
+                const res = await api.get('/sickline/questions');
                 data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : []);
             } else if (categoryName === 'WSP Examination') {
                 if (!scheduleId) {
@@ -131,10 +126,16 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                 Alert.alert('Success', 'Question updated successfully');
             } else {
                 // Create
-                const response = await createQuestion({
+                const params = {
                     ...payload,
-                    activity_id: activityId,
-                });
+                    activity_id: activityId !== 'NA' ? activityId : null,
+                };
+                if (categoryName === 'Sick Line Examination') {
+                    params.section_code = 'SS1-C';
+                    params.item_name = 'General'; // Default
+                }
+
+                const response = await createQuestion(params);
                 const created = response.question;
                 setQuestions(prev => [...prev, created]);
                 Alert.alert('Success', 'Question created. You can now edit it to add reasons.');

@@ -55,11 +55,10 @@ const SickLineCoachScreen = ({ navigation }) => {
         try {
             setLoading(true);
             const session = await getSickLineSession(coach.coach_number);
-            navigation.navigate('SickLineDashboard', {
+            navigation.navigate('SickLineQuestions', {
                 sessionId: session.id,
                 coachId: coach.id,
-                coachNumber: coach.coach_number,
-                categoryName: 'Sick Line Examination',
+                coachName: coach.coach_number,
                 status: session.status
             });
         } catch (err) {

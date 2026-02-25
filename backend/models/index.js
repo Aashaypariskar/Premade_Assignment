@@ -72,6 +72,10 @@ const Question = sequelize.define('Question', {
     ltr_item_id: { type: DataTypes.INTEGER, allowNull: true },
     amenity_item_id: { type: DataTypes.INTEGER, allowNull: true },
     item_id: { type: DataTypes.INTEGER, allowNull: true }, // Keep legacy for safety
+    item_name: { type: DataTypes.STRING, allowNull: true }, // New: For Sick Line grouping
+    section_code: { type: DataTypes.STRING, allowNull: true }, // New: For Sick Line etc.
+    ss1_flag: { type: DataTypes.STRING, allowNull: true }, // New: For SS-I filter (C or -)
+    section_order: { type: DataTypes.INTEGER, defaultValue: 0 }, // New: For manual order
     specified_value: { type: DataTypes.STRING, allowNull: true },
     answer_type: { type: DataTypes.ENUM('BOOLEAN', 'VALUE'), defaultValue: 'BOOLEAN' },
     unit: { type: DataTypes.STRING(50) },

@@ -80,67 +80,50 @@ exports.getOrCreateSession = async (req, res) => {
 // GET /api/sickline/questions
 exports.getQuestions = async (req, res) => {
     try {
-        const { subcategory_id, activity_type } = req.query;
-        if (!subcategory_id) return res.status(400).json({ error: 'Missing subcategory_id' });
-
-        console.log('[SUBCATEGORY REQUESTED]', req.query.subcategory_id);
-        console.log(`[STABILIZATION-SL-INPUT] subcategory_id: ${subcategory_id}, activity_type: ${activity_type}`);
-
-        // Phase 1 & 2: Enforce strict item filtering, remove loose filtering
-        const includeConfig = {
-            model: AmenityItem,
-            required: true,
-            where: {
-                subcategory_id: req.query.subcategory_id
-            }
-        };
-
-        if (activity_type) {
-            includeConfig.where.activity_type = activity_type;
-        }
-
         const questions = await Question.findAll({
-            where: { subcategory_id: req.query.subcategory_id },
-            include: [includeConfig],
-            order: [['display_order', 'ASC'], ['id', 'ASC']]
+            where: {
+                section_code: 'SS1-C',
+                ss1_flag: 'C'
+            },
+            order: [
+                ['section_order', 'ASC'],
+                ['display_order', 'ASC'],
+                ['id', 'ASC']
+            ]
         });
 
-        let supportsActivityType = false;
-        if (questions.some(q => q.AmenityItem && q.AmenityItem.activity_type !== null)) {
-            supportsActivityType = true;
-        }
+        // Use a Set or Map to preserve insertion order of sections
+        const sectionMap = new Map();
 
-        const groupedResults = [{
-            item_name: 'Questions',
-            questions: questions
-        }];
-
-        // Phase 3: Add Diagnostic Log
-        console.log('[ISOLATION CHECK]', {
-            requestedSubcategory: req.query.subcategory_id,
-            returnedItemNames: groupedResults.map(g => g.item_name)
+        questions.forEach(q => {
+            if (!sectionMap.has(q.item_name)) {
+                sectionMap.set(q.item_name, {
+                    item_name: q.item_name,
+                    questions: []
+                });
+            }
+            sectionMap.get(q.item_name).questions.push(q);
         });
 
-        res.json({
-            groups: groupedResults,
-            supportsActivityType
-        });
+        const result = Array.from(sectionMap.values());
+
+        res.json(result);
     } catch (err) {
-        console.error('[STABILIZATION-SL-FATAL] getQuestions Error:', err);
-        res.status(500).json({ error: 'Failed' });
+        console.log("SickLine getQuestions error", err);
+        res.status(500).json({ error: err.message });
     }
 };
 
 // GET /api/sickline/answers
 exports.getAnswers = async (req, res) => {
     try {
-        const { session_id, subcategory_id, activity_type, compartment_id } = req.query;
-        if (!session_id || !subcategory_id || !compartment_id || !activity_type) {
-            return res.status(400).json({ error: 'Missing parameters' });
+        const { session_id } = req.query;
+        if (!session_id) {
+            return res.status(400).json({ error: 'Missing session_id' });
         }
 
         const answers = await SickLineAnswer.findAll({
-            where: { session_id, subcategory_id, activity_type, compartment_id },
+            where: { session_id },
             attributes: [
                 'id', 'question_id', 'status', 'reasons', 'remarks', 'photo_url',
                 'resolved', 'after_photo_url', 'resolution_remark'
@@ -178,8 +161,11 @@ exports.saveAnswers = async (req, res) => {
         const qData = await Question.findByPk(question_id);
 
         const [ansRecord, created] = await SickLineAnswer.findOrCreate({
-            where: { session_id, question_id, compartment_id, subcategory_id, activity_type },
+            where: { session_id, question_id },
             defaults: {
+                compartment_id: compartment_id || 'NA',
+                subcategory_id: subcategory_id || 0,
+                activity_type: activity_type || 'Major', // Default for legacy compatibility
                 status: status || 'OK',
                 reasons: parsedReasons,
                 remarks: remarks || '',
@@ -208,114 +194,27 @@ exports.saveAnswers = async (req, res) => {
 // GET /api/sickline/progress
 exports.getProgress = async (req, res) => {
     try {
-        const { coach_number, subcategory_id } = req.query;
-        if (!coach_number) return res.status(400).json({ error: 'Coach number is required' });
+        const sessionId = req.query.session_id;
 
-        const coach = await Coach.findOne({ where: { coach_number } });
-        if (!coach) return res.status(404).json({ error: 'Coach not found' });
-
-        const today = new Date().toISOString().split('T')[0];
-        const session = await SickLineSession.findOne({
-            where: { coach_id: coach.id, inspection_date: today }
+        const total = await Question.count({
+            where: {
+                section_code: 'SS1-C',
+                ss1_flag: 'C'
+            }
         });
 
-        // 1. Explicit dynamic engine response for Phase 3 integration
-        if (session && subcategory_id) {
-            const progress = await require('../utils/progressEngine').calculateProgress({
-                subcategory_id,
-                session_id: session.id,
-                AnswerModel: SickLineAnswer,
-                AmenityItemModel: AmenityItem,
-                QuestionModel: Question
-            });
-            return res.json(progress);
-        }
+        const answered = await SickLineAnswer.count({
+            where: {
+                session_id: sessionId
+            }
+        });
 
-        const subcategories = await AmenitySubcategory.findAll({ where: { category_id: 6 } });
-        const totalAreasCount = subcategories.length;
-
-        if (!session) {
-            return res.json({
-                session_id: null,
-                completed_count: 0,
-                total_expected: totalAreasCount,
-                progress_percentage: 0,
-                status: 'NOT_STARTED',
-                perAreaStatus: subcategories.map(s => ({
-                    subcategory_id: s.id,
-                    hasMajor: false,
-                    hasMinor: false
-                })),
-                breakdown: {}
-            });
-        }
-
-        // 2. Loop dynamically without hardcoded bounds or manual loops
-        const progress = await Promise.all(subcategories.map(async (sub) => {
-            const majorItems = await AmenityItem.findAll({
-                where: { subcategory_id: sub.id, activity_type: 'Major' },
-                include: [{ model: Question, attributes: ['id'] }]
-            });
-            const minorItems = await AmenityItem.findAll({
-                where: { subcategory_id: sub.id, activity_type: 'Minor' },
-                include: [{ model: Question, attributes: ['id'] }]
-            });
-
-            const majorIds = majorItems.flatMap(item => (item.Questions || []).map(q => q.id));
-            const minorIds = minorItems.flatMap(item => (item.Questions || []).map(q => q.id));
-
-            const majorAns = await SickLineAnswer.count({ where: { session_id: session.id, question_id: majorIds } });
-            const minorAns = await SickLineAnswer.count({ where: { session_id: session.id, question_id: minorIds } });
-
-            const pendingDefects = await SickLineAnswer.count({
-                where: {
-                    session_id: session.id,
-                    subcategory_id: sub.id,
-                    status: 'DEFICIENCY',
-                    resolved: { [Op.or]: [false, null] } // Step 4: Robust check
-                }
-            });
-
-            const isMajorDone = majorIds.length > 0 ? (majorAns === majorIds.length) : true;
-            const isMinorDone = minorIds.length > 0 ? (minorAns === minorIds.length) : true;
-
-            return {
-                subcategory_id: sub.id,
-                subcategory_name: sub.name,
-                majorTotal: majorIds.length,
-                majorAnswered: majorAns,
-                minorTotal: minorIds.length,
-                minorAnswered: minorAns,
-                pendingDefects: pendingDefects,
-                pending_defects: pendingDefects, // Step 7 compatibility
-                isComplete: isMajorDone && isMinorDone && pendingDefects === 0
-            };
-        }));
-
-        const totalExpected = progress.reduce((sum, p) => sum + (p.majorTotal + p.minorTotal), 0);
-        const totalCompleted = progress.reduce((sum, p) => sum + (p.majorAnswered + p.minorAnswered), 0);
-
-        let percentage = 0;
-        if (totalExpected > 0) percentage = Math.round((totalCompleted / totalExpected) * 100);
-
-        // Retain specific sickle line overall compliance logic if intact
-        const allAnswers = await SickLineAnswer.findAll({ where: { session_id: session.id } });
-        const overallCompliance = calculateCompliance(allAnswers);
-
-        return res.json({
-            session_id: session.id,
-            completed_count: totalCompleted,
-            total_expected: totalExpected,
-            progress_percentage: percentage,
-            overall_compliance: overallCompliance,
-            status: (totalExpected > 0 && totalCompleted === totalExpected) ? 'COMPLETED' : 'IN_PROGRESS',
-            perAreaStatus: progress,
-            fully_complete: (totalExpected > 0 && totalCompleted === totalExpected),
-            breakdown: {}
+        res.json({
+            totalQuestions: total,
+            answeredCount: answered
         });
     } catch (err) {
-        console.error('SickLine Progress Error:', err);
-        return res.status(500).json({ error: 'Failed' });
+        res.status(500).json({ error: err.message });
     }
 };
 
