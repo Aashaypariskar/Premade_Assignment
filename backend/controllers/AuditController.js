@@ -209,7 +209,7 @@ exports.getAmenitySubcategories = async (req, res) => {
 // GET /checklist?activity_id=X&schedule_id=Y&subcategory_id=Z
 exports.getQuestions = async (req, res) => {
     try {
-        const { schedule_id, subcategory_id, framework, activity_type } = req.query;
+        const { schedule_id, subcategory_id, framework, activity_type, activity_id } = req.query;
 
         console.log('[CHECKLIST PARAMS]', {
             subcategory_id,
@@ -472,7 +472,7 @@ exports.submitInspection = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            recordsSaved: results.length,
+            recordsSaved: records.length,
             audited_by: currentUser.name
         });
 
