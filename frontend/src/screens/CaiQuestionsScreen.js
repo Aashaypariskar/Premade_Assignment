@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     scroll: { padding: 15, paddingBottom: 60 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     defectsContainer: { paddingHorizontal: 15, paddingVertical: 10, backgroundColor: COLORS.surface },
-    defectsBtn: { flexDirection: 'row', backgroundColor: COLORS.error, padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    defectsBtn: { flexDirection: 'row', backgroundColor: COLORS.danger, padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: COLORS.danger },
     defectsBtnText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 },
     submitBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: RADIUS.lg, alignItems: 'center', marginTop: 30, elevation: 4 },
     submitBtnText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 16 },

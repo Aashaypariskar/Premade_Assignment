@@ -45,7 +45,7 @@ const LoginScreen = () => {
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Email Address</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: COLORS.textPrimary }]}
                         placeholder="admin@inspection.com"
                         placeholderTextColor={COLORS.placeholder}
                         value={email}
@@ -58,7 +58,7 @@ const LoginScreen = () => {
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Password</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: COLORS.textPrimary }]}
                         placeholder="••••••••"
                         placeholderTextColor={COLORS.placeholder}
                         value={password}

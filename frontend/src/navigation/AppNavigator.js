@@ -151,7 +151,7 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="Defects"
                         component={DefectsScreen}
-                        options={{ title: 'Resolve Defects' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="PitLineTrainList"
@@ -227,12 +227,12 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="CaiCoachScreen"
                         component={CaiCoachScreen}
-                        options={{ title: 'CAI / Modifications' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="CaiQuestionsScreen"
                         component={CaiQuestionsScreen}
-                        options={{ title: 'CAI Checklist' }}
+                        options={{ headerShown: false }}
                     />
 
                     {user.role === 'Admin' && (

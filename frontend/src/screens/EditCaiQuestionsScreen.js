@@ -146,7 +146,7 @@ const EditCaiQuestionsScreen = ({ navigation }) => {
 
                         <Text style={styles.label}>CAI Code</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, { color: COLORS.textPrimary }]}
                             placeholder="e.g. CAI-001"
                             value={caiCode}
                             onChangeText={setCaiCode}

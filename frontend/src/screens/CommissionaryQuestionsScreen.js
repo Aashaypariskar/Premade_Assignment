@@ -503,8 +503,8 @@ const styles = StyleSheet.create({
     guidedBox: { marginTop: 10, marginBottom: 20, padding: 16, backgroundColor: COLORS.surface, borderRadius: 16, borderLeftWidth: 5, borderLeftColor: COLORS.primary, elevation: 2, borderWidth: 1, borderColor: COLORS.border },
     guideBtn: { backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, gap: 10 },
     guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    defectsHeaderBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, marginHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.error, marginBottom: 10, gap: 8, elevation: 2 },
-    defectsBtnText: { color: COLORS.error, fontWeight: 'bold', fontSize: 14 }
+    defectsHeaderBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(220, 38, 38, 0.08)', marginHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.danger, marginBottom: 10, gap: 8, elevation: 0 },
+    defectsBtnText: { color: COLORS.danger, fontWeight: 'bold', fontSize: 14 }
 });
 
 export default CommissionaryQuestionsScreen;

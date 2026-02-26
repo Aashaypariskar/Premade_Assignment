@@ -109,7 +109,7 @@ const PitLineTrainListScreen = () => {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>New Train</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, { color: COLORS.textPrimary }]}
                             placeholder="Enter Train Number (e.g. 12137)"
                             placeholderTextColor={COLORS.placeholder}
                             value={trainNumber}

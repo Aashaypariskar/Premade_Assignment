@@ -432,8 +432,8 @@ const styles = StyleSheet.create({
     emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
     emptyText: { marginTop: 10, color: COLORS.placeholder, fontSize: 14, textAlign: 'center' },
     disabledBtn: { backgroundColor: COLORS.disabled, opacity: 0.6 },
-    defectsHeaderBtn: { marginTop: 10, marginHorizontal: 20, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.error, gap: 8, elevation: 2 },
-    defectsBtnText: { color: COLORS.error, fontWeight: 'bold', fontSize: 14 }
+    defectsHeaderBtn: { marginTop: 10, marginHorizontal: 20, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(220, 38, 38, 0.08)', borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.danger, gap: 8, elevation: 0 },
+    defectsBtnText: { color: COLORS.danger, fontWeight: 'bold', fontSize: 14 }
 });
 
 export default SickLineQuestionsScreen;

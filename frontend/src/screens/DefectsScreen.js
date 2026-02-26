@@ -169,7 +169,7 @@ const DefectsScreen = ({ route, navigation }) => {
                                 <Text style={styles.resHeader}>Resolution Information</Text>
 
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, { color: COLORS.textPrimary }]}
                                     placeholder="Enter resolution remark..."
                                     placeholderTextColor={COLORS.placeholder}
                                     value={defect.id === resolvingId ? resolutionData.remark : (resolvingId ? '' : resolutionData.remark)}

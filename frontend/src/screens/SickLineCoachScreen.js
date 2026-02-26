@@ -139,7 +139,7 @@ const SickLineCoachScreen = ({ navigation }) => {
                         <View style={styles.modalBody}>
                             <Text style={styles.label}>Coach Number</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { color: COLORS.textPrimary }]}
                                 placeholder="e.g., 22436-B1"
                                 placeholderTextColor={COLORS.placeholder}
                                 value={coachNumber}
@@ -148,7 +148,7 @@ const SickLineCoachScreen = ({ navigation }) => {
 
                             <Text style={styles.label}>Coach Type (Optional)</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { color: COLORS.textPrimary }]}
                                 placeholder="e.g., LHB AC 3-Tier"
                                 placeholderTextColor={COLORS.placeholder}
                                 value={coachType}

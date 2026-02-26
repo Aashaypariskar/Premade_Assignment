@@ -112,7 +112,7 @@ const CreateUserScreen = ({ route, navigation }) => {
                 <View style={styles.formGroup}>
                     <Text style={styles.label}>Full Name</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: COLORS.textPrimary }]}
                         value={name}
                         onChangeText={setName}
                         placeholder="e.g. John Doe"
@@ -125,7 +125,7 @@ const CreateUserScreen = ({ route, navigation }) => {
                         <View style={styles.formGroup}>
                             <Text style={styles.label}>Email Address</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { color: COLORS.textPrimary }]}
                                 value={email}
                                 onChangeText={setEmail}
                                 placeholder="user@inspection.com"
@@ -138,7 +138,7 @@ const CreateUserScreen = ({ route, navigation }) => {
                         <View style={styles.formGroup}>
                             <Text style={styles.label}>Password</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { color: COLORS.textPrimary }]}
                                 value={password}
                                 onChangeText={setPassword}
                                 placeholder="••••••••"

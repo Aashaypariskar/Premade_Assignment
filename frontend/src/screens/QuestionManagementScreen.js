@@ -326,7 +326,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                                 <View>
                                     <Text style={styles.label}>Measurement Unit:</Text>
                                     <TextInput
-                                        style={styles.input}
+                                        style={[styles.input, { color: COLORS.textPrimary }]}
                                         value={unit}
                                         onChangeText={setUnit}
                                         placeholder="e.g. mm, Volts, Amps"
@@ -337,7 +337,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
 
                             <Text style={styles.label}>Specified Value (Optional Reference):</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { color: COLORS.textPrimary }]}
                                 value={specifiedValue}
                                 onChangeText={setSpecifiedValue}
                                 placeholder="e.g. 5.5mm or 230V"
