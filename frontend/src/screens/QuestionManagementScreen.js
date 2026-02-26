@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api, { getQuestionsByActivity, createQuestion, updateQuestion, deleteQuestion, getReasonsByQuestion, createReason, deleteReason } from '../api/api';
-import { Ionicons } from '@expo/vector-icons'; // Assuming Expo, or use Text symbols if icons not available
+import { Ionicons } from '@expo/vector-icons';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const QuestionManagementScreen = ({ route, navigation }) => {
     const { activityId, activityType, categoryName, subcategoryId, scheduleId, coachId } = route.params;
@@ -227,14 +229,23 @@ const QuestionManagementScreen = ({ route, navigation }) => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
+        <View style={styles.container}>
+            <AppHeader
+                title="Question Bank"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.headerInfo}>
                 <View style={styles.headerTitleContainer}>
                     <Text style={styles.title}>{categoryName} - {activityType}</Text>
                     <Text style={styles.count}>{questions.length} Questions</Text>
                 </View>
                 <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-                    <Text style={styles.addBtnText}>+ Add Question</Text>
+                    <Text style={styles.addBtnText}>+ Add New</Text>
                 </TouchableOpacity>
             </View>
 
@@ -284,6 +295,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                                 onChangeText={setQuestionText}
                                 multiline
                                 placeholder="Enter question text..."
+                                placeholderTextColor={COLORS.placeholder}
                             />
 
                             <TouchableOpacity
@@ -318,6 +330,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                                         value={unit}
                                         onChangeText={setUnit}
                                         placeholder="e.g. mm, Volts, Amps"
+                                        placeholderTextColor={COLORS.placeholder}
                                     />
                                 </View>
                             )}
@@ -328,6 +341,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                                 value={specifiedValue}
                                 onChangeText={setSpecifiedValue}
                                 placeholder="e.g. 5.5mm or 230V"
+                                placeholderTextColor={COLORS.placeholder}
                             />
 
                             {/* Reasons Section - Only visible when editing existing question */}
@@ -358,6 +372,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                                             value={newReasonText}
                                             onChangeText={setNewReasonText}
                                             placeholder="New reason..."
+                                            placeholderTextColor={COLORS.placeholder}
                                         />
                                         <TouchableOpacity
                                             style={styles.addReasonBtn}
@@ -373,63 +388,63 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    headerInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
     headerTitleContainer: { flex: 1, marginRight: 10 },
-    title: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', flexWrap: 'wrap' },
-    count: { fontSize: 13, color: '#64748b', marginTop: 2 },
-    addBtn: { backgroundColor: '#2563eb', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, minWidth: 100, alignItems: 'center' },
+    title: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, flexWrap: 'wrap' },
+    count: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+    addBtn: { backgroundColor: COLORS.secondary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, minWidth: 100, alignItems: 'center' },
     addBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
     list: { padding: 16 },
-    card: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginBottom: 12, elevation: 2 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    cardNumber: { fontWeight: 'bold', color: '#2563eb', backgroundColor: '#eff6ff', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, fontSize: 12 },
+    card: { backgroundColor: COLORS.surface, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2, borderWidth: 1, borderColor: COLORS.border },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    cardNumber: { fontWeight: 'bold', color: COLORS.primary, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, fontSize: 12 },
     cardActions: { flexDirection: 'row', gap: 8 },
-    actionBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4 },
-    editBtn: { backgroundColor: '#f0f9ff' },
-    editBtnText: { color: '#0284c7', fontSize: 12, fontWeight: '600' },
-    deleteBtn: { backgroundColor: '#fef2f2' },
-    deleteBtnText: { color: '#ef4444', fontSize: 12, fontWeight: '600' },
-    cardText: { fontSize: 15, color: '#334155', lineHeight: 20 },
+    actionBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+    editBtn: { backgroundColor: '#F0F9FF', borderWidth: 1, borderColor: '#BAE6FD' },
+    editBtnText: { color: '#0284C7', fontSize: 12, fontWeight: '600' },
+    deleteBtn: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECDD3' },
+    deleteBtnText: { color: COLORS.danger, fontSize: 12, fontWeight: '600' },
+    cardText: { fontSize: 15, color: COLORS.textPrimary, lineHeight: 22 },
     emptyContainer: { alignItems: 'center', marginTop: 60 },
-    emptyText: { fontSize: 16, fontWeight: 'bold', color: '#64748b' },
-    emptySub: { color: '#94a3b8', marginTop: 4 },
+    emptyText: { fontSize: 16, fontWeight: 'bold', color: COLORS.textSecondary },
+    emptySub: { color: '#94A3B8', marginTop: 4 },
 
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20, maxHeight: '80%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-    closeText: { color: '#64748b', fontSize: 14, fontWeight: '600' },
-    label: { fontSize: 14, fontWeight: '600', color: '#475569', marginBottom: 6 },
-    questionInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, fontSize: 16, minHeight: 80, textAlignVertical: 'top', marginBottom: 16 },
-    saveBtn: { backgroundColor: '#2563eb', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
+    modalContent: { backgroundColor: COLORS.surface, borderRadius: 20, padding: 24, maxHeight: '85%', elevation: 10 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary },
+    closeText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' },
+    label: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 8 },
+    questionInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 14, fontSize: 16, minHeight: 90, textAlignVertical: 'top', marginBottom: 16, color: COLORS.textPrimary },
+    saveBtn: { backgroundColor: COLORS.secondary, padding: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12 },
     saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
 
-    // Reasons Section inside Modal
-    divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 16 },
+    // Reasons Section
+    divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 20 },
     reasonsSection: { flex: 1 },
-    sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginBottom: 10 },
-    reasonItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    reasonText: { flex: 1, color: '#334155', fontSize: 14 },
-    removeText: { color: '#ef4444', fontSize: 12, fontWeight: '600', marginLeft: 10 },
-    noReasonsText: { color: '#94a3b8', fontStyle: 'italic', marginVertical: 8 },
-    addReasonContainer: { flexDirection: 'row', marginTop: 16, gap: 10 },
-    reasonInput: { flex: 1, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14 },
-    addReasonBtn: { backgroundColor: '#10b981', paddingHorizontal: 16, justifyContent: 'center', borderRadius: 8 },
+    sectionTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 12 },
+    reasonItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    reasonText: { flex: 1, color: COLORS.textPrimary, fontSize: 14 },
+    removeText: { color: COLORS.danger, fontSize: 12, fontWeight: '600', marginLeft: 10 },
+    noReasonsText: { color: COLORS.textSecondary, fontStyle: 'italic', marginVertical: 8 },
+    addReasonContainer: { flexDirection: 'row', marginTop: 20, gap: 10 },
+    reasonInput: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: COLORS.textPrimary },
+    addReasonBtn: { backgroundColor: '#10B981', paddingHorizontal: 16, justifyContent: 'center', borderRadius: 10 },
     addReasonBtnText: { color: '#fff', fontWeight: 'bold' },
-    tabRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 15 },
-    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-    activeTab: { backgroundColor: '#2563eb' },
-    tabText: { fontSize: 13, fontWeight: '700', color: '#64748b' },
+    tabRow: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4, marginBottom: 20 },
+    tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 10 },
+    activeTab: { backgroundColor: COLORS.primary },
+    tabText: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
     activeTabText: { color: '#fff' },
-    input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 15 }
+    input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 20, color: COLORS.textPrimary }
 });
 
 export default QuestionManagementScreen;

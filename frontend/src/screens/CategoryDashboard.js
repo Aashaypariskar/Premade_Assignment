@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/StoreContext';
 import { getUserCategories, getWspProgress } from '../api/api';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const CategoryDashboard = ({ navigation }) => {
     const { user, logout, setDraft } = useStore();
@@ -65,7 +66,7 @@ const CategoryDashboard = ({ navigation }) => {
     if (loading) {
         return (
             <View style={styles.center}>
-                <ActivityIndicator size="large" color="#2563eb" />
+                <ActivityIndicator size="large" color={COLORS.primary} />
                 <Text style={styles.loadingText}>Initializing Dashboard...</Text>
             </View>
         );
@@ -97,169 +98,132 @@ const CategoryDashboard = ({ navigation }) => {
                 </View>
             </View>
 
-            <View style={styles.content}>
-                <Text style={styles.sectionTitle}>Inspection Focus</Text>
-                <Text style={styles.sectionSubtitle}>Select an assigned category to begin</Text>
-
-                {error ? (
-                    <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>⚠️ {error}</Text>
-                        <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); fetchCategories(); }}>
-                            <Text style={styles.retryText}>Retry Connection</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={categories}
-                        keyExtractor={(item, index) => (item?.id || index).toString()}
-                        numColumns={2}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.card}
-                                onPress={() => {
-                                    if (item.name === 'Sick Line Examination') {
-                                        navigation.navigate('SickLineCoach', { category_name: item.name });
-                                    } else if (item.name === 'Coach Commissionary') {
-                                        navigation.navigate('CommissionaryCoach', { category_name: item.name });
-                                    } else if (item.name === 'WSP Examination') {
-                                        navigation.navigate('WspCoach', { category_name: item.name });
-                                    } else if (item.name === 'Amenity') {
-                                        navigation.navigate('CommissionaryCoach', { category_name: item.name });
-                                    } else if (item.name === 'CAI / Modifications' || item.title === 'CAI / Modifications') {
-                                        navigation.navigate('CaiCoachScreen', { category_name: item.name || item.title });
-                                    } else if (item.name === 'Pit Line Examination') {
-                                        navigation.navigate('PitLineTrainList', { category_name: item.name });
-                                    } else {
-                                        handleSelectCategory(item.name);
-                                    }
-                                }}
-                            >
-                                <View style={styles.iconCircle}>
-                                    <Text style={styles.icon}>
-                                        {(item.name === 'Coach Commissionary' || item.title === 'Coach Commissionary') ? '📋' :
-                                            (item.name === 'Sick Line Examination' || item.title === 'Sick Line Examination') ? '🏥' :
-                                                (item.name === 'WSP Examination' || item.title === 'WSP Examination') ? '⚙️' :
-                                                    (item.name === 'CAI / Modifications' || item.title === 'CAI / Modifications') ? '⚙️' : (item.icon === 'clipboard-check' ? '📋' : (item.name ? item.name[0] : 'I'))}
-                                    </Text>
-                                </View>
-                                <Text style={styles.cardText}>
-                                    {item.name === 'Coach Commissionary' ? 'Coach Commissioning' : (item.title || item.name)}
+            <View style={styles.gridWrapper}>
+                <FlatList
+                    data={categories}
+                    keyExtractor={(item) => (item.id || item.name || item.title).toString()}
+                    numColumns={2}
+                    columnWrapperStyle={styles.gridRow}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.card}
+                            onPress={() => {
+                                const name = item.name || item.title;
+                                if (name === 'Sick Line Examination') {
+                                    navigation.navigate('SickLineCoach', { category_name: name });
+                                } else if (name === 'Coach Commissionary') {
+                                    navigation.navigate('CommissionaryCoach', { category_name: name });
+                                } else if (name === 'WSP Examination') {
+                                    navigation.navigate('WspCoach', { category_name: name });
+                                } else if (name === 'Amenity') {
+                                    navigation.navigate('CommissionaryCoach', { category_name: name });
+                                } else if (name === 'CAI / Modifications') {
+                                    navigation.navigate('CaiCoachScreen', { category_name: name });
+                                } else if (name === 'Pit Line Examination') {
+                                    navigation.navigate('PitLineTrainList', { category_name: name });
+                                } else {
+                                    handleSelectCategory(name);
+                                }
+                            }}
+                        >
+                            <View style={styles.iconBg}>
+                                <Text style={styles.emojiIcon}>
+                                    {nameEmojiMap[item.name || item.title] || '📋'}
                                 </Text>
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <Text style={styles.emptyText}>No categories assigned.</Text>
-                                <Text style={styles.emptySub}>Please contact your administrator.</Text>
                             </View>
-                        }
-                    />
-                )}
+                            <Text style={styles.cardTitle} numberOfLines={2}>
+                                {(item.name || item.title) === 'Coach Commissionary' ? 'Coach Commissioning' : (item.name || item.title)}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                    contentContainerStyle={styles.list}
+                    ListHeaderComponent={() => (
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={styles.sectionTitle}>Inspection Modules</Text>
+                            {error && (
+                                <View style={styles.errorContainer}>
+                                    <Text style={styles.errorText}>⚠️ {error}</Text>
+                                    <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); fetchCategories(); }}>
+                                        <Text style={styles.retryText}>Retry Connection</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    )}
+                    ListEmptyComponent={!error && (
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No categories assigned.</Text>
+                            <Text style={styles.emptySub}>Please contact your administrator.</Text>
+                        </View>
+                    )}
+                />
             </View>
-        </SafeAreaView >
+        </SafeAreaView>
     );
 };
 
+const nameEmojiMap = {
+    'Coach Commissionary': '📋',
+    'Sick Line Examination': '🏥',
+    'WSP Examination': '⚙️',
+    'CAI / Modifications': '🛠️',
+    'Pit Line Examination': '🚆',
+    'Amenity': '✨'
+};
+
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { padding: 24, paddingBottom: 16 },
-    actionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        gap: 10,
-        marginTop: 12,
-        flexWrap: 'nowrap'
-    },
-    welcomeText: { fontSize: 14, color: '#64748b' },
-    userName: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-    historyBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 10,
-        backgroundColor: '#E8F5E9',
-        borderWidth: 1,
-        borderColor: '#4CAF50'
-    },
-    adminBtn: {
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#3B82F6',
-        backgroundColor: '#EFF6FF'
-    },
-    logoutBtn: {
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 10,
-        backgroundColor: '#FEE2E2',
-        borderWidth: 1,
-        borderColor: '#EF4444'
-    },
-    btnText: {
-        fontSize: 14,
-        fontWeight: '600'
-    },
-    content: { flex: 1, paddingHorizontal: 20 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginBottom: 4 },
-    sectionSubtitle: { fontSize: 14, color: '#64748b', marginBottom: 24 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 12, color: '#64748b', fontWeight: '500' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { paddingHorizontal: 20, paddingVertical: 24, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    welcomeText: { fontSize: 13, color: COLORS.textSecondary },
+    userName: { fontSize: 22, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 12 },
+    actionRow: { flexDirection: 'row', gap: 8 },
+    historyBtn: { backgroundColor: '#F0F9FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.md, borderWidth: 1, borderColor: '#BAE6FD' },
+    adminBtn: { backgroundColor: '#F5F3FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.md, borderWidth: 1, borderColor: '#DDD6FE' },
+    logoutBtn: { backgroundColor: '#FEF2F2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.md, borderWidth: 1, borderColor: '#FECACA' },
+    btnText: { fontSize: 11, fontWeight: 'bold', color: COLORS.textPrimary },
+    gridWrapper: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+    gridRow: { justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    list: { paddingBottom: 40 },
     card: {
-        flex: 1,
-        backgroundColor: '#fff',
-        margin: 8,
-        padding: 20,
+        width: '48%',
+        backgroundColor: COLORS.surface,
         borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
         alignItems: 'center',
+        justifyContent: 'center',
         elevation: 3,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 4
+        shadowRadius: 4,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        aspectRatio: 1
     },
-    iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    icon: { fontSize: 22, fontWeight: 'bold', color: '#2563eb' },
-    cardText: { fontSize: 15, fontWeight: 'bold', color: '#334155', textAlign: 'center' },
-    commissionaryCard: {
-        backgroundColor: '#fff',
-        borderWidth: 2,
-        borderColor: '#10b981',
-        marginBottom: 16
+    iconBg: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#F8FAFC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9'
     },
-    newBadge: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        backgroundColor: '#10b981',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4
-    },
-    newBadgeText: {
-        color: '#fff',
-        fontSize: 8,
-        fontWeight: 'bold'
-    },
-    emptyContainer: { alignItems: 'center', marginTop: 100 },
-    emptyText: { fontSize: 18, fontWeight: 'bold', color: '#64748b' },
-    emptySub: { fontSize: 14, color: '#94a3b8', marginTop: 4 },
-    errorContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 30 },
-    errorText: { fontSize: 16, color: '#ef4444', textAlign: 'center', fontWeight: '600', marginBottom: 20 },
-    retryBtn: { backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 },
-    retryText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-    progressBadge: {
-        marginTop: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6
-    },
-    bgPending: { backgroundColor: '#fef3c7' }, // Amber 100
-    bgComplete: { backgroundColor: '#dcfce7' }, // Green 100
-    badgeText: { fontSize: 10, fontWeight: 'bold', color: '#1e293b' }
+    emojiIcon: { fontSize: 32 },
+    cardTitle: { fontSize: 13, fontWeight: 'bold', color: COLORS.textPrimary, textAlign: 'center' },
+    errorContainer: { padding: 16, backgroundColor: '#FFF1F2', borderRadius: 12, borderWidth: 1, borderColor: '#FECDD3', marginTop: 12 },
+    errorText: { color: COLORS.danger, fontSize: 13, textAlign: 'center', lineHeight: 18 },
+    retryBtn: { marginTop: 8, backgroundColor: COLORS.danger, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, alignSelf: 'center' },
+    retryText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 12 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+    loadingText: { marginTop: 12, color: COLORS.textSecondary, fontWeight: '500' },
+    emptyContainer: { alignItems: 'center', marginTop: 40 },
+    emptyText: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
+    emptySub: { fontSize: 13, color: COLORS.textSecondary, marginTop: 4 }
 });
 
 export default CategoryDashboard;

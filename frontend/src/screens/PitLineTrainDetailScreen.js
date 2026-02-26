@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIn
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../api/api';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const PitLineTrainDetailScreen = () => {
     const route = useRoute();
@@ -63,18 +65,22 @@ const PitLineTrainDetailScreen = () => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.headerTitle}>Train {trainNumber}</Text>
-                    <Text style={styles.subTitle}>{coaches.length} Coaches</Text>
-                </View>
-                <TouchableOpacity style={styles.addBtn} onPress={handleAddCoach}>
-                    <MaterialCommunityIcons name="plus" size={24} color="#FFF" />
-                    <Text style={styles.addText}>Add Coach</Text>
-                </TouchableOpacity>
-            </View>
+            <AppHeader
+                title={`Train ${trainNumber}`}
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+                rightComponent={
+                    <TouchableOpacity style={styles.addBtn} onPress={handleAddCoach}>
+                        <MaterialCommunityIcons name="plus" size={20} color={COLORS.surface} />
+                        <Text style={styles.addText}>Add Coach</Text>
+                    </TouchableOpacity>
+                }
+            />
 
-            {loading ? <ActivityIndicator size="large" color="#1E3A8A" style={{ marginTop: 40 }} /> : (
+            {loading ? <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} /> : (
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <Text style={styles.sectionLabel}>Rake Layout</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rakeContainer}>
@@ -125,26 +131,80 @@ const PitLineTrainDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F3F4F6' },
-    header: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-    headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1E3A8A' },
-    subTitle: { fontSize: 14, color: '#6B7280' },
-    addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E3A8A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-    addText: { color: '#FFF', marginLeft: 4, fontWeight: '600' },
-    scrollContent: { padding: 16 },
-    sectionLabel: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
-    rakeContainer: { paddingVertical: 10, marginBottom: 20 },
-    engineCard: { width: 100, height: 120, backgroundColor: '#E5E7EB', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12, borderStyle: 'dashed', borderWidth: 2, borderColor: '#9CA3AF' },
-    engineText: { fontSize: 12, fontWeight: 'bold', color: '#6B7280', marginTop: 4 },
-    coachWrapper: { position: 'relative', marginRight: 12 },
-    coachCard: { width: 100, height: 120, backgroundColor: '#FFF', borderRadius: 8, justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, borderWidth: 1, borderColor: '#BFDBFE' },
-    coachNum: { fontSize: 20, fontWeight: 'bold', color: '#1E3A8A' },
-    itemDel: { position: 'absolute', top: -5, right: -5, backgroundColor: '#FFF', borderRadius: 10 },
-    posBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: '#1E3A8A', width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    posText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
-    emptyText: { alignSelf: 'center', marginTop: 40, color: '#9CA3AF', fontStyle: 'italic' },
-    instructionCard: { backgroundColor: '#EFF6FF', padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
-    instructionText: { color: '#1E40AF', flex: 1, marginLeft: 12, lineHeight: 20 }
+    container: { flex: 1, backgroundColor: COLORS.background },
+    addBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.primary,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.xs,
+        borderRadius: RADIUS.md
+    },
+    addText: { color: COLORS.surface, marginLeft: 4, fontWeight: 'bold', fontSize: 13 },
+    scrollContent: { padding: SPACING.lg },
+    sectionLabel: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: SPACING.md },
+    rakeContainer: { paddingVertical: SPACING.sm, marginBottom: SPACING.xl },
+    engineCard: {
+        width: 100,
+        height: 120,
+        backgroundColor: COLORS.disabled,
+        borderRadius: RADIUS.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: SPACING.md,
+        borderStyle: 'dashed',
+        borderWidth: 2,
+        borderColor: COLORS.placeholder
+    },
+    engineText: { fontSize: 12, fontWeight: 'bold', color: COLORS.textSecondary, marginTop: 4 },
+    coachWrapper: { position: 'relative', marginRight: SPACING.md },
+    coachCard: {
+        width: 100,
+        height: 120,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        borderWidth: 1,
+        borderColor: COLORS.border
+    },
+    coachNum: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
+    itemDel: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        backgroundColor: COLORS.surface,
+        borderRadius: 12,
+        elevation: 2
+    },
+    posBadge: {
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        backgroundColor: COLORS.secondary,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    posText: { color: COLORS.surface, fontSize: 10, fontWeight: 'bold' },
+    emptyText: { alignSelf: 'center', marginTop: 40, color: COLORS.placeholder, fontStyle: 'italic' },
+    instructionCard: {
+        backgroundColor: '#EFF6FF',
+        padding: SPACING.lg,
+        borderRadius: RADIUS.lg,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#BFDBFE'
+    },
+    instructionText: { color: '#1E40AF', flex: 1, marginLeft: SPACING.md, lineHeight: 20, fontSize: 13 }
 });
 
 export default PitLineTrainDetailScreen;

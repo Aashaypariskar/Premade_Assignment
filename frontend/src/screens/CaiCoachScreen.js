@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
 import { getCommissionaryCoaches, createCommissionaryCoach, startCaiSession } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const CaiCoachScreen = ({ navigation }) => {
     const [coaches, setCoaches] = useState([]);
@@ -72,13 +74,14 @@ const CaiCoachScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-                    <Ionicons name="home-outline" size={26} color="#1e293b" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>CAI / Modifications</Text>
-                <View style={{ width: 26 }} />
-            </View>
+            <AppHeader
+                title="CAI / Modifications"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
 
             <View style={styles.content}>
                 <Text style={styles.title}>Manage Coaches</Text>
@@ -168,31 +171,29 @@ const CaiCoachScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     content: { flex: 1, padding: 25 },
-    title: { fontSize: 28, fontWeight: 'bold', color: '#1e293b' },
-    subtitle: { fontSize: 15, color: '#64748b', marginTop: 5, marginBottom: 30 },
-    createBtn: { flexDirection: 'row', backgroundColor: '#8b5cf6', padding: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#8b5cf6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, marginBottom: 25 },
-    createBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
+    title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+    subtitle: { fontSize: 14, color: COLORS.textSecondary, marginTop: 5, marginBottom: 25 },
+    createBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 16, borderRadius: RADIUS.lg, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, marginBottom: 25 },
+    createBtnText: { color: COLORS.surface, fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
     coachList: { flex: 1 },
-    coachCard: { flexDirection: 'row', backgroundColor: '#fff', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, borderWidth: 1, borderColor: '#f1f5f9' },
+    coachCard: { flexDirection: 'row', backgroundColor: COLORS.surface, padding: 18, borderRadius: 16, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, borderWidth: 1, borderColor: COLORS.border, elevation: 1 },
     coachInfo: { flex: 1 },
-    coachNum: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    coachType: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+    coachNum: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    coachType: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
     empty: { alignItems: 'center', marginTop: 60 },
-    emptyText: { color: '#94a3b8', fontSize: 14, marginTop: 10 },
+    emptyText: { color: COLORS.placeholder, fontSize: 14, marginTop: 10 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25 },
+    modalContent: { backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, padding: 25 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary },
     modalBody: { paddingBottom: 20 },
-    label: { fontSize: 14, fontWeight: 'bold', color: '#64748b', marginBottom: 8 },
-    input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 15, fontSize: 16, color: '#1e293b', marginBottom: 20 },
-    submitBtn: { backgroundColor: '#8b5cf6', padding: 18, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-    submitBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    label: { fontSize: 14, fontWeight: 'bold', color: COLORS.textSecondary, marginBottom: 8 },
+    input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: 15, fontSize: 16, color: COLORS.textPrimary, marginBottom: 20 },
+    submitBtn: { backgroundColor: COLORS.secondary, padding: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+    submitBtnText: { color: COLORS.surface, fontSize: 16, fontWeight: 'bold' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }
 });
 
 export default CaiCoachScreen;

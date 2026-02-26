@@ -86,7 +86,7 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="Dashboard"
                         component={CategoryDashboard}
-                        options={{ title: 'Audit Dashboard' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="ReportSuccess"
@@ -96,47 +96,47 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="CoachSelection"
                         component={CoachSelectionScreen}
-                        options={{ title: 'Select Coach' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="ActivitySelection"
                         component={ActivitySelectionScreen}
-                        options={{ title: 'Select Activity' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="QuestionsScreen"
                         component={QuestionsScreen}
-                        options={{ title: 'Checklist' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="SummaryScreen"
                         component={SummaryScreen}
-                        options={{ title: 'Review Report' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="ReportList"
                         component={ReportListScreen}
-                        options={{ title: 'Inspection Reports' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="ReportDetail"
                         component={ReportDetailScreen}
-                        options={{ title: 'Report Details' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="WspScheduleScreen"
                         component={WspScheduleScreen}
-                        options={{ title: 'Select Schedule' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="AmenitySubcategory"
                         component={AmenitySubcategoryScreen}
-                        options={{ title: 'Select Area' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="CompartmentSelection"
                         component={CompartmentSelectionScreen}
-                        options={{ title: 'Select Compartment' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="CombinedSummary"
@@ -156,12 +156,12 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="PitLineTrainList"
                         component={PitLineTrainListScreen}
-                        options={{ title: 'Pit Line Trains' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="PitLineTrainDetail"
                         component={PitLineTrainDetailScreen}
-                        options={{ title: 'Rake Diagram' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="PitLineSelectArea"
@@ -172,7 +172,7 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="CommissionaryCoach"
                         component={CommissionaryCoachScreen}
-                        options={{ title: 'Coach Commissioning' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="CommissionaryCompartment"
@@ -199,7 +199,7 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="SickLineCoach"
                         component={SickLineCoachScreen}
-                        options={{ title: 'Sick Line Examination' }}
+                        options={{ headerShown: false }}
                     />
                     <Stack.Screen
                         name="SickLineDashboard"
@@ -214,13 +214,13 @@ const AppNavigator = () => {
                     <Stack.Screen
                         name="SickLineQuestions"
                         component={SickLineQuestionsScreen}
-                        options={{ title: 'Inspection Form' }}
+                        options={{ headerShown: false }}
                     />
 
                     <Stack.Screen
                         name="WspCoach"
                         component={WspCoachScreen}
-                        options={{ title: 'WSP Selection' }}
+                        options={{ headerShown: false }}
                     />
 
                     {/* CAI / Modifications */}
@@ -240,22 +240,22 @@ const AppNavigator = () => {
                             <Stack.Screen
                                 name="UserManagement"
                                 component={UserManagementScreen}
-                                options={{ title: 'System Users' }}
+                                options={{ headerShown: false }}
                             />
                             <Stack.Screen
                                 name="CreateUser"
                                 component={CreateUserScreen}
-                                options={{ title: 'User Access' }}
+                                options={{ headerShown: false }}
                             />
                             <Stack.Screen
                                 name="QuestionManagement"
                                 component={QuestionManagementScreen}
-                                options={{ title: 'Question Management' }}
+                                options={{ headerShown: false }}
                             />
                             <Stack.Screen
                                 name="EditCaiQuestionsScreen"
                                 component={EditCaiQuestionsScreen}
-                                options={{ title: 'Manage CAI Questions' }}
+                                options={{ headerShown: false }}
                             />
                         </>
                     )}

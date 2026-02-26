@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
 import { getWspSession, getCoaches } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const WspCoachScreen = ({ route, navigation }) => {
     const category_name = route?.params?.category_name || 'WSP Examination';
@@ -48,17 +50,18 @@ const WspCoachScreen = ({ route, navigation }) => {
         }
     };
 
-    if (loading && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+    if (loading && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>WSP Examination</Text>
-                <View style={{ width: 26 }} />
-            </View>
+            <AppHeader
+                title="WSP Examination"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
 
             <View style={styles.content}>
                 <Text style={styles.title}>Select Coach</Text>
@@ -91,39 +94,28 @@ const WspCoachScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 50,
-        paddingBottom: 20,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9'
-    },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    content: { flex: 1, padding: 25 },
-    title: { fontSize: 28, fontWeight: 'bold', color: '#1e293b' },
-    subtitle: { fontSize: 15, color: '#64748b', marginTop: 5, marginBottom: 30 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    content: { flex: 1, padding: SPACING.xl },
+    title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+    subtitle: { fontSize: 14, color: COLORS.textSecondary, marginTop: SPACING.xs, marginBottom: SPACING.xl },
     coachList: { flex: 1 },
     coachCard: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 20,
+        backgroundColor: COLORS.surface,
+        padding: SPACING.lg,
+        borderRadius: RADIUS.lg,
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        marginBottom: SPACING.md,
         borderWidth: 1,
-        borderColor: '#f1f5f9'
+        borderColor: COLORS.border,
+        elevation: 1
     },
     coachInfo: { flex: 1 },
-    coachNum: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    coachType: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+    coachNum: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    coachType: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
     empty: { alignItems: 'center', marginTop: 60 },
-    emptyText: { color: '#94a3b8', fontSize: 14, marginTop: 10 },
+    emptyText: { color: COLORS.placeholder, fontSize: 14, marginTop: SPACING.md },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 

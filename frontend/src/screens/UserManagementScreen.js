@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/StoreContext';
 import { getAdminUsers, deleteAdminUser } from '../api/api';
 import { useFocusEffect } from '@react-navigation/native';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const UserManagementScreen = ({ navigation }) => {
     const { user: currentUser } = useStore();
@@ -119,10 +121,19 @@ const UserManagementScreen = ({ navigation }) => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
+        <View style={styles.container}>
+            <AppHeader
+                title="System Users"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.headerInfo}>
                 <View>
-                    <Text style={styles.title}>System Users</Text>
+                    <Text style={styles.title}>Manage Accounts</Text>
                     <Text style={styles.count}>{users.length} Active Accounts</Text>
                 </View>
                 <TouchableOpacity
@@ -147,40 +158,40 @@ const UserManagementScreen = ({ navigation }) => {
                     </View>
                 }
             />
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#1e293b' },
-    count: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
-    addBtn: { backgroundColor: '#2563eb', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    headerInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 },
+    title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+    count: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+    addBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, elevation: 2 },
     addBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-    list: { padding: 16 },
-    card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+    list: { padding: 16, paddingTop: 0 },
+    card: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, borderWidth: 1, borderColor: COLORS.border },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15, alignItems: 'center' },
     userInfo: { flex: 1 },
-    userName: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    userEmail: { fontSize: 14, color: '#64748b', marginTop: 2 },
-    roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, alignSelf: 'flex-start' },
+    userName: { fontSize: 17, fontWeight: 'bold', color: COLORS.textPrimary },
+    userEmail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 1 },
+    roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
     roleText: { fontSize: 11, fontWeight: 'bold' },
-    categoriesContainer: { borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12, marginBottom: 15 },
-    label: { fontSize: 12, fontWeight: 'bold', color: '#94a3b8', marginBottom: 8, textTransform: 'uppercase' },
-    chips: { flexDirection: 'row', flexWrap: 'wrap' },
-    chip: { backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 8, marginBottom: 8 },
-    chipText: { fontSize: 12, fontWeight: '600', color: '#2563eb' },
-    emptyChips: { fontSize: 13, color: '#cbd5e1', fontStyle: 'italic' },
-    actions: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
-    editBtn: { flex: 1, alignItems: 'center', paddingVertical: 8 },
-    editBtnText: { color: '#2563eb', fontWeight: '600', fontSize: 14 },
-    deleteBtn: { flex: 0.5, alignItems: 'center', paddingVertical: 8 },
-    deleteBtnText: { color: '#ef4444', fontWeight: '600', fontSize: 14 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 12, color: '#64748b', fontWeight: '500' },
-    emptyContainer: { alignItems: 'center', marginTop: 100 },
-    emptyText: { color: '#94a3b8', fontSize: 16 }
+    categoriesContainer: { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, marginBottom: 15 },
+    label: { fontSize: 11, fontWeight: 'bold', color: COLORS.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    chip: { backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+    chipText: { fontSize: 12, fontWeight: '600', color: COLORS.textPrimary },
+    emptyChips: { fontSize: 12, color: COLORS.textSecondary, fontStyle: 'italic' },
+    actions: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, gap: 12 },
+    editBtn: { flex: 1, alignItems: 'center', backgroundColor: '#F8FAFC', paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
+    editBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: 13 },
+    deleteBtn: { flex: 0.4, alignItems: 'center', backgroundColor: '#FEF2F2', paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#FEE2E2' },
+    deleteBtnText: { color: COLORS.danger, fontWeight: '600', fontSize: 13 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+    loadingText: { marginTop: 12, color: COLORS.textSecondary, fontWeight: '500' },
+    emptyContainer: { alignItems: 'center', marginTop: 80 },
+    emptyText: { color: COLORS.textSecondary, fontSize: 16 }
 });
 
 export default UserManagementScreen;

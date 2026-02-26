@@ -6,6 +6,8 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { StorageAccessFramework } from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const ReportDetailScreen = ({ route, navigation }) => {
     const { submission_id, train_number, coach_number, date, user_name, user_id } = route.params;
@@ -229,15 +231,21 @@ const ReportDetailScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <AppHeader
+                title="Report Details"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.headerInfo}>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.title}>{categoryName}</Text>
                     <Text style={styles.sub}>{train_number} - {coach_number}</Text>
                     <Text style={styles.sub}>{date} • {user_name}</Text>
                 </View>
-                <TouchableOpacity style={styles.homeBtn} onPress={handleHome}>
-                    <Ionicons name="home" size={20} color="#64748b" />
-                </TouchableOpacity>
             </View>
 
             <View style={styles.actionsContainer}>
@@ -286,7 +294,7 @@ const ReportDetailScreen = ({ route, navigation }) => {
                                         <View style={[styles.cell, { flex: 0.3 }]}><Text style={styles.tableHeaderText}>Remarks</Text></View>
                                     </View>
                                     {groupedData[sectionKey][itemName].map((item, idx) => (
-                                        <View key={item.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+                                        <View key={item.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#F8FAFC' }]}>
                                             <View style={[styles.cell, { flex: 0.1 }]}><Text style={styles.cellTextCenter}>{idx + 1}</Text></View>
                                             <View style={[styles.cell, { flex: 0.45 }]}><Text style={styles.cellText}>{item.question_text_snapshot || item.Question?.text || 'N/A'}</Text></View>
                                             <View style={[styles.cell, { flex: 0.15 }]}><Text style={[
@@ -317,40 +325,39 @@ const ReportDetailScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', alignItems: 'center' },
-    title: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    sub: { color: '#64748b', fontSize: 12 },
-    homeBtn: { padding: 8, backgroundColor: '#f1f5f9', borderRadius: 8 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+    headerInfo: { flexDirection: 'row', padding: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, alignItems: 'center' },
+    title: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    sub: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
     actionsContainer: { flexDirection: 'row', padding: 12, gap: 10 },
-    actionBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
-    exportBtn: { backgroundColor: '#2563eb' },
-    downloadBtn: { backgroundColor: '#16a34a' },
-    btnText: { color: '#fff', fontWeight: 'bold' },
+    actionBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', elevation: 2 },
+    exportBtn: { backgroundColor: COLORS.primary },
+    downloadBtn: { backgroundColor: COLORS.success },
+    btnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
     content: { padding: 16 },
     officialHeader: { alignItems: 'center', marginBottom: 20 },
-    headerOrg: { fontSize: 12, color: '#64748b', fontWeight: 'bold' },
-    railwayText: { fontSize: 22, fontWeight: 'bold', color: '#000' },
-    thickDivider: { height: 3, backgroundColor: '#1e293b', width: '100%', marginTop: 10 },
+    headerOrg: { fontSize: 12, color: COLORS.textSecondary, fontWeight: 'bold' },
+    railwayText: { fontSize: 22, fontWeight: 'bold', color: COLORS.textPrimary },
+    thickDivider: { height: 3, backgroundColor: COLORS.textPrimary, width: '100%', marginTop: 10 },
     activityContainer: { marginBottom: 25 },
-    sectionHeader: { backgroundColor: '#f1f5f9', padding: 10, borderLeftWidth: 4, borderLeftColor: '#2563eb', marginBottom: 5 },
-    sectionHeaderText: { fontWeight: 'bold', color: '#1e293b', fontSize: 14 },
-    itemRefContainer: { marginTop: 15, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' },
-    itemRefHeader: { backgroundColor: '#334155', padding: 6, paddingHorizontal: 12 },
-    itemRefHeaderText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
-    table: { backgroundColor: '#fff' },
-    tableHeaderRow: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', minHeight: 40 },
-    tableHeaderText: { fontSize: 10, fontWeight: 'bold', color: '#64748b', textAlign: 'center' },
-    cell: { padding: 8, justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#f1f5f9' },
-    cellText: { fontSize: 11, color: '#1e293b' },
-    cellTextCenter: { fontSize: 11, color: '#1e293b', textAlign: 'center' },
-    cellRemarkText: { fontSize: 10, color: '#64748b' },
-    statsSummary: { flexDirection: 'row', gap: 20, marginTop: 15, width: '100%', justifyContent: 'center' },
-    summaryBox: { alignItems: 'center', backgroundColor: '#fff', padding: 8, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', minWidth: 100 },
-    summaryLabel: { fontSize: 9, fontWeight: 'bold', color: '#64748b', marginBottom: 2 },
-    summaryValue: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' }
+    sectionHeader: { backgroundColor: '#F1F5F9', padding: 10, borderLeftWidth: 4, borderLeftColor: COLORS.primary, marginBottom: 5 },
+    sectionHeaderText: { fontWeight: 'bold', color: COLORS.textPrimary, fontSize: 14 },
+    itemRefContainer: { marginTop: 15, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+    itemRefHeader: { backgroundColor: '#334155', padding: 8, paddingHorizontal: 12 },
+    itemRefHeaderText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+    table: { backgroundColor: COLORS.surface },
+    tableHeaderRow: { flexDirection: 'row', backgroundColor: '#F8FAFC', borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', minHeight: 45 },
+    tableHeaderText: { fontSize: 10, fontWeight: 'bold', color: COLORS.textSecondary, textAlign: 'center' },
+    cell: { padding: 10, justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#F1F5F9' },
+    cellText: { fontSize: 11, color: COLORS.textPrimary, lineHeight: 16 },
+    cellTextCenter: { fontSize: 11, color: COLORS.textPrimary, textAlign: 'center' },
+    cellRemarkText: { fontSize: 10, color: COLORS.textSecondary },
+    statsSummary: { flexDirection: 'row', gap: 16, marginTop: 15, width: '100%', justifyContent: 'center' },
+    summaryBox: { alignItems: 'center', backgroundColor: COLORS.surface, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, minWidth: 110, elevation: 1 },
+    summaryLabel: { fontSize: 9, fontWeight: 'bold', color: COLORS.textSecondary, marginBottom: 4 },
+    summaryValue: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary }
 });
 
 export default ReportDetailScreen;

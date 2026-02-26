@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput,
 import { getReports, getReportFilterOptions } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,7 +33,7 @@ const SearchableInput = ({ label, placeholder, value, onChangeText, options = []
                 <TextInput
                     style={styles.filterInput}
                     placeholder={placeholder}
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.placeholder}
                     value={value}
                     onChangeText={onChangeText}
                     onFocus={() => {
@@ -238,26 +240,32 @@ const ReportListScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            {/* Header with Filter Icon */}
-            <View style={styles.header}>
-                <View style={styles.headerRow}>
-                    <View>
-                        <Text style={styles.title}>Inspection History</Text>
-                        <Text style={styles.subtitle}>Review and audit past reports</Text>
-                    </View>
-                    <TouchableOpacity
-                        style={styles.filterIconBtn}
-                        onPress={() => {
-                            setTempFilters(appliedFilters);
-                            setIsFilterModalVisible(true);
-                        }}
-                    >
-                        <Ionicons name="funnel-outline" size={24} color="#2563eb" />
-                        {Object.values(appliedFilters).some(v => v !== '') && (
-                            <View style={styles.filterBadge} />
-                        )}
-                    </TouchableOpacity>
+            <AppHeader
+                title="Inspection History"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.headerInfo}>
+                <View>
+                    <Text style={styles.title}>Audit Logs</Text>
+                    <Text style={styles.subtitle}>Review past inspection records</Text>
                 </View>
+                <TouchableOpacity
+                    style={styles.filterIconBtn}
+                    onPress={() => {
+                        setTempFilters(appliedFilters);
+                        setIsFilterModalVisible(true);
+                    }}
+                >
+                    <Ionicons name="funnel-outline" size={24} color={COLORS.primary} />
+                    {Object.values(appliedFilters).some(v => v !== '') && (
+                        <View style={styles.filterBadge} />
+                    )}
+                </TouchableOpacity>
             </View>
 
             {/* Table Section */}
@@ -351,6 +359,7 @@ const ReportListScreen = ({ navigation }) => {
                                         <TextInput
                                             style={styles.filterInputSimple}
                                             placeholder="2024-01-01"
+                                            placeholderTextColor={COLORS.placeholder}
                                             value={tempFilters.start_date}
                                             onChangeText={(val) => setTempFilters(prev => ({ ...prev, start_date: val }))}
                                         />
@@ -360,6 +369,7 @@ const ReportListScreen = ({ navigation }) => {
                                         <TextInput
                                             style={styles.filterInputSimple}
                                             placeholder="2024-12-31"
+                                            placeholderTextColor={COLORS.placeholder}
                                             value={tempFilters.end_date}
                                             onChangeText={(val) => setTempFilters(prev => ({ ...prev, end_date: val }))}
                                         />
@@ -385,60 +395,57 @@ const ReportListScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', paddingTop: 40 },
-    header: { paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    title: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
-    subtitle: { fontSize: 13, color: '#64748b' },
-    filterIconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#dbeafe' },
-    filterBadge: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', borderWidth: 1, borderColor: '#fff' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    headerInfo: { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: COLORS.surface, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    title: { fontSize: 24, fontWeight: '800', color: COLORS.textPrimary },
+    subtitle: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+    filterIconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#DBEAFE' },
+    filterBadge: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.danger, borderWidth: 1, borderColor: '#fff' },
 
     // Table Design
-    tableHeader: { flexDirection: 'row', backgroundColor: '#1e293b', paddingVertical: 14, paddingHorizontal: 16 },
-    headerCell: { fontWeight: '700', color: '#cbd5e1', fontSize: 11, textAlign: 'center', textTransform: 'uppercase' },
-    tableRow: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
-    tableRowAlternate: { backgroundColor: '#fcfdfe' },
-    cell: { fontSize: 13, color: '#334155', textAlign: 'center', paddingHorizontal: 6 },
+    tableHeader: { flexDirection: 'row', backgroundColor: '#1E293B', paddingVertical: 14, paddingHorizontal: 16 },
+    headerCell: { fontWeight: '700', color: '#CBD5E1', fontSize: 11, textAlign: 'center', textTransform: 'uppercase' },
+    tableRow: { flexDirection: 'row', backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
+    tableRowAlternate: { backgroundColor: '#FCFDFE' },
+    cell: { fontSize: 13, color: COLORS.textPrimary, textAlign: 'center', paddingHorizontal: 6 },
 
     // Type Column Styling
     typeContainer: { alignItems: 'center', justifyContent: 'center' },
     typeText: { fontSize: 13, fontWeight: '700' },
-    majorText: { color: '#dc2626' },
-    minorText: { color: '#d97706' },
+    majorText: { color: COLORS.danger },
+    minorText: { color: '#D97706' },
 
-    statusBadge: { backgroundColor: '#f0fdf4', paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#dcfce7', alignItems: 'center', justifyContent: 'center' },
-    statusBadgeText: { fontSize: 10, color: '#16a34a', fontWeight: '800', textTransform: 'uppercase' },
-    viewBtn: { backgroundColor: '#2563eb', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, width: 90, alignItems: 'center' },
+    viewBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, width: 95, alignItems: 'center' },
     viewBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
     empty: { width: 950, alignItems: 'center', marginTop: 100 },
-    emptyText: { color: '#94a3b8', fontSize: 16, fontWeight: '600', marginTop: 12 },
+    emptyText: { color: COLORS.textSecondary, fontSize: 16, fontWeight: '600', marginTop: 12 },
 
     // Modal Design
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 30, maxHeight: SCREEN_HEIGHT * 0.8 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    modalTitle: { fontSize: 20, fontWeight: '800', color: '#1e293b' },
+    modalContent: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 30, maxHeight: SCREEN_HEIGHT * 0.8 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    modalTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary },
     modalBody: { padding: 20 },
-    modalFooter: { flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+    modalFooter: { flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: COLORS.border },
 
-    applyModalBtn: { flex: 2, backgroundColor: '#2563eb', height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    applyModalBtn: { flex: 2, backgroundColor: COLORS.primary, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
     applyModalBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    resetModalBtn: { flex: 1, backgroundColor: '#f1f5f9', height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
-    resetModalBtnText: { color: '#475569', fontSize: 14, fontWeight: '700' },
+    resetModalBtn: { flex: 1, backgroundColor: '#F1F5F9', height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+    resetModalBtnText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '700' },
 
     // Filter Inputs (Inside Modal)
     filterGrid: { gap: 16 },
     gridRow: { flexDirection: 'row', gap: 12 },
     filterContainer: { flex: 1 },
-    filterLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 8 },
-    inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 10, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#e2e8f0', height: 48 },
-    inputWrapperFocused: { borderColor: '#2563eb', backgroundColor: '#fff' },
-    filterInput: { flex: 1, fontSize: 14, color: '#1e293b' },
-    filterInputSimple: { backgroundColor: '#f8fafc', paddingHorizontal: 12, borderRadius: 10, fontSize: 14, borderWidth: 1.5, borderColor: '#e2e8f0', height: 48, color: '#1e293b' },
-    dropdown: { marginTop: 4, backgroundColor: '#fff', borderRadius: 12, elevation: 5, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },
-    dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    dropdownItemText: { fontSize: 14, color: '#1e293b' }
+    filterLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 8 },
+    inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, borderWidth: 1.5, borderColor: COLORS.border, height: 50 },
+    inputWrapperFocused: { borderColor: COLORS.primary, backgroundColor: '#fff' },
+    filterInput: { flex: 1, fontSize: 14, color: COLORS.textPrimary },
+    filterInputSimple: { backgroundColor: '#F8FAFC', paddingHorizontal: 12, borderRadius: 12, fontSize: 14, borderWidth: 1.5, borderColor: COLORS.border, height: 50, color: COLORS.textPrimary },
+    dropdown: { marginTop: 4, backgroundColor: COLORS.surface, borderRadius: 12, elevation: 5, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
+    dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    dropdownItemText: { fontSize: 14, color: COLORS.textPrimary }
 });
 
 export default ReportListScreen;

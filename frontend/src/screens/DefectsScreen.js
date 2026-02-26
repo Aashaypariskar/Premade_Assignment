@@ -6,6 +6,8 @@ import { getDefects, resolveDefect, getCaiAnswers } from '../api/api';
 import QuestionCard from '../components/QuestionCard';
 import ImagePickerField from '../components/ImagePickerField';
 import { BASE_URL } from '../config/environment';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const normalizeUrl = (uri) => {
     if (!uri) return null;
@@ -127,10 +129,15 @@ const DefectsScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#1e293b" />
-                </TouchableOpacity>
+            <AppHeader
+                title="Defect Resolution"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+            <View style={styles.headerInfo}>
                 <Text style={styles.headerTitle}>Pending Defects ({defects.length})</Text>
             </View>
 
@@ -164,6 +171,7 @@ const DefectsScreen = ({ route, navigation }) => {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Enter resolution remark..."
+                                    placeholderTextColor={COLORS.placeholder}
                                     value={defect.id === resolvingId ? resolutionData.remark : (resolvingId ? '' : resolutionData.remark)}
                                     onChangeText={(t) => setResolutionData(prev => ({ ...prev, remark: t }))}
                                     multiline
@@ -202,27 +210,26 @@ const DefectsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f1f5f9' },
-    header: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', elevation: 2 },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginLeft: 15 },
-    backBtn: { padding: 4 },
-    list: { padding: 15, paddingBottom: 50 },
-    defectCard: { backgroundColor: '#fff', borderRadius: 16, marginBottom: 20, overflow: 'hidden', elevation: 4 },
-    questionSection: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    qText: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 10 },
-    infoRow: { flexDirection: 'row', marginBottom: 5 },
-    infoLabel: { fontWeight: 'bold', color: '#64748b', fontSize: 12 },
-    infoValue: { color: '#444', fontSize: 12 },
-    label: { fontSize: 13, fontWeight: '700', color: '#64748b', marginTop: 10, marginBottom: 10 },
-    resolutionForm: { padding: 15, backgroundColor: '#f8fafc' },
-    resHeader: { fontSize: 14, fontWeight: 'bold', color: '#2563eb', marginBottom: 15, textTransform: 'uppercase' },
-    input: { backgroundColor: '#fff', borderRadius: 8, padding: 12, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: '#e2e8f0', color: '#1e293b', marginBottom: 15 },
-    resolveBtn: { backgroundColor: '#10b981', paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    headerInfo: { padding: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    list: { padding: 16, paddingBottom: 50 },
+    defectCard: { backgroundColor: COLORS.surface, borderRadius: 16, marginBottom: 20, overflow: 'hidden', elevation: 4, borderWidth: 1, borderColor: COLORS.border },
+    questionSection: { padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    qText: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 12 },
+    infoRow: { flexDirection: 'row', marginBottom: 6 },
+    infoLabel: { fontWeight: 'bold', color: COLORS.textSecondary, fontSize: 12 },
+    infoValue: { color: COLORS.textPrimary, fontSize: 12 },
+    label: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary, marginTop: 12, marginBottom: 10 },
+    resolutionForm: { padding: 16, backgroundColor: '#F8FAFC' },
+    resHeader: { fontSize: 14, fontWeight: 'bold', color: COLORS.primary, marginBottom: 15, textTransform: 'uppercase' },
+    input: { backgroundColor: COLORS.surface, borderRadius: 10, padding: 14, minHeight: 80, textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.border, color: COLORS.textPrimary, marginBottom: 15 },
+    resolveBtn: { backgroundColor: COLORS.success, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, elevation: 2 },
     disabledBtn: { opacity: 0.6 },
-    resolveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    resolveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
     emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 100 },
-    emptyText: { marginTop: 15, color: '#64748b', fontSize: 16, fontWeight: '500' }
+    emptyText: { marginTop: 15, color: COLORS.textSecondary, fontSize: 16, fontWeight: '500' }
 });
 
 export default DefectsScreen;

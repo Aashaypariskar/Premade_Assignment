@@ -14,6 +14,8 @@ import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
 import { normalizeQuestionResponse } from '../utils/normalization';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const SickLineQuestionsScreen = ({ route, navigation }) => {
     const {
@@ -228,19 +230,18 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         />
     );
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
-                </TouchableOpacity>
-                <View style={styles.breadcrumb}>
-                    <Text style={styles.breadcrumbText}>Coach: {coachName} → </Text>
-                    <Text style={[styles.breadcrumbText, { fontWeight: 'bold' }]}>Sick Line Examination</Text>
-                </View>
-                {user?.role === 'Admin' ? (
+            <AppHeader
+                title="Sick Line Examination"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+                rightComponent={user?.role === 'Admin' && (
                     <TouchableOpacity
                         style={styles.editQuestionsBtn}
                         onPress={() => navigation.navigate('QuestionManagement', {
@@ -249,53 +250,64 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                             subcategory_id: 'NA'
                         })}
                     >
-                        <Text style={styles.editQuestionsBtnText}>Edit Questions</Text>
+                        <Ionicons name="settings-outline" size={18} color={COLORS.secondary} />
                     </TouchableOpacity>
-                ) : <View style={{ width: 26 }} />}
-
-                <View style={styles.saveIndicator}>
-                    {saveStatus === 'saving' && <Text style={styles.savingText}>Saving...</Text>}
-                    {saveStatus === 'saved' && <Text style={styles.savedText}>Saved ✓</Text>}
-                    {saveStatus === 'error' && <Text style={styles.errorText}>Save Error ❌</Text>}
-                </View>
-            </View>
-
-            <QuestionProgressHeader
-                totalQuestions={progress.totalQuestions}
-                answeredCount={progress.answeredCount}
+                )}
             />
 
-            {/* View Defects Button - Stricter Visibility */}
-            {pendingDefectsCount > 0 && (
-                <TouchableOpacity
-                    style={styles.defectsHeaderBtn}
-                    onPress={() => navigation.navigate('Defects', {
-                        session_id: session_id,
-                        module_type: 'sickline',
-                        coach_number: coach_number
-                    })}
-                >
-                    <Ionicons name="warning-outline" size={18} color="#ef4444" />
-                    <Text style={styles.defectsBtnText}>View Defects ({pendingDefectsCount})</Text>
-                </TouchableOpacity>
-            )}
-
-            <ScrollView contentContainerStyle={styles.scroll}>
-                {groups.length > 0 ? (
-                    groups.map((group, gIdx) => (
-                        <View key={group.item_name || gIdx}>
-                            <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitleText}>{group.item_name || 'General'}</Text>
-                            </View>
-                            {group.questions.map(renderQuestion)}
-                        </View>
-                    ))
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="information-circle-outline" size={48} color="#94a3b8" />
-                        <Text style={styles.emptyText}>No questions available for SS1-C.</Text>
+            <View style={styles.content}>
+                <View style={styles.badgeRow}>
+                    <View style={styles.badge}><Text style={styles.badgeText}>COACH: {coachName}</Text></View>
+                    <View style={[styles.badge, styles.activeBadge]}>
+                        <Text style={[styles.badgeText, { color: '#fff' }]}>Sick Line</Text>
                     </View>
+                </View>
+
+                <View style={styles.headerFeedback}>
+                    <QuestionProgressHeader
+                        totalQuestions={progress.totalQuestions}
+                        answeredCount={progress.answeredCount}
+                    />
+                    <View style={styles.saveIndicator}>
+                        {saveStatus === 'saving' && <Text style={styles.savingText}>Saving...</Text>}
+                        {saveStatus === 'saved' && <Text style={styles.savedText}>Saved ✓</Text>}
+                        {saveStatus === 'error' && <Text style={styles.errorText}>Save Error ❌</Text>}
+                    </View>
+                </View>
+
+
+                {/* View Defects Button - Stricter Visibility */}
+                {pendingDefectsCount > 0 && (
+                    <TouchableOpacity
+                        style={styles.defectsHeaderBtn}
+                        onPress={() => navigation.navigate('Defects', {
+                            session_id: session_id,
+                            module_type: 'sickline',
+                            coach_number: coach_number
+                        })}
+                    >
+                        <Ionicons name="warning-outline" size={18} color="#ef4444" />
+                        <Text style={styles.defectsBtnText}>View Defects ({pendingDefectsCount})</Text>
+                    </TouchableOpacity>
                 )}
+
+                <ScrollView contentContainerStyle={styles.list}>
+                    {groups.length > 0 ? (
+                        groups.map((group, gIdx) => (
+                            <View key={group.item_name || gIdx}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={styles.sectionTitleText}>{group.item_name || 'General'}</Text>
+                                </View>
+                                {group.questions.map(renderQuestion)}
+                            </View>
+                        ))
+                    ) : (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="information-circle-outline" size={48} color="#94a3b8" />
+                            <Text style={styles.emptyText}>No questions available for SS1-C.</Text>
+                        </View>
+                    )}
+                </ScrollView>
 
                 <View style={styles.bottomButtons}>
                     <TouchableOpacity
@@ -352,56 +364,76 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                         }}
                         disabled={saving || isLocked}
                     >
-                        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>FINAL SUBMIT</Text>}
+                        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>FINAL SUBMIT</Text>}
                     </TouchableOpacity>
                 </View>
-            </ScrollView>
+            </View>
         </View >
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    breadcrumb: { flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 15 },
-    breadcrumbText: { fontSize: 13, color: '#64748b' },
-    editQuestionsBtn: { backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#2563eb' },
-    editQuestionsBtnText: { fontSize: 11, fontWeight: 'bold', color: '#2563eb' },
-    sectionHeader: { backgroundColor: '#f1f5f9', padding: 12, borderRadius: 10, marginVertical: 15, borderLeftWidth: 4, borderLeftColor: '#2563eb' },
-    sectionTitleText: { fontSize: 14, fontWeight: 'bold', color: '#1e293b', textTransform: 'uppercase', letterSpacing: 0.5 },
-    scroll: { padding: 15, paddingBottom: 60 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
-    emptyText: { marginTop: 10, color: '#64748b', fontSize: 14, textAlign: 'center' },
-    bottomButtons: { marginTop: 30, gap: 10 },
-    checkpointBtn: { backgroundColor: '#f59e0b', padding: 16, borderRadius: 12, alignItems: 'center', elevation: 2 },
-    checkpointBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-    submitBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', elevation: 4 },
-    submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    disabledBtn: { backgroundColor: '#f1f5f9', opacity: 0.6 },
-    saveIndicator: { position: 'absolute', top: 52, right: 20 },
-    savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 12 },
-    savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 12 },
-    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
-    defectsHeaderBtn: {
+    container: { flex: 1, backgroundColor: COLORS.background },
+    content: { flex: 1, paddingHorizontal: SPACING.lg },
+    badgeRow: { flexDirection: 'row', paddingVertical: SPACING.md, gap: SPACING.sm },
+    badge: { backgroundColor: COLORS.disabled, paddingHorizontal: 12, paddingVertical: 4, borderRadius: RADIUS.md },
+    activeBadge: { backgroundColor: COLORS.secondary },
+    badgeText: { fontSize: 11, fontWeight: 'bold', color: COLORS.textSecondary },
+    headerFeedback: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#fff',
-        marginHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#ef4444',
-        marginTop: 10,
-        gap: 8,
+        justifyContent: 'space-between',
+        paddingVertical: SPACING.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        marginBottom: SPACING.md
+    },
+    saveIndicator: { marginLeft: 10, minWidth: 60 },
+    savingText: { color: COLORS.textSecondary, fontStyle: 'italic', fontSize: 11 },
+    savedText: { color: COLORS.success, fontWeight: 'bold', fontSize: 11 },
+    errorText: { color: COLORS.danger, fontWeight: 'bold', fontSize: 11 },
+    list: { paddingBottom: 120 },
+    bottomButtons: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        gap: SPACING.sm
+    },
+    checkpointBtn: {
+        backgroundColor: COLORS.warning,
+        paddingVertical: 14,
+        borderRadius: RADIUS.md,
+        alignItems: 'center',
         elevation: 2
     },
-    defectsBtnText: {
-        color: '#ef4444',
-        fontWeight: 'bold',
-        fontSize: 14
-    }
+    checkpointBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+    submitBtn: {
+        backgroundColor: COLORS.primary,
+        paddingVertical: 16,
+        borderRadius: RADIUS.lg,
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8
+    },
+    submitText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 16 },
+    editQuestionsBtn: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    sectionHeader: { backgroundColor: COLORS.disabled, padding: 12, borderRadius: RADIUS.md, marginVertical: 15, borderLeftWidth: 4, borderLeftColor: COLORS.primary },
+    sectionTitleText: { fontSize: 14, fontWeight: 'bold', color: COLORS.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 },
+    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
+    emptyText: { marginTop: 10, color: COLORS.placeholder, fontSize: 14, textAlign: 'center' },
+    disabledBtn: { backgroundColor: COLORS.disabled, opacity: 0.6 },
+    defectsHeaderBtn: { marginTop: 10, marginHorizontal: 20, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.error, gap: 8, elevation: 2 },
+    defectsBtnText: { color: COLORS.error, fontWeight: 'bold', fontSize: 14 }
 });
 
 export default SickLineQuestionsScreen;

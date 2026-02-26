@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCaiQuestions, addCaiQuestion, updateCaiQuestion } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const EditCaiQuestionsScreen = ({ navigation }) => {
     const [questions, setQuestions] = useState([]);
@@ -104,14 +106,23 @@ const EditCaiQuestionsScreen = ({ navigation }) => {
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#8b5cf6" /></View>;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={26} color="#1e293b" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>CAI Question Manager</Text>
-                <TouchableOpacity onPress={() => handleOpenModal()}>
-                    <Ionicons name="add-circle" size={30} color="#8b5cf6" />
+        <View style={styles.container}>
+            <AppHeader
+                title="CAI Question Bank"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.headerInfo}>
+                <View>
+                    <Text style={styles.title}>Modification Checks</Text>
+                    <Text style={styles.subtitle}>{questions.length} Active Records</Text>
+                </View>
+                <TouchableOpacity style={styles.addBtn} onPress={() => handleOpenModal()}>
+                    <Text style={styles.addBtnText}>+ Add New</Text>
                 </TouchableOpacity>
             </View>
 
@@ -139,6 +150,7 @@ const EditCaiQuestionsScreen = ({ navigation }) => {
                             placeholder="e.g. CAI-001"
                             value={caiCode}
                             onChangeText={setCaiCode}
+                            placeholderTextColor={COLORS.placeholder}
                         />
 
                         <Text style={styles.label}>Question Text</Text>
@@ -148,6 +160,7 @@ const EditCaiQuestionsScreen = ({ navigation }) => {
                             value={questionText}
                             onChangeText={setQuestionText}
                             multiline
+                            placeholderTextColor={COLORS.placeholder}
                         />
 
                         <View style={styles.switchRow}>
@@ -175,36 +188,39 @@ const EditCaiQuestionsScreen = ({ navigation }) => {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    list: { padding: 16 },
-    card: { backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 16, elevation: 2 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    caiCode: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
-    statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-    statusText: { fontSize: 10, fontWeight: 'bold' },
-    questionText: { fontSize: 14, color: '#64748b', marginBottom: 15 },
-    editBtn: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 },
-    editBtnText: { color: '#8b5cf6', fontWeight: 'bold', marginLeft: 5 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    headerInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 },
+    title: { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary },
+    subtitle: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+    addBtn: { backgroundColor: COLORS.secondary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, elevation: 2 },
+    addBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+    list: { padding: 16, paddingTop: 0 },
+    card: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, borderWidth: 1, borderColor: COLORS.border },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' },
+    caiCode: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    statusText: { fontSize: 11, fontWeight: 'bold' },
+    questionText: { fontSize: 14, color: COLORS.textPrimary, marginBottom: 15, lineHeight: 20 },
+    editBtn: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12 },
+    editBtnText: { color: COLORS.primary, fontWeight: 'bold', marginLeft: 6, fontSize: 13 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 20, padding: 20 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1e293b', marginBottom: 20 },
-    label: { fontSize: 14, fontWeight: 'bold', color: '#64748b', marginBottom: 8 },
-    input: { backgroundColor: '#f8fafc', borderWidh: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 12, fontSize: 16, marginBottom: 15 },
-    textArea: { height: 100, textAlignVertical: 'top' },
-    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    submitBtn: { backgroundColor: '#8b5cf6', padding: 15, borderRadius: 12, alignItems: 'center' },
-    submitBtnText: { color: '#fff', fontWeight: 'bold' },
-    cancelBtn: { padding: 15, alignItems: 'center' },
-    cancelBtnText: { color: '#64748b' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    empty: { textAlign: 'center', marginTop: 50, color: '#94a3b8' }
+    modalContent: { backgroundColor: COLORS.surface, borderRadius: 20, padding: 24, elevation: 10 },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 20 },
+    label: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 8 },
+    input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 20, color: COLORS.textPrimary },
+    textArea: { height: 110, textAlignVertical: 'top' },
+    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+    submitBtn: { backgroundColor: COLORS.secondary, padding: 18, borderRadius: 12, alignItems: 'center', elevation: 2 },
+    submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    cancelBtn: { padding: 16, alignItems: 'center', marginTop: 8 },
+    cancelBtnText: { color: COLORS.textSecondary, fontWeight: '600' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+    empty: { textAlign: 'center', marginTop: 80, color: COLORS.textSecondary, fontSize: 16 }
 });
 
 export default EditCaiQuestionsScreen;

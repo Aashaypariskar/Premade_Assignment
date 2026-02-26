@@ -4,6 +4,8 @@ import { submitInspection, saveWspAnswers } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { BASE_URL } from '../config/environment';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const normalizeUrl = (uri) => {
     if (!uri) return null;
@@ -122,9 +124,17 @@ const SummaryScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
+            <AppHeader
+                title="Inspection Review"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
             <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.headerCard}>
-                    <Text style={styles.title}>Inspection Review</Text>
+                    <Text style={styles.title}>Final Review</Text>
                     <Text style={styles.sub}>
                         {currentDraft.train?.name || 'Unknown Train'} - Coach {currentDraft.coach?.coach_number || 'N/A'}
                     </Text>
@@ -208,45 +218,31 @@ const SummaryScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    scroll: { padding: 20 },
-    headerCard: { backgroundColor: '#fff', borderRadius: 24, padding: 25, elevation: 4 },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#1e293b' },
-    sub: { color: '#64748b', marginTop: 5, fontSize: 13 },
-    frameworkSub: { color: '#2563eb', fontWeight: 'bold', fontSize: 12, marginTop: 2 },
-    stats: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 20, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 20 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    scroll: { padding: 16 },
+    headerCard: { backgroundColor: COLORS.surface, borderRadius: 20, padding: 20, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, borderWidth: 1, borderColor: COLORS.border },
+    title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+    sub: { color: COLORS.textSecondary, marginTop: 4, fontSize: 13 },
+    frameworkSub: { color: COLORS.primary, fontWeight: 'bold', fontSize: 12, marginTop: 4 },
+    stats: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 20, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 20 },
     statBox: { alignItems: 'center' },
-    statNum: { fontSize: 20, fontWeight: 'bold' },
-    statLabel: { fontSize: 10, color: '#94a3b8', marginTop: 2 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginTop: 30, marginBottom: 15 },
-    emptyText: { textAlign: 'center', color: '#64748b', fontStyle: 'italic', marginTop: 20 },
-    findingCard: { backgroundColor: '#fff', borderRadius: 16, padding: 15, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: '#ef4444' },
-    remarks: { fontSize: 14, color: '#334155', fontWeight: '500' },
-    chips: { flexDirection: 'row', marginTop: 8 },
-    chip: { backgroundColor: '#fee2e2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginRight: 5 },
-    chipText: { fontSize: 10, color: '#ef4444', fontWeight: 'bold' },
-    thumb: { width: 60, height: 60, borderRadius: 8, marginTop: 10 },
-    footer: { padding: 20, backgroundColor: '#fff', flexDirection: 'row', elevation: 10 },
-    editBtn: { flex: 1, paddingVertical: 16, alignItems: 'center' },
-    editText: { color: '#64748b', fontWeight: 'bold' },
-    submitBtn: { flex: 2, backgroundColor: '#10b981', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    statNum: { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary },
+    statLabel: { fontSize: 10, color: COLORS.textSecondary, marginTop: 4, fontWeight: 'bold' },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginTop: 24, marginBottom: 16 },
+    emptyText: { textAlign: 'center', color: COLORS.textSecondary, fontStyle: 'italic', marginTop: 20, fontSize: 15 },
+    findingCard: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: COLORS.danger, elevation: 2, borderWidth: 1, borderColor: COLORS.border },
+    remarks: { fontSize: 14, color: COLORS.textPrimary, fontWeight: '500', lineHeight: 20 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, gap: 6 },
+    chip: { backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#FEE2E2' },
+    chipText: { fontSize: 11, color: COLORS.danger, fontWeight: 'bold' },
+    thumb: { width: 70, height: 70, borderRadius: 10, marginTop: 12 },
+    footer: { padding: 20, backgroundColor: COLORS.surface, flexDirection: 'row', elevation: 20, borderTopWidth: 1, borderTopColor: COLORS.border, gap: 15 },
+    editBtn: { flex: 1, paddingVertical: 16, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#F8FAFC' },
+    editText: { color: COLORS.textSecondary, fontWeight: 'bold', fontSize: 16 },
+    submitBtn: { flex: 2, backgroundColor: COLORS.success, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 2 },
     submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    resolvedTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#dcfce7',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-        marginTop: 10
-    },
-    resolvedTagText: {
-        fontSize: 10,
-        fontWeight: '900',
-        color: '#10b981',
-        marginLeft: 4
-    }
+    resolvedTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#DCFCE7', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, marginTop: 12 },
+    resolvedTagText: { fontSize: 11, fontWeight: 'bold', color: '#10B981', marginLeft: 6 }
 });
 
 export default SummaryScreen;

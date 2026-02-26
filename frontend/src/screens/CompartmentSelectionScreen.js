@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator }
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { getReports } from '../api/api';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 const CompartmentSelectionScreen = ({ route, navigation }) => {
     const params = route.params;
     const { setDraft } = useStore();
@@ -95,141 +97,167 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.pills}>
-                <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coach_number || params.coachNumber}</Text></View>
-                <View style={[styles.pill, styles.activePill]}>
-                    <Text style={[styles.pillText, { color: '#fff' }]}>
-                        {(() => {
-                            const catName = params.category_name || params.categoryName;
-                            return catName === 'Coach Commissionary' ? 'Coach Commissioning' : catName;
-                        })()}
-                    </Text>
-                </View>
-                <View style={[styles.pill, { backgroundColor: '#eff6ff' }]}><Text style={[styles.pillText, { color: '#2563eb' }]}>{params.subcategory_name || params.subcategoryName}</Text></View>
-            </View>
-
-            <Text style={styles.title}>Select Compartment</Text>
-            <Text style={styles.subtitle}>Choose specific {isLavatory ? 'Lavatory' : 'Door'} for inspection</Text>
-
-            <FlatList
-                data={compartments}
-                keyExtractor={(item) => item}
-                numColumns={2}
-                renderItem={({ item }) => (
+            <AppHeader
+                title="Select Compartment"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+                rightComponent={!isCommissionary && (
                     <TouchableOpacity
-                        style={styles.card}
-                        onPress={() => handleSelect(item)}
+                        style={styles.headerSummaryBtn}
+                        onPress={() => navigation.navigate('CombinedSummary', { ...params })}
                     >
-                        <View style={styles.iconBox}>
-                            <Ionicons
-                                name={isLavatory ? "water-outline" : "exit-outline"}
-                                size={24}
-                                color="#2563eb"
-                            />
-                        </View>
-                        <Text style={styles.compName}>{item}</Text>
-                        <Text style={styles.compSub}>Tap to start inspection</Text>
+                        <Text style={styles.headerSummaryText}>Summary</Text>
                     </TouchableOpacity>
                 )}
-                contentContainerStyle={styles.list}
-                ListFooterComponent={() => (
-                    <View style={styles.summarySection}>
-                        <View style={styles.divider} />
-                        <Text style={styles.summaryTitle}>Area Summary</Text>
-                        <Text style={styles.summarySubtitle}>Combined reporting for all compartments</Text>
-
-                        {loading ? (
-                            <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 20 }} />
-                        ) : (
-                            <View style={styles.summaryActions}>
-                                {existingReports.major >= 2 ? (
-                                    <TouchableOpacity
-                                        style={[styles.combinedBtn, { backgroundColor: '#ef4444' }]}
-                                        onPress={() => navigation.navigate('CombinedReport', {
-                                            coach_id: params.coach_id || params.coachId,
-                                            subcategory_id: params.subcategory_id || params.subcategoryId,
-                                            activity_type: 'Major',
-                                            date: new Date().toISOString().split('T')[0]
-                                        })}
-                                    >
-                                        <Ionicons name="grid-outline" size={18} color="#fff" />
-                                        <Text style={styles.combinedBtnText}>
-                                            View Combined Major Report {existingReports.major < 4 ? '(Partial)' : ''}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ) : null}
-
-                                {existingReports.minor >= 2 ? (
-                                    <TouchableOpacity
-                                        style={[styles.combinedBtn, { backgroundColor: '#f59e0b' }]}
-                                        onPress={() => navigation.navigate('CombinedReport', {
-                                            coach_id: params.coach_id || params.coachId,
-                                            subcategory_id: params.subcategory_id || params.subcategoryId,
-                                            activity_type: 'Minor',
-                                            date: new Date().toISOString().split('T')[0]
-                                        })}
-                                    >
-                                        <Ionicons name="grid-outline" size={18} color="#fff" />
-                                        <Text style={styles.combinedBtnText}>
-                                            View Combined Minor Report {existingReports.minor < 4 ? '(Partial)' : ''}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ) : null}
-
-                                {existingReports.major < 2 && existingReports.minor < 2 && (
-                                    <View style={styles.infoBox}>
-                                        <Ionicons name="information-circle-outline" size={20} color="#64748b" />
-                                        <Text style={styles.infoText}>
-                                            Complete at least 2 compartments to view combined report
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        )}
-                    </View>
-                )}
             />
-        </View>
+
+            <View style={styles.content}>
+                <View style={styles.pills}>
+                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coach_number || params.coachNumber}</Text></View>
+                    <View style={[styles.pill, styles.activePill]}>
+                        <Text style={[styles.pillText, { color: '#fff' }]}>
+                            {(() => {
+                                const sub_name = params.subcategory_name || params.subcategoryName;
+                                return sub_name;
+                            })()}
+                        </Text>
+                    </View>
+                </View>
+
+                <Text style={styles.title}>Select Compartment</Text>
+                <Text style={styles.subtitle}>Choose a location to begin inspection</Text>
+
+                <FlatList
+                    data={compartments}
+                    keyExtractor={(item) => item}
+                    numColumns={2}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.compCard}
+                            onPress={() => handleSelect(item)}
+                        >
+                            <View style={styles.iconBox}>
+                                <Ionicons
+                                    name={isLavatory ? "water-outline" : "exit-outline"}
+                                    size={24}
+                                    color={COLORS.primary}
+                                />
+                            </View>
+                            <Text style={styles.compName}>{item}</Text>
+                            <Text style={styles.compLabel}>Tap to start inspection</Text>
+                        </TouchableOpacity>
+                    )}
+                    contentContainerStyle={styles.list}
+                    columnWrapperStyle={styles.gridRow}
+                    ListFooterComponent={() => (
+                        <View style={styles.summarySection}>
+                            <View style={styles.divider} />
+                            <Text style={styles.summaryTitle}>Area Summary</Text>
+                            <Text style={styles.summarySubtitle}>Combined reporting for all compartments</Text>
+
+                            {loading ? (
+                                <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
+                            ) : (
+                                <View style={styles.summaryActions}>
+                                    {existingReports.major >= 2 ? (
+                                        <TouchableOpacity
+                                            style={[styles.combinedBtn, { backgroundColor: COLORS.error }]}
+                                            onPress={() => navigation.navigate('CombinedReport', {
+                                                coach_id: params.coach_id || params.coachId,
+                                                subcategory_id: params.subcategory_id || params.subcategoryId,
+                                                activity_type: 'Major',
+                                                date: new Date().toISOString().split('T')[0]
+                                            })}
+                                        >
+                                            <Ionicons name="grid-outline" size={18} color="#fff" />
+                                            <Text style={styles.combinedBtnText}>
+                                                View Combined Major Report {existingReports.major < 4 ? '(Partial)' : ''}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ) : null}
+
+                                    {existingReports.minor >= 2 ? (
+                                        <TouchableOpacity
+                                            style={[styles.combinedBtn, { backgroundColor: COLORS.warning }]}
+                                            onPress={() => navigation.navigate('CombinedReport', {
+                                                coach_id: params.coach_id || params.coachId,
+                                                subcategory_id: params.subcategory_id || params.subcategoryId,
+                                                activity_type: 'Minor',
+                                                date: new Date().toISOString().split('T')[0]
+                                            })}
+                                        >
+                                            <Ionicons name="grid-outline" size={18} color="#fff" />
+                                            <Text style={styles.combinedBtnText}>
+                                                View Combined Minor Report {existingReports.minor < 4 ? '(Partial)' : ''}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ) : null}
+
+                                    {existingReports.major < 2 && existingReports.minor < 2 && (
+                                        <View style={styles.infoBox}>
+                                            <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
+                                            <Text style={styles.infoText}>
+                                                Complete at least 2 compartments to view combined report
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+                    )}
+                />
+            </View >
+        </View >
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
-    pills: { flexDirection: 'row', marginBottom: 20, flexWrap: 'wrap', gap: 6 },
-    pill: { backgroundColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-    activePill: { backgroundColor: '#2563eb' },
-    pillText: { fontSize: 10, fontWeight: 'bold', color: '#64748b' },
-    title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b' },
-    subtitle: { fontSize: 14, color: '#64748b', marginBottom: 30 },
-    list: { paddingBottom: 20 },
-    card: {
-        flex: 1,
-        backgroundColor: '#fff',
-        margin: 6,
-        padding: 20,
-        borderRadius: 20,
+    container: { flex: 1, backgroundColor: COLORS.background },
+    content: { flex: 1, paddingHorizontal: SPACING.xl },
+    pills: { flexDirection: 'row', marginBottom: SPACING.lg, gap: SPACING.sm, paddingTop: SPACING.md },
+    pill: { backgroundColor: COLORS.disabled, paddingHorizontal: 12, paddingVertical: 4, borderRadius: RADIUS.md },
+    activePill: { backgroundColor: COLORS.secondary },
+    pillText: { fontSize: 11, fontWeight: 'bold', color: COLORS.textSecondary },
+    title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: SPACING.md },
+    subtitle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: SPACING.xxl },
+    list: { paddingBottom: 40 },
+    gridRow: { justifyContent: 'space-between', marginBottom: SPACING.md },
+    compCard: {
+        width: '48%',
+        aspectRatio: 1.2,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.lg,
+        padding: SPACING.md,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        minHeight: 140
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: COLORS.border
     },
-    iconBox: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    compName: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    compSub: { fontSize: 10, color: '#94a3b8', marginTop: 4 },
+    iconBox: { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    compName: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary, marginBottom: 4 },
+    compLabel: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600' },
+    headerSummaryBtn: {
+        backgroundColor: COLORS.primaryLight,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: RADIUS.md,
+        borderWidth: 1,
+        borderColor: COLORS.secondary
+    },
+    headerSummaryText: { color: COLORS.secondary, fontWeight: 'bold', fontSize: 12 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     summarySection: { marginTop: 20, paddingBottom: 40 },
-    divider: { height: 1, backgroundColor: '#e2e8f0', marginBottom: 20 },
-    summaryTitle: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-    summarySubtitle: { fontSize: 12, color: '#64748b', marginBottom: 20 },
+    summaryTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: SPACING.xs },
+    summarySubtitle: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 20 },
     summaryActions: { gap: 12 },
-    combinedBtn: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2 },
-    combinedBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 10 },
-    infoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
-    infoText: { fontSize: 12, color: '#64748b', marginLeft: 10, flex: 1 }
+    combinedBtn: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: RADIUS.lg, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2 },
+    combinedBtnText: { color: COLORS.surface, fontSize: 14, fontWeight: 'bold', marginLeft: 10 },
+    infoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.disabled, padding: 15, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
+    infoText: { fontSize: 12, color: COLORS.textSecondary, marginLeft: 10, flex: 1 }
 });
 
 export default CompartmentSelectionScreen;

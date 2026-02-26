@@ -12,6 +12,8 @@ import QuestionCard from '../components/QuestionCard';
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeQuestionResponse } from '../utils/normalization';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 /**
  * Questions Checklist Screen - PRODUCTION VERSION
@@ -304,17 +306,23 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
+            <AppHeader
+                title={params.subcategoryName || 'Checklist'}
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
             <View style={styles.stickyHeader}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons name="arrow-back" size={24} color="#1e293b" />
-                    </TouchableOpacity>
-                    <View style={styles.breadcrumbs}>
+                <View style={styles.breadcrumbsContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.breadcrumbsScroll}>
                         {!isWsp ? (
                             <>
-                                <Text style={styles.breadcrumb}>{params.trainName}</Text>
+                                <Text style={styles.breadcrumb}>{params.trainName || params.train_number}</Text>
                                 <Text style={styles.separator}>›</Text>
-                                <Text style={styles.breadcrumb}>{params.coachNumber}</Text>
+                                <Text style={styles.breadcrumb}>{params.coachNumber || params.coach_number}</Text>
                                 <Text style={styles.separator}>›</Text>
                                 <Text style={styles.breadcrumb}>{params.categoryName}</Text>
                                 <Text style={styles.separator}>›</Text>
@@ -323,21 +331,21 @@ const QuestionsScreen = ({ route, navigation }) => {
                                 </Text>
                                 <Text style={styles.separator}>›</Text>
                                 <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
-                                    {params.activityType}
+                                    {params.activityType || params.activity_type}
                                 </Text>
                             </>
                         ) : (
                             <>
-                                <Text style={styles.breadcrumb}>{params.coachNumber}</Text>
+                                <Text style={styles.breadcrumb}>{params.coachNumber || params.coach_number}</Text>
                                 <Text style={styles.separator}>›</Text>
                                 <Text style={styles.breadcrumb}>WSP</Text>
                                 <Text style={styles.separator}>›</Text>
                                 <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
-                                    {params.scheduleName}
+                                    {params.scheduleName || params.schedule_name}
                                 </Text>
                             </>
                         )}
-                    </View>
+                    </ScrollView>
                 </View>
 
                 <View style={styles.headerFeedback}>
@@ -447,79 +455,107 @@ const QuestionsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f1f5f9' },
-    stickyHeader: { backgroundColor: '#fff', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', elevation: 3 },
-    progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    progressText: { fontSize: 13, fontWeight: 'bold', color: '#475569' },
-    percent: { fontSize: 13, fontWeight: 'bold', color: '#2563eb' },
-    barBg: { height: 8, backgroundColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' },
-    barFill: { height: '100%', backgroundColor: '#2563eb' },
-    list: { padding: 15, paddingBottom: 180 }, // More padding for dual buttons
-    bottomButtons: { position: 'absolute', bottom: 20, left: 20, right: 20, gap: 10 },
-    checkpointBtn: { backgroundColor: '#f59e0b', paddingVertical: 14, borderRadius: 12, alignItems: 'center', elevation: 2 },
-    checkpointBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-    submitBtn: { backgroundColor: '#1e293b', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 8 },
-    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    headerFeedback: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    saveIndicator: { marginLeft: 10, minWidth: 60 },
-    savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 10 },
-    savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 10 },
-    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 10 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    stickyHeader: {
+        backgroundColor: COLORS.surface,
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: SPACING.md,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3
+    },
+    breadcrumbsContainer: {
+        paddingVertical: SPACING.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+        marginBottom: SPACING.sm
+    },
+    breadcrumbsScroll: {
+        alignItems: 'center',
+        paddingRight: SPACING.xl
+    },
+    breadcrumb: { fontSize: 12, color: COLORS.textSecondary },
+    separator: { fontSize: 12, color: COLORS.placeholder, marginHorizontal: SPACING.xs },
+    activeBreadcrumb: { color: COLORS.secondary, fontWeight: 'bold' },
+    headerFeedback: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: SPACING.xs
+    },
+    saveIndicator: { marginLeft: SPACING.md, minWidth: 60 },
+    savingText: { color: COLORS.textSecondary, fontStyle: 'italic', fontSize: 11 },
+    savedText: { color: COLORS.success, fontWeight: 'bold', fontSize: 11 },
+    errorText: { color: COLORS.danger, fontWeight: 'bold', fontSize: 11 },
     defectsHeaderBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#fff',
-        marginHorizontal: 15,
+        backgroundColor: COLORS.surface,
         paddingVertical: 10,
-        borderRadius: 12,
+        borderRadius: RADIUS.md,
         borderWidth: 1,
-        borderColor: '#ef4444',
-        marginTop: 5,
-        marginBottom: 10,
-        gap: 8,
-        elevation: 2
+        borderColor: COLORS.danger,
+        marginTop: SPACING.md,
+        gap: SPACING.sm,
+        elevation: 1
     },
     defectsBtnText: {
-        color: '#ef4444',
+        color: COLORS.danger,
         fontWeight: 'bold',
         fontSize: 14
     },
-    adminEditFab: {
-        position: 'absolute',
-        bottom: 90,
-        right: 20,
-        backgroundColor: '#2563eb',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 25,
-        elevation: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5
+    list: { padding: SPACING.lg, paddingBottom: 180 },
+    groupContainer: { marginBottom: SPACING.xl },
+    itemHeader: {
+        backgroundColor: '#f8fafc',
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.md,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.primary,
+        marginBottom: SPACING.md,
+        borderRadius: RADIUS.sm
     },
-    fabText: {
-        color: '#fff',
+    itemHeaderText: {
+        fontSize: 14,
         fontWeight: 'bold',
-        fontSize: 12,
-        marginLeft: 8
+        color: COLORS.primary,
+        textTransform: 'uppercase'
     },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    breadcrumbs: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
-    breadcrumb: { fontSize: 11, color: '#64748b' },
-    separator: { fontSize: 11, color: '#94a3b8', marginHorizontal: 4 },
-    activeBreadcrumb: { color: '#2563eb', fontWeight: 'bold' },
-    editQuestionsBtn: { backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#2563eb' },
-    editQuestionsBtnText: { fontSize: 11, fontWeight: 'bold', color: '#2563eb' },
-    groupContainer: { marginBottom: 20 },
-    itemHeader: { backgroundColor: '#f8fafc', paddingVertical: 8, paddingHorizontal: 12, borderLeftWidth: 4, borderLeftColor: '#334155', marginBottom: 10, borderRadius: 4 },
-    itemHeaderText: { fontSize: 14, fontWeight: 'bold', color: '#334155', textTransform: 'uppercase' },
+    bottomButtons: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        gap: SPACING.sm
+    },
+    checkpointBtn: {
+        backgroundColor: COLORS.warning,
+        paddingVertical: 14,
+        borderRadius: RADIUS.md,
+        alignItems: 'center',
+        elevation: 1
+    },
+    checkpointBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+    submitBtn: {
+        backgroundColor: COLORS.primary,
+        paddingVertical: 16,
+        borderRadius: RADIUS.lg,
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8
+    },
+    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
     emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 100 },
-    emptyText: { marginTop: 15, color: '#64748b', fontSize: 16, fontWeight: '500' }
+    emptyText: { marginTop: SPACING.lg, color: COLORS.textSecondary, fontSize: 16, fontWeight: '500' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 
 export default QuestionsScreen;

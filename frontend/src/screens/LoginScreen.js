@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useStore } from '../store/StoreContext';
 import { login } from '../api/auth';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const LoginScreen = () => {
     const { setUser } = useStore();
@@ -46,6 +47,7 @@ const LoginScreen = () => {
                     <TextInput
                         style={styles.input}
                         placeholder="admin@inspection.com"
+                        placeholderTextColor={COLORS.placeholder}
                         value={email}
                         onChangeText={setEmail}
                         autoCapitalize="none"
@@ -58,6 +60,7 @@ const LoginScreen = () => {
                     <TextInput
                         style={styles.input}
                         placeholder="••••••••"
+                        placeholderTextColor={COLORS.placeholder}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -85,20 +88,20 @@ const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', padding: 20 },
-    card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
-    header: { alignItems: 'center', marginBottom: 30 },
-    logoText: { fontSize: 28, fontWeight: 'bold', color: '#1e293b' },
-    subtitle: { fontSize: 14, color: '#64748b', marginTop: 4 },
-    label: { fontSize: 14, fontWeight: '600', color: '#475569', marginBottom: 8 },
+    container: { flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', padding: 20 },
+    card: { backgroundColor: COLORS.surface, borderRadius: 20, padding: 32, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+    header: { alignItems: 'center', marginBottom: 40 },
+    logoText: { fontSize: 32, fontWeight: 'bold', color: COLORS.primary },
+    subtitle: { fontSize: 14, color: COLORS.textSecondary, marginTop: 6 },
+    label: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 8, marginLeft: 2 },
     inputContainer: { marginBottom: 20 },
-    input: { backgroundColor: '#f1f5f9', borderRadius: 8, padding: 12, fontSize: 16, color: '#1e293b', borderWidth: 1, borderColor: '#e2e8f0' },
-    button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 10 },
-    buttonDisabled: { backgroundColor: '#94a3b8' },
+    input: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 15, fontSize: 16, color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+    button: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 18, alignItems: 'center', marginTop: 10, elevation: 2 },
+    buttonDisabled: { backgroundColor: COLORS.disabled },
     buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    errorText: { color: '#ef4444', backgroundColor: '#fef2f2', padding: 10, borderRadius: 8, marginBottom: 20, textAlign: 'center', fontSize: 13 },
-    footer: { marginTop: 30, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 20 },
-    footerText: { color: '#94a3b8', fontSize: 12, fontWeight: '500' }
+    errorText: { color: COLORS.danger, backgroundColor: '#FEF2F2', padding: 12, borderRadius: 10, marginBottom: 24, textAlign: 'center', fontSize: 14, borderWidth: 1, borderColor: '#FECDD3' },
+    footer: { marginTop: 40, alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 24 },
+    footerText: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '500' }
 });
 
 export default LoginScreen;

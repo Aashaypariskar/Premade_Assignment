@@ -4,6 +4,8 @@ import api, { getActivities, getCommissionaryProgress, getSubcategoryMetadata } 
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 /**
  * Activity Selection Screen
@@ -133,231 +135,230 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
-                </TouchableOpacity>
-                <View style={styles.pills}>
-                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coach_number}</Text></View>
-                    <View style={[styles.pill, styles.activePill]}>
-                        <Text style={[styles.pillText, { color: '#fff' }]}>
+            <AppHeader
+                title="Select Activity"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.content}>
+                <View style={styles.badgeRow}>
+                    <View style={styles.badge}><Text style={styles.badgeText}>COACH: {params.coach_number}</Text></View>
+                    <View style={[styles.badge, styles.activeBadge]}>
+                        <Text style={[styles.badgeText, { color: '#fff' }]}>
                             {isPitLine ? 'Pit Line' : (params.category_name)}
                         </Text>
                     </View>
                 </View>
-                <View style={{ width: 26 }} />
-            </View>
 
-            <Text style={styles.title}>Select Activity Type</Text>
+                <Text style={styles.title}>Select Activity Type</Text>
 
-            {supportsActivityType === false ? (
-                <View style={styles.singleModeContainer}>
-                    <TouchableOpacity
-                        style={[styles.tab, styles.tabMajor, { width: '100%', height: 200 }]}
-                        onPress={() => handleSelect(activities.length ? activities[0] : { id: null, type: null })}
-                    >
-                        <Text style={styles.tabIcon}>📋</Text>
-                        <Text style={[styles.tabText, styles.tabMajorText]}>Start Inspection</Text>
-                        <Text style={[styles.subText, styles.tabMajorText]}>Complete check for this area</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <View style={styles.tabContainer}>
-                    {activities.map(act => (
-                        <View key={act.id} style={styles.activityWrapper}>
-                            <TouchableOpacity
-                                style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
-                                onPress={() => handleSelect(act)}
-                            >
-                                <View style={styles.titleRow}>
-                                    <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
-                                    {(() => {
-                                        const prog = act.type === 'Major' ? majorProgress : minorProgress;
-                                        const isComplete = prog.total > 0 && prog.answered === prog.total;
-                                        const isInProgress = !isComplete && prog.answered > 0;
-
-                                        if (isComplete) {
-                                            return (
-                                                <View style={styles.statusBadge}>
-                                                    <Text style={styles.badgeText}>Completed</Text>
-                                                </View>
-                                            );
-                                        } else if (isInProgress) {
-                                            return (
-                                                <View style={[styles.statusBadge, { backgroundColor: '#f59e0b' }]}>
-                                                    <Text style={styles.badgeText}>In Progress</Text>
-                                                </View>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
-                                </View>
-                                <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
-                                <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
-                            </TouchableOpacity>
-
-                            {user?.role === 'Admin' && (
-                                <TouchableOpacity
-                                    style={styles.adminEditBtn}
-                                    onPress={() => navigation.navigate('QuestionManagement', {
-                                        activityId: act.id,
-                                        activityType: act.type,
-                                        categoryName: params.category_name || params.categoryName,
-                                        subcategoryId: params.subcategory_id || params.subcategoryId
-                                    })}
-                                >
-                                    <Ionicons name="settings-outline" size={14} color="#2563eb" />
-                                    <Text style={styles.adminEditBtnText}>Edit {act.type} Questions</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    ))}
-                </View>
-            )}
-
-            {pendingDefectsCount > 0 && (
-                <TouchableOpacity
-                    style={styles.defectsBtnFull}
-                    onPress={() => navigation.navigate('Defects', {
-                        session_id: sessionId,
-                        module_type: isPitLine ? 'PITLINE' : ((params.category_name || params.categoryName) === 'Coach Commissionary' ? 'commissionary' : ((params.category_name || params.categoryName) === 'Sick Line Examination' ? 'sickline' : 'amenity')),
-                        coach_number: params.coach_number || params.coachNumber,
-                        train_id: params.train_id,
-                        coach_id: params.coach_id
-                    })}
-                >
-                    <View style={styles.defectsBtnContent}>
-                        <View style={styles.defectsBtnLeading}>
-                            <Ionicons name="build" size={24} color="#ef4444" />
-                            <Text style={styles.defectsBtnTitle}>View Pending Defects</Text>
-                        </View>
-                        <View style={styles.defectsBadge}>
-                            <Text style={styles.defectsBadgeText}>{pendingDefectsCount}</Text>
-                        </View>
+                {supportsActivityType === false ? (
+                    <View style={styles.singleModeContainer}>
+                        <TouchableOpacity
+                            style={[styles.tab, styles.tabMajor, { width: '100%', height: 200 }]}
+                            onPress={() => handleSelect(activities.length ? activities[0] : { id: null, type: null })}
+                        >
+                            <Text style={styles.tabIcon}>📋</Text>
+                            <Text style={[styles.tabText, styles.tabMajorText]}>Start Inspection</Text>
+                            <Text style={[styles.subText, styles.tabMajorText]}>Complete check for this area</Text>
+                        </TouchableOpacity>
                     </View>
-                    <Text style={styles.defectsBtnSub}>Tap to resolve {pendingDefectsCount} reported issues</Text>
-                </TouchableOpacity>
-            )}
+                ) : (
+                    <View style={styles.tabContainer}>
+                        {activities.map(act => (
+                            <View key={act.id} style={styles.activityWrapper}>
+                                <TouchableOpacity
+                                    style={[styles.tab, act.type === 'Major' ? styles.tabMajor : styles.tabMinor]}
+                                    onPress={() => handleSelect(act)}
+                                >
+                                    <View style={styles.titleRow}>
+                                        <Text style={styles.tabIcon}>{act.type === 'Minor' ? '📝' : '⚡'}</Text>
+                                        {(() => {
+                                            const prog = act.type === 'Major' ? majorProgress : minorProgress;
+                                            const isComplete = prog.total > 0 && prog.answered === prog.total;
+                                            const isInProgress = !isComplete && prog.answered > 0;
+
+                                            if (isComplete) {
+                                                return (
+                                                    <View style={styles.statusBadge}>
+                                                        <Text style={styles.badgeText}>Completed</Text>
+                                                    </View>
+                                                );
+                                            } else if (isInProgress) {
+                                                return (
+                                                    <View style={[styles.statusBadge, { backgroundColor: '#f59e0b' }]}>
+                                                        <Text style={styles.badgeText}>In Progress</Text>
+                                                    </View>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </View>
+                                    <Text style={[styles.tabText, act.type === 'Major' && styles.tabMajorText]}>{act.type}</Text>
+                                    <Text style={[styles.subText, act.type === 'Major' && styles.tabMajorText]}>{act.type === 'Minor' ? 'Regular Check' : 'Deep Audit'}</Text>
+                                </TouchableOpacity>
+
+                                {user?.role === 'Admin' && (
+                                    <TouchableOpacity
+                                        style={styles.adminEditBtn}
+                                        onPress={() => navigation.navigate('QuestionManagement', {
+                                            activityId: act.id,
+                                            activityType: act.type,
+                                            categoryName: params.category_name || params.categoryName,
+                                            subcategoryId: params.subcategory_id || params.subcategoryId
+                                        })}
+                                    >
+                                        <Ionicons name="settings-outline" size={14} color="#2563eb" />
+                                        <Text style={styles.adminEditBtnText}>Edit {act.type} Questions</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {pendingDefectsCount > 0 && (
+                    <TouchableOpacity
+                        style={styles.defectsBtnFull}
+                        onPress={() => navigation.navigate('Defects', {
+                            session_id: sessionId,
+                            module_type: isPitLine ? 'PITLINE' : ((params.category_name || params.categoryName) === 'Coach Commissionary' ? 'commissionary' : ((params.category_name || params.categoryName) === 'Sick Line Examination' ? 'sickline' : 'amenity')),
+                            coach_number: params.coach_number || params.coachNumber,
+                            train_id: params.train_id,
+                            coach_id: params.coach_id
+                        })}
+                    >
+                        <View style={styles.defectsBtnContent}>
+                            <View style={styles.defectsBtnLeading}>
+                                <Ionicons name="build" size={24} color="#ef4444" />
+                                <Text style={styles.defectsBtnTitle}>View Pending Defects</Text>
+                            </View>
+                            <View style={styles.defectsBadge}>
+                                <Text style={styles.defectsBadgeText}>{pendingDefectsCount}</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.defectsBtnSub}>Tap to resolve {pendingDefectsCount} reported issues</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
-    pills: { flexDirection: 'row', marginBottom: 20 },
-    pill: { backgroundColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginRight: 8 },
-    activePill: { backgroundColor: '#2563eb' },
-    pillText: { fontSize: 10, fontWeight: 'bold', color: '#64748b' },
-    title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b', marginBottom: 40 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    content: { flex: 1, padding: SPACING.xl },
+    badgeRow: { flexDirection: 'row', marginBottom: SPACING.lg, gap: SPACING.sm },
+    badge: { backgroundColor: COLORS.disabled, paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.md },
+    activeBadge: { backgroundColor: COLORS.secondary },
+    badgeText: { fontSize: 12, fontWeight: 'bold', color: COLORS.textSecondary },
+    title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: SPACING.xxl },
     tabContainer: { flexDirection: 'row', justifyContent: 'space-between' },
     activityWrapper: { width: '48%', alignItems: 'center' },
     tab: {
         width: '100%',
         height: 160,
-        borderRadius: 24,
-        padding: 20,
+        borderRadius: RADIUS.lg,
+        padding: SPACING.lg,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 8,
+        elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10
+        shadowOpacity: 0.1,
+        shadowRadius: 8
+    },
+    tabMinor: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
+    tabMajor: { backgroundColor: COLORS.primary },
+    tabIcon: { fontSize: 32, marginBottom: SPACING.sm },
+    tabText: { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary },
+    tabMajorText: { color: COLORS.surface },
+    subText: { fontSize: 12, color: COLORS.textSecondary, marginTop: SPACING.xs },
+    titleRow: {
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.sm
+    },
+    statusBadge: {
+        backgroundColor: COLORS.success,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: RADIUS.sm
+    },
+    statusBadgeText: { // Fixed: added this style
+        color: COLORS.surface,
+        fontSize: 10,
+        fontWeight: 'bold'
     },
     adminEditBtn: {
-        marginTop: 15,
+        marginTop: SPACING.md,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#eff6ff',
         paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
+        paddingHorizontal: SPACING.md,
+        borderRadius: RADIUS.sm,
         borderWidth: 1,
         borderColor: '#bfdbfe'
     },
     adminEditBtnText: {
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#2563eb',
+        color: COLORS.secondary,
         marginLeft: 6
     },
-    tabMinor: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#e2e8f0' },
-    tabMajor: { backgroundColor: '#1e293b' },
     defectsBtnFull: {
-        marginTop: 30,
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 20,
+        marginTop: SPACING.xxl,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.lg,
+        padding: SPACING.lg,
         borderWidth: 2,
-        borderColor: '#ef4444',
+        borderColor: COLORS.danger,
         borderStyle: 'dashed',
-        elevation: 4,
-        shadowColor: '#ef4444',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4
+        elevation: 2
     },
     defectsBtnContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8
+        marginBottom: SPACING.sm
     },
     defectsBtnLeading: {
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
+        gap: SPACING.sm
     },
     defectsBtnTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#ef4444',
-        marginLeft: 10
+        color: COLORS.danger
     },
     defectsBadge: {
-        backgroundColor: '#ef4444',
+        backgroundColor: COLORS.danger,
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 12
+        borderRadius: RADIUS.md
     },
     defectsBadgeText: {
-        color: '#fff',
+        color: COLORS.surface,
         fontSize: 12,
         fontWeight: 'bold'
     },
     defectsBtnSub: {
         fontSize: 13,
-        color: '#7f1d1d',
-        opacity: 0.7
-    },
-    tabIcon: { fontSize: 32, marginBottom: 12 },
-    tabText: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-    tabMajorText: { color: '#fff' }, // added logic for colors
-    subText: { fontSize: 12, color: '#64748b', marginTop: 5 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-    titleRow: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10
-    },
-    statusBadge: {
-        backgroundColor: '#10b981',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12
-    },
-    badgeText: {
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: 'bold'
+        color: COLORS.textSecondary
     },
     singleModeContainer: {
         width: '100%',
-        paddingHorizontal: 10
-    }
+        paddingHorizontal: 0
+    },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 
-// Fix for text colors in dynamic map
 export default ActivitySelectionScreen;

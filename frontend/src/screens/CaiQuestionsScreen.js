@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const CaiQuestionsScreen = ({ route, navigation }) => {
     const { session_id, coach_id, coach_number, category_name } = route.params;
@@ -174,14 +176,20 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
         );
     };
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#8b5cf6" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
-                </TouchableOpacity>
+            <AppHeader
+                title="CAI Checklist"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.headerInfo}>
                 <View style={styles.breadcrumb}>
                     <Text style={styles.breadcrumbText}>Coach: {coach_number} → </Text>
                     <Text style={[styles.breadcrumbText, { fontWeight: 'bold' }]}>{category_name || 'CAI Modifications'}</Text>
@@ -196,7 +204,7 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
             <QuestionProgressHeader
                 totalQuestions={progress.totalQuestions}
                 answeredCount={progress.answeredCount}
-                color="#8b5cf6"
+                color={COLORS.primary}
             />
 
             {pendingDefects > 0 && (
@@ -239,22 +247,22 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    breadcrumb: { flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 15 },
-    breadcrumbText: { fontSize: 13, color: '#64748b' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    headerInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    breadcrumb: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    breadcrumbText: { fontSize: 13, color: COLORS.textSecondary },
     scroll: { padding: 15, paddingBottom: 60 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    defectsContainer: { paddingHorizontal: 15, paddingVertical: 10, backgroundColor: '#fff' },
-    defectsBtn: { flexDirection: 'row', backgroundColor: '#ef4444', padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    defectsContainer: { paddingHorizontal: 15, paddingVertical: 10, backgroundColor: COLORS.surface },
+    defectsBtn: { flexDirection: 'row', backgroundColor: COLORS.error, padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     defectsBtnText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 },
-    submitBtn: { backgroundColor: '#8b5cf6', padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 30, elevation: 4 },
-    submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    disabledBtn: { backgroundColor: '#e2e8f0' },
+    submitBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: RADIUS.lg, alignItems: 'center', marginTop: 30, elevation: 4 },
+    submitBtnText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 16 },
+    disabledBtn: { backgroundColor: COLORS.border },
     saveIndicator: { marginLeft: 10 },
-    savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 12 },
-    savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 12 },
-    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 }
+    savingText: { color: COLORS.textSecondary, fontStyle: 'italic', fontSize: 12 },
+    savedText: { color: COLORS.success, fontWeight: 'bold', fontSize: 12 },
+    errorText: { color: COLORS.error, fontWeight: 'bold', fontSize: 12 }
 });
 
 export default CaiQuestionsScreen;

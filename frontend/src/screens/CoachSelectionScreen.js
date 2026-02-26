@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { getCoaches } from '../api/api';
 import { useStore } from '../store/StoreContext';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 /**
  * Modern Coach Selection Screen
@@ -62,10 +64,21 @@ const CoachSelectionScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.topBar}>
-                {trainName && <Text style={styles.trainName}>{trainName}</Text>}
-                <Text style={styles.title}>{categoryName || 'Select Coach Plate'}</Text>
-            </View>
+            <AppHeader
+                title={categoryName || 'Select Coach'}
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            {trainName && (
+                <View style={styles.trainInfo}>
+                    <Text style={styles.trainLabel}>TRAIN</Text>
+                    <Text style={styles.trainValue}>{trainName}</Text>
+                </View>
+            )}
 
             <FlatList
                 data={coaches}
@@ -79,29 +92,29 @@ const CoachSelectionScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    topBar: { padding: 25, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    trainName: { color: '#64748b', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
-    title: { fontSize: 22, fontWeight: 'bold', color: '#1e293b', marginTop: 4 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    trainInfo: { paddingHorizontal: 20, paddingTop: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    trainLabel: { fontSize: 10, fontWeight: 'bold', color: COLORS.textSecondary, backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    trainValue: { fontSize: 14, fontWeight: 'bold', color: COLORS.textPrimary },
     list: { padding: 12 },
     gridItem: { flex: 0.5, padding: 8 },
     coachCard: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
+        backgroundColor: COLORS.surface,
+        borderRadius: 16,
         padding: 20,
         alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#1e293b',
+        elevation: 3,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowRadius: 4,
         borderWidth: 1,
-        borderColor: '#f1f5f9'
+        borderColor: COLORS.border
     },
-    coachIcon: { fontSize: 30, marginBottom: 10 },
-    coachNum: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-    type: { fontSize: 11, color: '#94a3b8', marginTop: 4 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    coachIcon: { fontSize: 32, marginBottom: 8 },
+    coachNum: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    type: { fontSize: 11, color: COLORS.textSecondary, marginTop: 4 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }
 });
 
 export default CoachSelectionScreen;

@@ -13,6 +13,8 @@ import QuestionCard from '../components/QuestionCard';
 import { useStore } from '../store/StoreContext';
 import { normalizeQuestionResponse } from '../utils/normalization';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const {
@@ -300,14 +302,20 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     const answeredCount = currentQs.filter(q => answers[q.id]?.status).length;
     const totalQs = currentQs.length;
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-                    <Ionicons name="home-outline" size={26} color="#1e293b" />
-                </TouchableOpacity>
+            <AppHeader
+                title="Inspection Form"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <View style={styles.headerInfo}>
                 <Text style={styles.headerSub}>{subcategoryName} - {activeTab}</Text>
 
                 <View style={styles.saveIndicator}>
@@ -470,75 +478,33 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 40, paddingHorizontal: 20, marginBottom: 10 },
-    headerSub: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
-    tabBar: { flexDirection: 'row', backgroundColor: '#fff', margin: 20, borderRadius: 12, padding: 4, elevation: 2 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    headerInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    headerSub: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
+    tabBar: { flexDirection: 'row', backgroundColor: COLORS.surface, margin: 16, borderRadius: 12, padding: 4, elevation: 2, borderWidth: 1, borderColor: COLORS.border },
     tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 10 },
-    activeTab: { backgroundColor: '#2563eb' },
-    tabText: { fontSize: 14, fontWeight: 'bold', color: '#64748b' },
+    activeTab: { backgroundColor: COLORS.primary },
+    tabText: { fontSize: 14, fontWeight: 'bold', color: COLORS.textSecondary },
     activeTabText: { color: '#fff' },
-    scroll: { padding: 20, paddingBottom: 60 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    scroll: { padding: 16, paddingBottom: 60 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
-    emptyText: { marginTop: 10, color: '#64748b', fontSize: 14, textAlign: 'center' },
-
-    saveBtn: {
-        backgroundColor: '#2563eb',
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: 20,
-        elevation: 4
-    },
+    emptyText: { marginTop: 10, color: COLORS.textSecondary, fontSize: 14, textAlign: 'center' },
+    saveBtn: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20, elevation: 4 },
     saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
     bottomButtons: { marginTop: 20, gap: 10 },
-    checkpointBtn: { backgroundColor: '#f59e0b', padding: 16, borderRadius: 12, alignItems: 'center', elevation: 2 },
+    checkpointBtn: { backgroundColor: '#F59E0B', padding: 16, borderRadius: 12, alignItems: 'center', elevation: 2 },
     checkpointBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-    disabledBtn: { backgroundColor: '#f1f5f9', opacity: 0.6 },
+    disabledBtn: { backgroundColor: COLORS.border, opacity: 0.6 },
     saveIndicator: { marginLeft: 10 },
-    savingText: { color: '#64748b', fontStyle: 'italic', fontSize: 10 },
-    savedText: { color: '#10b981', fontWeight: 'bold', fontSize: 10 },
-    errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 10 },
-    guidedBox: {
-        marginTop: 10,
-        marginBottom: 20,
-        padding: 15,
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        borderLeftWidth: 5,
-        borderLeftColor: '#2563eb',
-        elevation: 2
-    },
-    guideBtn: {
-        backgroundColor: '#2563eb',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        borderRadius: 12,
-        gap: 10
-    },
+    savingText: { color: COLORS.textSecondary, fontStyle: 'italic', fontSize: 11 },
+    savedText: { color: COLORS.success, fontWeight: 'bold', fontSize: 11 },
+    errorText: { color: COLORS.error, fontWeight: 'bold', fontSize: 11 },
+    guidedBox: { marginTop: 10, marginBottom: 20, padding: 16, backgroundColor: COLORS.surface, borderRadius: 16, borderLeftWidth: 5, borderLeftColor: COLORS.primary, elevation: 2, borderWidth: 1, borderColor: COLORS.border },
+    guideBtn: { backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, gap: 10 },
     guideBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    defectsHeaderBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#fff',
-        marginHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#ef4444',
-        marginBottom: 10,
-        gap: 8,
-        elevation: 2
-    },
-    defectsBtnText: {
-        color: '#ef4444',
-        fontWeight: 'bold',
-        fontSize: 14
-    }
+    defectsHeaderBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, marginHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.error, marginBottom: 10, gap: 8, elevation: 2 },
+    defectsBtnText: { color: COLORS.error, fontWeight: 'bold', fontSize: 14 }
 });
 
 export default CommissionaryQuestionsScreen;

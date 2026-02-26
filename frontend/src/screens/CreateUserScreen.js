@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAdminMetadata, createAdminUser, updateAdminUser, updateAdminUserCategories } from '../api/api';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const CreateUserScreen = ({ route, navigation }) => {
     const editUser = route.params?.editUser;
@@ -91,11 +93,20 @@ const CreateUserScreen = ({ route, navigation }) => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scroll}>
-                <Text style={styles.title}>{editUser ? 'Edit User' : 'Create System User'}</Text>
+        <View style={styles.container}>
+            <AppHeader
+                title={editUser ? 'Edit User' : 'Create User'}
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+            />
+
+            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+                <Text style={styles.title}>{editUser ? 'Edit User Profile' : 'Register New User'}</Text>
                 <Text style={styles.subtitle}>
-                    {editUser ? `Modifying profile for ${editUser.name}` : 'Provision a new account with specific role access'}
+                    {editUser ? `Modifying access for ${editUser.name}` : 'Provision a new account with role-based access'}
                 </Text>
 
                 <View style={styles.formGroup}>
@@ -105,6 +116,7 @@ const CreateUserScreen = ({ route, navigation }) => {
                         value={name}
                         onChangeText={setName}
                         placeholder="e.g. John Doe"
+                        placeholderTextColor={COLORS.placeholder}
                     />
                 </View>
 
@@ -117,6 +129,7 @@ const CreateUserScreen = ({ route, navigation }) => {
                                 value={email}
                                 onChangeText={setEmail}
                                 placeholder="user@inspection.com"
+                                placeholderTextColor={COLORS.placeholder}
                                 autoCapitalize="none"
                                 keyboardType="email-address"
                             />
@@ -129,6 +142,7 @@ const CreateUserScreen = ({ route, navigation }) => {
                                 value={password}
                                 onChangeText={setPassword}
                                 placeholder="••••••••"
+                                placeholderTextColor={COLORS.placeholder}
                                 secureTextEntry
                             />
                         </View>
@@ -184,31 +198,31 @@ const CreateUserScreen = ({ route, navigation }) => {
                     )}
                 </TouchableOpacity>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    scroll: { padding: 24, paddingBottom: 100 },
-    title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b' },
-    subtitle: { fontSize: 14, color: '#64748b', marginTop: 4, marginBottom: 30 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    scroll: { padding: 24, paddingBottom: 60 },
+    title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+    subtitle: { fontSize: 13, color: COLORS.textSecondary, marginTop: 4, marginBottom: 30 },
     formGroup: { marginBottom: 24 },
-    label: { fontSize: 13, fontWeight: 'bold', color: '#475569', marginBottom: 8, textTransform: 'uppercase' },
-    input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 14, fontSize: 16, color: '#1e293b' },
-    roleGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-    roleCard: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', marginRight: 10, marginBottom: 10 },
-    roleCardActive: { backgroundColor: '#1e293b', borderColor: '#1e293b' },
-    roleName: { fontSize: 14, fontWeight: '600', color: '#64748b' },
+    label: { fontSize: 11, fontWeight: 'bold', color: COLORS.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+    input: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 14, fontSize: 16, color: COLORS.textPrimary },
+    roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    roleCard: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+    roleCardActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+    roleName: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
     roleTextActive: { color: '#fff' },
-    catGrid: { marginTop: 5 },
-    catCard: { padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 12, backgroundColor: '#f8fafc' },
-    catCardActive: { backgroundColor: '#eff6ff', borderColor: '#2563eb' },
-    catText: { fontSize: 15, color: '#334155', fontWeight: '500' },
-    catTextActive: { color: '#2563eb', fontWeight: 'bold' },
-    submitBtn: { backgroundColor: '#2563eb', padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 20 },
+    catGrid: { gap: 10 },
+    catCard: { padding: 16, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+    catCardActive: { backgroundColor: '#F0F7FF', borderColor: COLORS.primary },
+    catText: { fontSize: 15, color: COLORS.textPrimary, fontWeight: '500' },
+    catTextActive: { color: COLORS.primary, fontWeight: 'bold' },
+    submitBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 24, elevation: 2 },
     submitText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }
 });
 
 export default CreateUserScreen;

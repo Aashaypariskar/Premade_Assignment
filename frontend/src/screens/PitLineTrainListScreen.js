@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, A
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../api/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AppHeader from '../components/AppHeader';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const PitLineTrainListScreen = () => {
     const navigation = useNavigation();
@@ -77,13 +79,20 @@ const PitLineTrainListScreen = () => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Pit Line Trains</Text>
-                <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
-                    <MaterialCommunityIcons name="plus" size={24} color="#FFF" />
-                    <Text style={styles.addText}>Add Train</Text>
-                </TouchableOpacity>
-            </View>
+            <AppHeader
+                title="Pit Line Trains"
+                onBack={() => navigation.goBack()}
+                onHome={() => navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                })}
+                rightComponent={
+                    <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
+                        <MaterialCommunityIcons name="plus" size={20} color={COLORS.surface} />
+                        <Text style={styles.addText}>Add</Text>
+                    </TouchableOpacity>
+                }
+            />
 
             {loading ? <ActivityIndicator size="large" color="#1E3A8A" /> : (
                 <FlatList
@@ -102,6 +111,7 @@ const PitLineTrainListScreen = () => {
                         <TextInput
                             style={styles.input}
                             placeholder="Enter Train Number (e.g. 12137)"
+                            placeholderTextColor={COLORS.placeholder}
                             value={trainNumber}
                             onChangeText={setTrainNumber}
                             autoFocus
@@ -122,29 +132,60 @@ const PitLineTrainListScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F3F4F6' },
-    header: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
-    addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E3A8A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-    addText: { color: '#FFF', marginLeft: 4, fontWeight: '600' },
-    list: { padding: 16 },
-    card: { backgroundColor: '#FFF', padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2 },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    trainNum: { fontSize: 18, fontWeight: 'bold', marginLeft: 12, color: '#1E3A8A' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    addBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.primary,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.xs,
+        borderRadius: RADIUS.md
+    },
+    addText: { color: COLORS.surface, marginLeft: 4, fontWeight: 'bold', fontSize: 13 },
+    list: { padding: SPACING.lg },
+    card: {
+        backgroundColor: COLORS.surface,
+        padding: SPACING.lg,
+        borderRadius: RADIUS.lg,
+        marginBottom: SPACING.md,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: COLORS.border
+    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md },
+    trainNum: { fontSize: 18, fontWeight: 'bold', marginLeft: SPACING.sm, color: COLORS.primary },
     btnRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    openBtn: { backgroundColor: '#E0F2FE', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 6 },
-    btnText: { color: '#0369A1', fontWeight: 'bold' },
+    openBtn: {
+        backgroundColor: '#E0F2FE',
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: RADIUS.sm
+    },
+    btnText: { color: COLORS.secondary, fontWeight: 'bold' },
     delBtn: { padding: 8 },
     modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { width: '85%', backgroundColor: '#FFF', borderRadius: 12, padding: 24 },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
-    input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 20 },
-    modalBtns: { flexDirection: 'row', justifyContent: 'flex-end' },
+    modalContent: { width: '85%', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.xl },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: SPACING.lg, color: COLORS.textPrimary },
+    input: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: RADIUS.md,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: SPACING.xl,
+        color: COLORS.textPrimary
+    },
+    modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: SPACING.md },
     cancelBtn: { paddingHorizontal: 16, paddingVertical: 8 },
-    cancelText: { color: '#6B7280', fontWeight: '600' },
-    saveBtn: { backgroundColor: '#1E3A8A', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 6, marginLeft: 12 },
-    saveText: { color: '#FFF', fontWeight: 'bold' },
-    empty: { textAlign: 'center', marginTop: 40, color: '#6B7280' }
+    cancelText: { color: COLORS.textSecondary, fontWeight: '600' },
+    saveBtn: {
+        backgroundColor: COLORS.primary,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: RADIUS.sm
+    },
+    saveText: { color: COLORS.surface, fontWeight: 'bold' },
+    empty: { textAlign: 'center', marginTop: 40, color: COLORS.placeholder }
 });
 
 export default PitLineTrainListScreen;
