@@ -22,12 +22,13 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
 
     const loadSubcategories = async () => {
         try {
-            const catName = params.categoryName === 'Coach Commissionary' ? 'Amenity' : params.categoryName;
-            const data = await getAmenitySubcategories(catName, params.coachId);
+            const category_name = params.category_name || params.categoryName;
+            const catForApi = category_name === 'Coach Commissionary' ? 'Amenity' : category_name;
+            const data = await getAmenitySubcategories(catForApi, params.coach_id);
             setSubcategories(data);
 
-            if (params.categoryName === 'Coach Commissionary') {
-                const prog = await getCommissionaryProgress(params.coachNumber);
+            if (category_name === 'Coach Commissionary') {
+                const prog = await getCommissionaryProgress(params.coach_number || params.coachNumber);
                 setProgress(prog);
             }
         } catch (err) {
@@ -50,7 +51,7 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                 onPress: async () => {
                     try {
                         setSubmitting(true);
-                        await completeCommissionarySession(params.coachNumber);
+                        await completeCommissionarySession(params.coach_number || params.coachNumber);
                         Alert.alert('Success', 'Coach Commissioning Inspection COMPLETED!', [
                             { text: 'OK', onPress: () => navigation.navigate('Dashboard') }
                         ]);
@@ -71,18 +72,17 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
             subcategory_name: sub.name
         }));
 
+        const navParams = {
+            ...params,
+            category_name: params.category_name || params.categoryName,
+            subcategory_id: sub.id,
+            subcategory_name: sub.name
+        };
+
         if (sub.requires_compartment) {
-            navigation.navigate('CompartmentSelection', {
-                ...params,
-                subcategoryId: sub.id,
-                subcategoryName: sub.name
-            });
+            navigation.navigate('CompartmentSelection', navParams);
         } else {
-            navigation.navigate('ActivitySelection', {
-                ...params,
-                subcategoryId: sub.id,
-                subcategoryName: sub.name
-            });
+            navigation.navigate('ActivitySelection', navParams);
         }
     };
 
@@ -95,10 +95,13 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <View style={styles.pills}>
-                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
+                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coach_number || params.coachNumber}</Text></View>
                     <View style={[styles.pill, styles.activePill]}>
                         <Text style={[styles.pillText, { color: '#fff' }]}>
-                            {params.categoryName === 'Coach Commissionary' ? 'Coach Commissioning' : params.categoryName}
+                            {(() => {
+                                const cat_name = params.category_name || params.categoryName;
+                                return cat_name === 'Coach Commissionary' ? 'Coach Commissioning' : cat_name;
+                            })()}
                         </Text>
                     </View>
                 </View>
@@ -144,7 +147,7 @@ const AmenitySubcategoryScreen = ({ route, navigation }) => {
                 }}
                 contentContainerStyle={styles.list}
                 ListFooterComponent={() => (
-                    params.categoryName === 'Coach Commissionary' && progress ? (
+                    (params.category_name === 'Coach Commissionary' || params.categoryName === 'Coach Commissionary') && progress ? (
                         <View style={styles.footer}>
                             <View style={styles.progressCard}>
                                 <Text style={styles.progressTitle}>Global Progress</Text>

@@ -56,9 +56,11 @@ const SickLineCoachScreen = ({ navigation }) => {
             setLoading(true);
             const session = await getSickLineSession(coach.coach_number);
             navigation.navigate('SickLineQuestions', {
-                sessionId: session.id,
-                coachId: coach.id,
-                coachName: coach.coach_number,
+                session_id: session.id,
+                coach_id: coach.id,
+                coach_number: coach.coach_number,
+                category_name: 'Sick Line Examination',
+                module_type: 'SICKLINE',
                 status: session.status
             });
         } catch (err) {

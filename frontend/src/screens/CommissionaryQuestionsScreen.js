@@ -15,7 +15,19 @@ import { normalizeQuestionResponse } from '../utils/normalization';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
 
 const CommissionaryQuestionsScreen = ({ route, navigation }) => {
-    const { sessionId, coachNumber, compartmentId, subcategoryId, subcategoryName, status, subcategories, currentIndex } = route.params;
+    const {
+        session_id, coach_id, coach_number, compartment_id, subcategory_id, subcategory_name,
+        status, subcategories, currentIndex, category_name
+    } = route.params;
+
+    // Transition fallbacks
+    const sessionId = session_id || route.params.sessionId;
+    const coachNumber = coach_number || route.params.coachNumber;
+    const coachId = coach_id || route.params.coachId;
+    const compartmentId = compartment_id || route.params.compartmentId;
+    const subcategoryId = subcategory_id || route.params.subcategoryId;
+    const subcategoryName = subcategory_name || route.params.subcategoryName;
+    const categoryName = category_name || route.params.categoryName || 'Coach Commissionary';
     const { user } = useStore();
     const [majorQs, setMajorQs] = useState([]);
     const [minorQs, setMinorQs] = useState([]);
@@ -138,6 +150,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 await autosaveInspection({
                     module_type: 'commissionary',
                     session_id: sessionId,
+                    coach_id: coachId,
                     question_id: qId,
                     status: data.status,
                     remarks: data.remarks,
@@ -316,7 +329,8 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                     onPress={() => navigation.navigate('Defects', {
                         session_id: sessionId,
                         module_type: 'commissionary',
-                        coach_number: coachNumber
+                        coach_number: coachNumber,
+                        category_name: categoryName
                     })}
                 >
                     <Ionicons name="warning-outline" size={18} color="#ef4444" />
@@ -435,6 +449,20 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                             </Text>
                         )}
                     </TouchableOpacity>
+
+                    {pendingDefectsCount > 0 && (
+                        <TouchableOpacity
+                            style={[styles.saveBtn, { backgroundColor: '#ef4444' }]}
+                            onPress={() => navigation.navigate('Defects', {
+                                session_id: sessionId,
+                                module_type: 'commissionary',
+                                coach_number: coachNumber,
+                                category_name: categoryName
+                            })}
+                        >
+                            <Text style={styles.saveBtnText}>RESOLVE PENDING DEFECTS ({pendingDefectsCount})</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </ScrollView>
         </View>

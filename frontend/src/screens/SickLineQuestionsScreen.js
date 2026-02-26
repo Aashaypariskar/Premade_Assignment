@@ -16,7 +16,17 @@ import { normalizeQuestionResponse } from '../utils/normalization';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
 
 const SickLineQuestionsScreen = ({ route, navigation }) => {
-    const { sessionId, coachId, coachName, status } = route.params;
+    const {
+        session_id,
+        coach_id,
+        coach_number,
+        category_name,
+        status = 'IN_PROGRESS'
+    } = route?.params || {};
+
+    const sessionId = session_id;
+    const coachId = coach_id;
+    const coachName = coach_number;
     const { user } = useStore();
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -234,9 +244,9 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                     <TouchableOpacity
                         style={styles.editQuestionsBtn}
                         onPress={() => navigation.navigate('QuestionManagement', {
-                            categoryName: 'Sick Line Examination',
-                            activityType: 'NA',
-                            subcategoryId: 'NA'
+                            category_name: 'Sick Line Examination',
+                            activity_type: 'NA',
+                            subcategory_id: 'NA'
                         })}
                     >
                         <Text style={styles.editQuestionsBtnText}>Edit Questions</Text>
@@ -260,9 +270,9 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                 <TouchableOpacity
                     style={styles.defectsHeaderBtn}
                     onPress={() => navigation.navigate('Defects', {
-                        session_id: sessionId,
+                        session_id: session_id,
                         module_type: 'sickline',
-                        coach_number: coachName
+                        coach_number: coach_number
                     })}
                 >
                     <Ionicons name="warning-outline" size={18} color="#ef4444" />

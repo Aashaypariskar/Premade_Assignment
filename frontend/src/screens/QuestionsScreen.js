@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import {
+import api, {
     getQuestions,
     getWspQuestions,
     autosaveInspection,
@@ -32,36 +32,72 @@ const QuestionsScreen = ({ route, navigation }) => {
     const isMounted = useRef(true);
 
     const loadData = useCallback(async () => {
-        const subId = params.subcategoryId || params.subcategory_id;
+        const subId = params.subcategory_id || params.subcategoryId;
+        const categoryName = params.category_name || 'Amenity';
+        const areaName = params.area_name || params.areaName;
+
         try {
             setLoading(true);
-            setQuestions([]); // State Reset
+            setQuestions([]);
 
+            // Centralized Framework Resolution — Strict Phase 3 Logic
             let frameworkToUse = null;
-            const moduleType = (params.module_type === 'PITLINE' || params.categoryName === 'Pit Line Examination') ? 'PITLINE' :
-                (params.categoryName === 'Amenity' ? 'AMENITY' :
-                    (params.categoryName === 'WSP Examination' ? 'WSP' : (params.module_type || params.type || 'GENERIC')));
 
-            if (moduleType === 'PITLINE') {
-                if (params.areaName === 'WSP Maintenance') {
+            if (params.module_type === 'PITLINE') {
+                if (areaName === 'WSP Maintenance' || params.module_type === 'pitline_wsp') {
                     frameworkToUse = 'WSP';
-                } else if (params.areaName === 'Undergear') {
+                } else if (areaName === 'Undergear') {
                     frameworkToUse = 'COMMISSIONARY';
                 } else {
                     frameworkToUse = 'AMENITY';
                 }
-                console.log('[PITLINE FRAMEWORK]', frameworkToUse);
-                console.log('[PITLINE SUBCATEGORY]', subId);
-            } else {
-                frameworkToUse = (params.framework || moduleType);
+            } else if (categoryName === 'Coach Commissioning' || categoryName === 'Coach Commissionary') {
+                frameworkToUse = 'COMMISSIONARY';
+            } else if (categoryName === 'WSP Examination' || params.module_type === 'WSP') {
+                frameworkToUse = 'WSP';
+            } else if (categoryName === 'Amenity') {
+                frameworkToUse = 'AMENITY';
+            } else if (categoryName === 'Sick Line Examination' || params.module_type === 'SICKLINE') {
+                frameworkToUse = 'SICKLINE';
+            } else if (categoryName === 'CAI / Modifications' || params.module_type === 'CAI') {
+                frameworkToUse = 'CAI';
             }
 
-            let rawResponse;
-            if (params.categoryName === 'WSP Examination') {
-                rawResponse = await getWspQuestions(params.scheduleId);
-            } else {
-                rawResponse = await getQuestions(params.activityId, params.scheduleId, subId, frameworkToUse);
+            // Explicit Framework from params (Override)
+            if (params.framework) {
+                frameworkToUse = params.framework;
             }
+
+            // STRICT GUARD: No GENERIC, No Fallback
+            if (!frameworkToUse) {
+                const fatalError = `FAILED TO RESOLVE FRAMEWORK: [MODULE: ${params.module_type}] [CATEGORY: ${categoryName}] [AREA: ${areaName}]`;
+                console.error(fatalError);
+                throw new Error(fatalError);
+            }
+
+            console.log(`[STABILIZATION GUARD]
+[MODULE]: ${params.module_type || 'N/A'}
+[CATEGORY]: ${categoryName || 'N/A'}
+[FRAMEWORK]: ${frameworkToUse}
+[SUBCATEGORY]: ${subId || 'N/A'}
+[ACTIVITY]: ${params.activity_type || 'N/A'}
+[COMPARTMENT]: ${params.compartment_id || params.compartment || 'NA'}`);
+
+            console.log('[API CALL] Fetching checklist...');
+            let rawResponse;
+            if (categoryName === 'WSP Examination' && !params.subcategory_id) {
+                rawResponse = await getWspQuestions(params.schedule_id || params.scheduleId);
+            } else {
+                rawResponse = await getQuestions(
+                    params.activity_id || params.activityId,
+                    params.schedule_id || params.scheduleId,
+                    subId,
+                    frameworkToUse,
+                    params.activity_type || params.activityType
+                );
+            }
+
+            console.log(`[API RESPONSE] Count: ${Array.isArray(rawResponse) ? rawResponse.length : (rawResponse?.groupedQuestions ? 'Grouped' : 'NULL')}`);
 
             if (!isMounted.current) return;
 
@@ -69,16 +105,17 @@ const QuestionsScreen = ({ route, navigation }) => {
             setQuestions(normalized.groups);
 
             // Fetch actual pending defects from server
-            // moduleType is already defined above
-            const defectsRes = await require('../api/api').getDefects({
-                session_id: params.session_id || params.sessionId,
-                train_id: params.train_id || params.trainId,
-                coach_id: params.coach_id || params.coachId,
-                subcategory_id: params.subcategory_id || params.subcategoryId,
-                schedule_id: params.schedule_id || params.scheduleId,
-                compartment_id: params.compartment,
-                mode: params.mode,
-                type: moduleType
+            const defectsRes = await api.get('/inspection/defects', {
+                params: {
+                    session_id: params.session_id,
+                    train_id: params.train_id,
+                    coach_id: params.coach_id,
+                    subcategory_id: params.subcategory_id,
+                    schedule_id: params.schedule_id,
+                    compartment_id: params.compartment_id || params.compartment,
+                    mode: params.mode,
+                    type: params.module_type || params.type || frameworkToUse
+                }
             });
 
             if (defectsRes.success && isMounted.current) {
@@ -145,15 +182,17 @@ const QuestionsScreen = ({ route, navigation }) => {
 
                 await autosaveInspection({
                     module_type: moduleType,
-                    session_id: params.sessionId,
+                    session_id: params.session_id,
+                    train_id: params.train_id,
+                    coach_id: params.coach_id,
                     question_id: qId,
                     status: data.status,
                     remarks: data.remarks,
                     reason_ids: data.reasons,
                     photo_url: data.photo_url || data.image_path,
-                    compartment_id: params.compartment || 'NA',
-                    subcategory_id: params.subcategoryId || 0,
-                    activity_type: params.activityType || 'Major'
+                    compartment_id: params.compartment_id || params.compartment || 'NA',
+                    subcategory_id: params.subcategory_id || 0,
+                    activity_type: params.activity_type || params.activityType || 'Major'
                 });
                 setSaveStatus('saved');
             } catch (err) {
@@ -318,14 +357,14 @@ const QuestionsScreen = ({ route, navigation }) => {
                     <TouchableOpacity
                         style={styles.defectsHeaderBtn}
                         onPress={() => navigation.navigate('Defects', {
-                            session_id: params.sessionId,
-                            module_type: params.categoryName === 'WSP Examination' ? 'wsp' : 'generic',
-                            coach_number: params.coachNumber,
+                            session_id: params.session_id || params.sessionId,
+                            module_type: (params.module_type || params.type || '').toLowerCase().includes('wsp') ? 'wsp' : (params.module_type || params.type || 'generic'),
+                            coach_number: params.coach_number || params.coachNumber,
                             mode: params.mode,
-                            categoryName: params.categoryName,
-                            subcategoryId: params.subcategoryId || params.subcategory_id,
-                            scheduleId: params.scheduleId || params.schedule_id,
-                            compartment: params.compartment
+                            category_name: params.category_name || params.categoryName,
+                            subcategory_id: params.subcategory_id || params.subcategoryId,
+                            schedule_id: params.schedule_id || params.scheduleId,
+                            compartment_id: params.compartment_id || params.compartment
                         })}
                     >
                         <Ionicons name="warning-outline" size={18} color="#ef4444" />

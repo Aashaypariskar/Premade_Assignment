@@ -7,7 +7,9 @@ import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/nativ
 const PitLineTrainDetailScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
-    const { trainId, trainNumber } = route.params;
+    const { train_id, train_number } = route.params;
+    const trainId = train_id; // For local usage convenience
+    const trainNumber = train_number;
 
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -87,7 +89,12 @@ const PitLineTrainDetailScreen = () => {
                             <View key={coach.id.toString()} style={styles.coachWrapper}>
                                 <TouchableOpacity
                                     style={styles.coachCard}
-                                    onPress={() => navigation.navigate('PitLineSelectArea', { trainId, trainNumber, coachId: coach.id, coachNumber: coach.coach_number })}
+                                    onPress={() => navigation.navigate('PitLineSelectArea', {
+                                        train_id: trainId,
+                                        train_number: trainNumber,
+                                        coach_id: coach.id,
+                                        coach_number: coach.coach_number
+                                    })}
                                 >
                                     <Text style={styles.coachNum}>{coach.coach_number}</Text>
                                     <View style={styles.posBadge}>

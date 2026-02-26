@@ -4,7 +4,7 @@ import { getCommissionaryCoaches, createCommissionaryCoach, getCommissionarySess
 import { Ionicons } from '@expo/vector-icons';
 
 const CommissionaryCoachScreen = ({ route, navigation }) => {
-    const category = route?.params?.category || 'Coach Commissionary';
+    const category_name = route?.params?.category_name || route?.params?.category || 'Coach Commissionary';
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -22,10 +22,10 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
         try {
             setLoading(true);
             let data;
-            if (category === 'Coach Commissionary') {
+            if (category_name === 'Coach Commissionary') {
                 data = await getCommissionaryCoaches();
             } else {
-                data = await getCoaches(undefined, category);
+                data = await getCoaches(undefined, category_name);
             }
             setCoaches(data);
         } catch (err) {
@@ -59,33 +59,37 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
     const handleSelectCoach = async (coach) => {
         try {
             setLoading(true);
-            if (category === 'Coach Commissionary') {
+            if (category_name === 'Coach Commissionary') {
                 const session = await getCommissionarySession(coach.coach_number);
                 navigation.navigate('AmenitySubcategory', {
-                    sessionId: session.id,
-                    coachId: coach.id,
-                    coachNumber: coach.coach_number,
-                    categoryName: category,
+                    session_id: session.id,
+                    coach_id: coach.id,
+                    coach_number: coach.coach_number,
+                    category_name: category_name,
+                    module_type: 'COMMISSIONARY',
                     status: session.status
                 });
-            } else if (category === 'WSP Examination') {
+            } else if (category_name === 'WSP Examination') {
                 navigation.navigate('WspScheduleScreen', {
-                    coachId: coach.id,
-                    coachNumber: coach.coach_number,
-                    categoryName: category,
+                    coach_id: coach.id,
+                    coach_number: coach.coach_number,
+                    category_name: category_name,
+                    module_type: 'WSP',
                     mode: 'INDEPENDENT'
                 });
-            } else if (category === 'Amenity') {
+            } else if (category_name === 'Amenity') {
                 navigation.navigate('AmenitySubcategory', {
-                    coachId: coach.id,
-                    coachNumber: coach.coach_number,
-                    categoryName: category
+                    coach_id: coach.id,
+                    coach_number: coach.coach_number,
+                    category_name: category_name,
+                    module_type: 'AMENITY'
                 });
             } else {
                 navigation.navigate('ActivitySelection', {
-                    coachId: coach.id,
-                    coachNumber: coach.coach_number,
-                    categoryName: category
+                    coach_id: coach.id,
+                    coach_number: coach.coach_number,
+                    category_name: category_name,
+                    module_type: 'COMMISSIONARY' // Fallback for specific modules
                 });
             }
         } catch (err) {
@@ -104,7 +108,7 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
-                    {category === 'Coach Commissionary' ? 'Coach Commissioning' : category}
+                    {category_name === 'Coach Commissionary' ? 'Coach Commissioning' : category_name}
                 </Text>
                 <View style={{ width: 26 }} />
             </View>

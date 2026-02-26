@@ -183,7 +183,7 @@ export const completeSickLineSession = (coach_number) => api.post('/sickline/com
 export const getSickLineCombinedReport = (sessionId) =>
     api.get('/sickline/combined-report', { params: { session_id: sessionId } }).then(r => r.data);
 
-export const getQuestions = async (activityId, scheduleId = null, subcategoryId = null, framework = null) => {
+export const getQuestions = async (activityId, scheduleId = null, subcategoryId = null, framework = null, activityType = null) => {
     let url = `/checklist?`;
     if (scheduleId) {
         url += `schedule_id=${scheduleId}`;
@@ -192,6 +192,7 @@ export const getQuestions = async (activityId, scheduleId = null, subcategoryId 
     }
     if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
     if (framework) url += `&framework=${framework}`;
+    if (activityType) url += `&activity_type=${activityType}`;
     const res = await api.get(url);
     return res.data;
 };

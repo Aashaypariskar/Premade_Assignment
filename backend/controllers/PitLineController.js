@@ -23,7 +23,7 @@ exports.createTrain = async (req, res) => {
 
         // Part 1: Default 20 real coaches
         const coachList = [
-            "EOG1", "GEN1", "GEN2", "S1", "S2", "S3", "S4", "S5", "S6",
+            "EOG1", "GEN1", "GEN2", "GEN3", "GEN4", "S1", "S2", "S3", "S4", "S5", "S6",
             "B1", "B2", "B3", "B4", "B5", "B6", "A1", "A2", "H1",
             "PANTRY", "EOG2"
         ];

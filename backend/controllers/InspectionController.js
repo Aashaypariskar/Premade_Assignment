@@ -12,6 +12,7 @@ const {
     CaiQuestion,
     CaiSession,
     CaiAnswer,
+    PitLineSession,
     sequelize
 } = require('../models');
 
@@ -128,17 +129,18 @@ exports.getPendingDefects = async (req, res) => {
         } else if (type === 'PITLINE') {
             Model = InspectionAnswer;
             where.module_type = 'PITLINE';
-            where.train_id = train_id;
-            where.coach_id = coach_id;
-            // Strict PitLine validation
-            if (!train_id || !coach_id) {
-                return res.status(400).json({ error: 'Missing train_id or coach_id for PitLine context' });
-            }
-            // session_id is optional for cumulative coach defects
+            where.resolved = 0; // Strict Ph 7
+
+            if (train_id) where.train_id = train_id;
+            if (coach_id) where.coach_id = coach_id;
             if (session_id) where.session_id = session_id;
-            // DO NOT filter by subcategory_id or compartment_id for PITLINE cumulative defects
+
+            if (!train_id && !coach_id && !session_id) {
+                return res.status(400).json({ error: 'PitLine requires at least session_id or coach_id context' });
+            }
         } else {
             Model = InspectionAnswer;
+            where.resolved = 0; // Strict Ph 7
             if (subcategory_id) where.subcategory_id = subcategory_id;
         }
 
@@ -167,15 +169,47 @@ exports.autosave = async (req, res) => {
             reason_ids,
             photo_url,
             train_id,
-            coach_id
+            coach_id,
+            compartment_id,
+            subcategory_id,
+            activity_type
         } = req.body;
-        const moduleType = (req.body.module_type || '').toUpperCase().trim();
 
+        // Phase 6: Strict validation at top
         if (!module_type || !session_id || !question_id) {
+            console.error('[AUTOSAVE ERROR] Missing required params:', { module_type, session_id, question_id });
             return res.status(400).json({ error: 'Missing module_type, session_id or question_id' });
         }
 
+        const moduleType = (module_type || '').toUpperCase().trim();
         console.log('[AUTOSAVE MODULE]', moduleType);
+
+        // 0. PITLINE Block (PRIORITIZED & ISOLATED)
+        if (moduleType === 'PITLINE') {
+            if (!train_id || !coach_id) {
+                return res.status(400).json({ error: 'train_id and coach_id required for PITLINE' });
+            }
+
+            // Standardize reasons
+            let finalReasons = [];
+            if (reason_ids) {
+                finalReasons = Array.isArray(reason_ids) ? reason_ids : [reason_ids];
+            }
+
+            await InspectionAnswer.upsert({
+                session_id,
+                train_id,
+                coach_id,
+                question_id,
+                status: status || 'OK',
+                remarks: remarks || '',
+                reasons: finalReasons,
+                photo_url: photo_url || null,
+                module_type: 'PITLINE',
+                resolved: 0
+            });
+            return res.json({ success: true, message: 'PitLine autosave successful' });
+        }
 
         // 1. Resolve Models and Session Locking
         let AnswerModel, SessionModel;
@@ -318,58 +352,6 @@ exports.autosave = async (req, res) => {
                     photo_url: photo_url || ansRecord.photo_url
                 });
             }
-        } else if (moduleType === 'PITLINE') {
-            const { train_id, coach_id, session_id, question_id, status, remarks, reason_ids, photo_url } = req.body;
-            console.log('[AUTOSAVE PITLINE] Isolated block entered', { train_id, coach_id, session_id, question_id });
-
-            if (!train_id || !coach_id || !session_id || !question_id) {
-                return res.status(400).json({ error: 'train_id, coach_id, session_id and question_id required for PITLINE' });
-            }
-
-            // Standardized reason handling
-            let finalReasons = [];
-            if (reason_ids) {
-                if (Array.isArray(reason_ids)) {
-                    finalReasons = reason_ids;
-                } else {
-                    try {
-                        const parsed = JSON.parse(reason_ids);
-                        finalReasons = Array.isArray(parsed) ? parsed : [parsed];
-                    } catch (e) {
-                        finalReasons = reason_ids.toString().split(',').map(r => r.trim()).filter(Boolean);
-                    }
-                }
-            }
-
-            // STRICT lookup: session_id, train_id, coach_id, question_id
-            const [ansRecord, created] = await InspectionAnswer.findOrCreate({
-                where: {
-                    session_id,
-                    train_id,
-                    coach_id,
-                    question_id
-                },
-                defaults: {
-                    status: status || 'OK',
-                    remarks: remarks || '',
-                    reasons: finalReasons,
-                    photo_url: photo_url || null,
-                    module_type: 'PITLINE',
-                    resolved: 0
-                }
-            });
-
-            if (!created) {
-                await ansRecord.update({
-                    status: status || ansRecord.status,
-                    remarks: remarks !== undefined ? remarks : ansRecord.remarks,
-                    reasons: finalReasons,
-                    photo_url: photo_url || ansRecord.photo_url,
-                    module_type: 'PITLINE'
-                });
-            }
-
-            return res.json({ success: true, message: 'PitLine autosave successful' });
         } else if (moduleType === 'WSP') {
             console.log('[AUTOSAVE WSP BLOCK ENTERED]');
             const { coach_id } = session;
@@ -478,9 +460,7 @@ exports.saveCheckpoint = async (req, res) => {
             case 'COMMISSIONARY': SessionModel = CommissionarySession; break;
             case 'SICKLINE': SessionModel = SickLineSession; break;
             case 'CAI': SessionModel = CaiSession; break;
-            case 'WSP':
-            case 'AMENITY':
-            case 'PITLINE': SessionModel = WspSession; break;
+            case 'PITLINE': SessionModel = PitLineSession; break;
             default: return res.status(400).json({ error: 'Invalid module_type' });
         }
 
@@ -550,6 +530,21 @@ exports.saveCheckpoint = async (req, res) => {
                             reasons: Array.isArray(finalReasons) ? JSON.stringify(finalReasons) : finalReasons,
                             photo_url: photo_url || null,
                             question_text_snapshot: qData?.text || 'Checkpointed Answer',
+                            resolved: 0
+                        };
+                    } else if (type === 'PITLINE') {
+                        searchCriteria = {
+                            session_id,
+                            train_id: session.train_id,
+                            coach_id: session.coach_id,
+                            question_id
+                        };
+                        defaultData = {
+                            status: status || 'OK',
+                            remarks: remarks || '',
+                            reasons: finalReasons,
+                            photo_url: photo_url || null,
+                            module_type: 'PITLINE',
                             resolved: 0
                         };
                     } else {

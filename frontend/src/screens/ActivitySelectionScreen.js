@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { getActivities, getCommissionaryProgress, getSubcategoryMetadata } from '../api/api';
+import api, { getActivities, getCommissionaryProgress, getSubcategoryMetadata } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -20,6 +20,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     const [sessionId, setSessionId] = useState(null);
 
     const [supportsActivityType, setSupportsActivityType] = useState(true);
+    const isPitLine = params?.module_type === 'PITLINE';
 
     useEffect(() => {
         loadActivities();
@@ -29,17 +30,34 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     useFocusEffect(
         useCallback(() => {
             loadActivities();
-            if (params.categoryName === 'Coach Commissionary' || params.categoryName === 'Sick Line Examination') {
+            const category_name = params.category_name;
+            if (category_name === 'Coach Commissionary' || category_name === 'Sick Line Examination' || isPitLine) {
                 loadStatus();
             }
-        }, [params.coachNumber, params.subcategoryId])
+        }, [params.coach_number, params.subcategory_id, isPitLine])
     );
 
     const loadStatus = async () => {
         try {
-            const prog = await getCommissionaryProgress(params.coachNumber);
+            if (isPitLine) {
+                const res = await api.get('/inspection/defects', {
+                    params: {
+                        type: 'PITLINE',
+                        train_id: params.train_id,
+                        coach_id: params.coach_id,
+                        session_id: params.session_id
+                    }
+                });
+                setPendingDefectsCount(res.data.defects?.length || 0);
+                setSessionId(params.session_id);
+                return;
+            }
+
+            const coachNum = params.coach_number;
+            const subId = params.subcategory_id;
+            const prog = await getCommissionaryProgress(coachNum);
             const area = prog?.perAreaStatus?.find(
-                a => a.subcategory_id === (params.subcategoryId || params.subcategory_id)
+                a => a.subcategory_id === subId
             );
             if (area) {
                 // TRUE COMPLETION LOGIC: Derived from counts
@@ -63,7 +81,8 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     const checkMetadata = async () => {
         try {
-            const meta = await getSubcategoryMetadata(params.subcategoryId || params.subcategory_id);
+            const subId = params.subcategory_id || params.subcategoryId;
+            const meta = await getSubcategoryMetadata(subId);
             setSupportsActivityType(meta.supportsActivityType);
         } catch (err) {
             console.log('Metadata check error:', err);
@@ -73,11 +92,20 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
     const loadActivities = async () => {
         try {
-            const data = await getActivities(params.coachId, params.categoryName, params.subcategoryId || params.subcategory_id);
-            setActivities(data);
+            if (isPitLine) {
+                // Hardcode Major/Minor for Pit Line as per Requirement Part 3
+                setActivities([
+                    { id: 'pit_major', type: 'Major' },
+                    { id: 'pit_minor', type: 'Minor' }
+                ]);
+                setLoading(false);
+                return;
+            }
 
-            // AUTO-NAVIGATE if single mode is detected early
-            // But we wait for metadata check to be sure
+            const categoryName = params.category_name || params.categoryName;
+            const subId = params.subcategory_id || params.subcategoryId;
+            const data = await getActivities(params.coach_id || params.coachId, categoryName, subId);
+            setActivities(data);
         } catch (err) {
             Alert.alert('Error', 'Could not get activities');
         } finally {
@@ -86,15 +114,18 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
     };
 
     const handleSelect = (act) => {
-        setDraft(prev => ({ ...prev, activity: act, category: params.categoryName }));
+        const category_name = params.category_name;
+        setDraft(prev => ({ ...prev, activity: act, category: category_name }));
 
-        const screen = params.categoryName === 'Coach Commissionary' ? 'CommissionaryQuestions' : 'QuestionsScreen';
+        const screen = (category_name === 'Coach Commissionary' && !isPitLine) ? 'CommissionaryQuestions' : 'QuestionsScreen';
 
+        // Requirement Part 10: Param propagation
         navigation.navigate(screen, {
             ...params,
-            activityId: act.id,
-            activityType: act.type,
-            compartmentId: params.compartmentId || 'NA' // Default to NA if no compartment selected
+            category_name: category_name,
+            activity_id: act.id,
+            activity_type: act.type,
+            compartment_id: params.compartment_id || 'NA'
         });
     };
 
@@ -107,8 +138,12 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <View style={styles.pills}>
-                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
-                    <View style={[styles.pill, styles.activePill]}><Text style={[styles.pillText, { color: '#fff' }]}>{params.categoryName}</Text></View>
+                    <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coach_number}</Text></View>
+                    <View style={[styles.pill, styles.activePill]}>
+                        <Text style={[styles.pillText, { color: '#fff' }]}>
+                            {isPitLine ? 'Pit Line' : (params.category_name)}
+                        </Text>
+                    </View>
                 </View>
                 <View style={{ width: 26 }} />
             </View>
@@ -167,8 +202,8 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                                     onPress={() => navigation.navigate('QuestionManagement', {
                                         activityId: act.id,
                                         activityType: act.type,
-                                        categoryName: params.categoryName,
-                                        subcategoryId: params.subcategoryId || params.subcategory_id
+                                        categoryName: params.category_name || params.categoryName,
+                                        subcategoryId: params.subcategory_id || params.subcategoryId
                                     })}
                                 >
                                     <Ionicons name="settings-outline" size={14} color="#2563eb" />
@@ -185,8 +220,10 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                     style={styles.defectsBtnFull}
                     onPress={() => navigation.navigate('Defects', {
                         session_id: sessionId,
-                        module_type: params.categoryName === 'Coach Commissionary' ? 'commissionary' : (params.categoryName === 'Sick Line Examination' ? 'sickline' : 'amenity'),
-                        coach_number: params.coachNumber
+                        module_type: isPitLine ? 'PITLINE' : ((params.category_name || params.categoryName) === 'Coach Commissionary' ? 'commissionary' : ((params.category_name || params.categoryName) === 'Sick Line Examination' ? 'sickline' : 'amenity')),
+                        coach_number: params.coach_number || params.coachNumber,
+                        train_id: params.train_id,
+                        coach_id: params.coach_id
                     })}
                 >
                     <View style={styles.defectsBtnContent}>

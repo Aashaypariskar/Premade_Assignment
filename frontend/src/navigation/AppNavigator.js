@@ -39,6 +39,7 @@ import PitLineSelectAreaScreen from '../screens/PitLineSelectAreaScreen';
 import CaiCoachScreen from '../screens/CaiCoachScreen';
 import CaiQuestionsScreen from '../screens/CaiQuestionsScreen';
 import EditCaiQuestionsScreen from '../screens/EditCaiQuestionsScreen';
+import WspCoachScreen from '../screens/WspCoachScreen';
 
 const Stack = createStackNavigator();
 
@@ -214,6 +215,12 @@ const AppNavigator = () => {
                         name="SickLineQuestions"
                         component={SickLineQuestionsScreen}
                         options={{ title: 'Inspection Form' }}
+                    />
+
+                    <Stack.Screen
+                        name="WspCoach"
+                        component={WspCoachScreen}
+                        options={{ title: 'WSP Selection' }}
                     />
 
                     {/* CAI / Modifications */}

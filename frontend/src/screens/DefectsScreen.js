@@ -47,10 +47,10 @@ const DefectsScreen = ({ route, navigation }) => {
             else if (params.mode === 'WSP' || params.categoryName === 'WSP Examination') type = 'WSP';
 
             const response = await getDefects({
-                session_id: params.sessionId || params.session_id,
-                subcategory_id: params.subcategoryId || params.subcategory_id,
-                schedule_id: params.scheduleId || params.schedule_id,
-                compartment_id: params.compartmentId || params.compartment,
+                session_id: params.session_id,
+                subcategory_id: params.subcategory_id,
+                schedule_id: params.schedule_id,
+                compartment_id: params.compartment_id,
                 mode: params.mode,
                 type: type
             });

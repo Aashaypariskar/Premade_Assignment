@@ -5,7 +5,13 @@ import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 
 const WspScheduleScreen = ({ route, navigation }) => {
-    const { coachId, coachNumber, categoryName, mode, sickLineSessionId } = route.params || {};
+    const { coach_id, coach_number, category_name, mode, sick_line_session_id } = route.params || {};
+    // Fallback for legacy / mixed params during transition
+    const coachId = coach_id || route.params?.coachId;
+    const coachNumber = coach_number || route.params?.coachNumber;
+    const categoryName = category_name || route.params?.categoryName;
+    const sickLineSessionId = sick_line_session_id || route.params?.sickLineSessionId;
+
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
     const [wspSession, setWspSession] = useState(null);
@@ -23,31 +29,32 @@ const WspScheduleScreen = ({ route, navigation }) => {
             setSchedules(scheduleData);
 
             if (mode === 'INDEPENDENT') {
-                const session = await getWspSession(coachNumber);
-                setWspSession(session);
-
-                if (session) {
-                    const progress = await getWspProgress(coachNumber, mode);
-                    const count = progress.pendingDefects || progress.pending_defects || 0;
-                    console.log('[DEFECT COUNT] WSP', count);
-                    setPendingDefectsCount(count);
+                if (route.params.module_type === 'pitline_wsp') {
+                    // Pit Line WSP uses the Pit Line session directly
+                    setWspSession({ id: route.params.session_id });
+                } else {
+                    const session = await getWspSession(coachNumber);
+                    setWspSession(session);
+                    if (session) {
+                        const progress = await getWspProgress(coachNumber, mode);
+                        const count = progress.pendingDefects || progress.pending_defects || 0;
+                        setPendingDefectsCount(count);
+                    }
                 }
             } else if (mode === 'SICKLINE' && sickLineSessionId) {
                 const progress = await getWspProgress(coachNumber, mode);
                 const count = progress.pendingDefects || progress.pending_defects || 0;
-                console.log('[DEFECT COUNT] WSP SICKLINE', count);
                 setPendingDefectsCount(count);
             }
         } catch (err) {
             Alert.alert('Error', 'Failed to initialize WSP flow');
-            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleSelect = (schedule) => {
-        const sessionId = mode === 'SICKLINE' ? sickLineSessionId : wspSession?.id;
+        const session_id = mode === 'SICKLINE' ? sickLineSessionId : wspSession?.id;
 
         setDraft(prev => ({
             ...prev,
@@ -56,17 +63,18 @@ const WspScheduleScreen = ({ route, navigation }) => {
             activity: null
         }));
 
-        navigation.navigate('QuestionsScreen', {
-            coachId,
-            coachNumber,
-            categoryName,
-            mode,
-            sessionId,
-            scheduleId: schedule.id,
-            scheduleName: schedule.name,
-            activityId: null,
-            activityType: schedule.name
-        });
+        const navParams = {
+            ...route.params,
+            category_name: route.params.category_name || route.params.categoryName,
+            session_id,
+            schedule_id: schedule.id,
+            schedule_name: schedule.name,
+            activity_id: null,
+            activity_type: schedule.name,
+            subcategory_id: null // STRICT Ph 10: Never send subcategory_id for schedules
+        };
+
+        navigation.navigate('QuestionsScreen', navParams);
     };
 
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
@@ -129,9 +137,9 @@ const WspScheduleScreen = ({ route, navigation }) => {
                                             style={styles.wspEditBtn}
                                             onPress={() => {
                                                 navigation.navigate('QuestionManagement', {
-                                                    categoryName,
+                                                    category_name: params.category_name,
                                                     scheduleId: item.id,
-                                                    coachId,
+                                                    coach_id: params.coach_id || params.coachId,
                                                     activityType: item.name
                                                 });
                                             }}

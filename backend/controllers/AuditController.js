@@ -209,33 +209,51 @@ exports.getAmenitySubcategories = async (req, res) => {
 // GET /checklist?activity_id=X&schedule_id=Y&subcategory_id=Z
 exports.getQuestions = async (req, res) => {
     try {
-        const { activity_id, schedule_id, subcategory_id, framework } = req.query;
+        const { schedule_id, subcategory_id, framework, activity_type } = req.query;
+
+        console.log('[CHECKLIST PARAMS]', {
+            subcategory_id,
+            schedule_id,
+            framework,
+            activity_type
+        });
 
         let where = {};
         let categoryName = '';
 
-        if (subcategory_id && framework && ['AMENITY', 'COMMISSIONARY', 'WSP'].includes(framework)) {
-            // Pit Line mapped frameworks - allow fetch with subcategory + framework only
+        // CASE A: Pit Line / Amenity / Commissionary / SickLine / CAI (Subcategory + Framework)
+        if (subcategory_id && framework && ['AMENITY', 'COMMISSIONARY', 'WSP', 'PITLINE', 'SICKLINE', 'CAI'].includes(framework)) {
             where.subcategory_id = subcategory_id;
-            // Map framework back to internal category name for RBAC
             categoryName = (framework === 'AMENITY') ? 'Amenity' :
                 (framework === 'COMMISSIONARY') ? 'Coach Commissioning' :
-                    (framework === 'WSP') ? 'WSP Examination' : 'Standard';
-        } else if (framework === 'PITLINE' && subcategory_id) {
-            where.subcategory_id = subcategory_id;
-            categoryName = 'Pit Line Examination';
-        } else if (activity_id && subcategory_id) {
-            where.activity_id = activity_id;
-            where.subcategory_id = subcategory_id;
-            categoryName = 'Amenity';
-        } else if (activity_id) {
-            // Standard
-            where.activity_id = activity_id;
-            where.subcategory_id = null; // Enforce standard
-            const act = await Activity.findByPk(activity_id, { include: [Category] });
-            categoryName = act?.Category?.name || 'Standard';
-        } else {
-            return res.status(400).json({ error: 'Ambiguous framework parameters' });
+                    (framework === 'WSP') ? 'WSP Examination' :
+                        (framework === 'PITLINE') ? 'Pit Line Examination' :
+                            (framework === 'SICKLINE') ? 'Sick Line Examination' :
+                                (framework === 'CAI') ? 'CAI / Modifications' : 'Standard';
+
+            console.log('[GROUPING CATEGORY]', categoryName);
+
+            // Safety: Do NOT allow mixing schedule_id with subcategory-based frameworks
+            if (schedule_id) {
+                return res.status(400).json({ error: 'Ambiguous framework parameters: Cannot mix schedule_id with subcategory_id' });
+            }
+        }
+        // CASE B: WSP Specific (Schedule + Framework)
+        else if (schedule_id && framework === 'WSP') {
+            where.schedule_id = schedule_id;
+            categoryName = 'WSP Examination';
+        }
+        else {
+            console.error('[CHECKLIST ERROR] Contract violation:', {
+                schedule_id,
+                subcategory_id,
+                framework,
+                activity_type
+            });
+            return res.status(400).json({
+                error: 'Ambiguous framework parameters',
+                details: 'Backend requires (subcategory_id + framework) OR (schedule_id + framework=WSP)'
+            });
         }
 
         // RBAC Check
@@ -255,8 +273,9 @@ exports.getQuestions = async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        if (categoryName === 'Amenity') {
-            // Step 1: Fetch ALL AmenityItems (ignoring activity_type for now)
+        if (categoryName === 'Amenity' || categoryName === 'Coach Commissioning' || categoryName === 'Coach Commissionary') {
+            console.log('[GROUPING ACTIVATED]', categoryName);
+            // Step 1: Fetch ALL items (ignoring activity_type for now)
             const allItems = await AmenityItem.findAll({
                 where: { subcategory_id },
                 include: [{

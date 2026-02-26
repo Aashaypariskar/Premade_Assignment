@@ -59,7 +59,7 @@ const CategoryDashboard = ({ navigation }) => {
             activity: null,
             answers: {}
         });
-        navigation.navigate('CoachSelection', { categoryName });
+        navigation.navigate('CoachSelection', { category_name: categoryName });
     };
 
     if (loading) {
@@ -118,15 +118,17 @@ const CategoryDashboard = ({ navigation }) => {
                                 style={styles.card}
                                 onPress={() => {
                                     if (item.name === 'Sick Line Examination') {
-                                        navigation.navigate('SickLineCoach');
+                                        navigation.navigate('SickLineCoach', { category_name: item.name });
                                     } else if (item.name === 'Coach Commissionary') {
-                                        navigation.navigate('CommissionaryCoach', { category: item.name });
-                                    } else if (item.name === 'WSP Examination' || item.name === 'Amenity') {
-                                        navigation.navigate('CommissionaryCoach', { category: item.name });
+                                        navigation.navigate('CommissionaryCoach', { category_name: item.name });
+                                    } else if (item.name === 'WSP Examination') {
+                                        navigation.navigate('WspCoach', { category_name: item.name });
+                                    } else if (item.name === 'Amenity') {
+                                        navigation.navigate('CommissionaryCoach', { category_name: item.name });
                                     } else if (item.name === 'CAI / Modifications' || item.title === 'CAI / Modifications') {
-                                        navigation.navigate('CaiCoachScreen');
+                                        navigation.navigate('CaiCoachScreen', { category_name: item.name || item.title });
                                     } else if (item.name === 'Pit Line Examination') {
-                                        navigation.navigate('PitLineTrainList');
+                                        navigation.navigate('PitLineTrainList', { category_name: item.name });
                                     } else {
                                         handleSelectCategory(item.name);
                                     }

@@ -55,9 +55,11 @@ const CaiCoachScreen = ({ navigation }) => {
             setLoading(true);
             const { session_id } = await startCaiSession(coach.id);
             navigation.navigate('CaiQuestionsScreen', {
-                sessionId: session_id,
-                coachId: coach.id,
-                coachName: coach.coach_number
+                session_id: session_id,
+                coach_id: coach.id,
+                coach_number: coach.coach_number,
+                category_name: 'CAI / Modifications',
+                module_type: 'CAI'
             });
         } catch (err) {
             Alert.alert('Error', 'Failed to initialize session');

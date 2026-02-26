@@ -15,7 +15,8 @@ import { useStore } from '../store/StoreContext';
 import QuestionProgressHeader from '../components/QuestionProgressHeader';
 
 const CaiQuestionsScreen = ({ route, navigation }) => {
-    const { sessionId, coachId, coachName } = route.params;
+    const { session_id, coach_id, coach_number, category_name } = route.params;
+    const sessionId = session_id; // Keeping local for mapping
     const { user } = useStore();
 
     const [questions, setQuestions] = useState([]);
@@ -182,8 +183,8 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
                     <Ionicons name="arrow-back-outline" size={26} color="#1e293b" />
                 </TouchableOpacity>
                 <View style={styles.breadcrumb}>
-                    <Text style={styles.breadcrumbText}>Coach: {coachName} → </Text>
-                    <Text style={[styles.breadcrumbText, { fontWeight: 'bold' }]}>CAI Modifications</Text>
+                    <Text style={styles.breadcrumbText}>Coach: {coach_number} → </Text>
+                    <Text style={[styles.breadcrumbText, { fontWeight: 'bold' }]}>{category_name || 'CAI Modifications'}</Text>
                 </View>
                 <View style={styles.saveIndicator}>
                     {saveStatus === 'saving' && <Text style={styles.savingText}>Saving...</Text>}
@@ -203,9 +204,9 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
                     <TouchableOpacity
                         style={styles.defectsBtn}
                         onPress={() => navigation.navigate('Defects', {
-                            session_id: sessionId,
+                            session_id: session_id,
                             module_type: 'cai',
-                            coach_number: coachName
+                            coach_number: coach_number
                         })}
                     >
                         <Ionicons name="warning-outline" size={20} color="#fff" />

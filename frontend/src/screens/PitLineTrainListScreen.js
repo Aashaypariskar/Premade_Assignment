@@ -65,7 +65,7 @@ const PitLineTrainListScreen = () => {
                 <Text style={styles.trainNum}>{item.train_number}</Text>
             </View>
             <View style={styles.btnRow}>
-                <TouchableOpacity style={styles.openBtn} onPress={() => navigation.navigate('PitLineTrainDetail', { trainId: item.id, trainNumber: item.train_number })}>
+                <TouchableOpacity style={styles.openBtn} onPress={() => navigation.navigate('PitLineTrainDetail', { train_id: item.id, train_number: item.train_number })}>
                     <Text style={styles.btnText}>Open</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.delBtn} onPress={() => handleDeleteTrain(item.id)}>

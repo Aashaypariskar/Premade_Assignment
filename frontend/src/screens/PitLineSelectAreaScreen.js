@@ -7,7 +7,11 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 const PitLineSelectAreaScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
-    const { trainId, trainNumber, coachId, coachNumber } = route.params;
+    const { train_id, train_number, coach_id, coach_number } = route.params;
+    const trainId = train_id;
+    const coachId = coach_id;
+    const trainNumber = train_number;
+    const coachNumber = coach_number;
 
     const [loading, setLoading] = useState(false);
     const [sessionId, setSessionId] = useState(null);
@@ -54,21 +58,19 @@ const PitLineSelectAreaScreen = () => {
         }
 
         const params = {
+            ...route.params,
             module_type: 'PITLINE',
+            mapped_framework: (area.type === 'UNDERGEAR' || area.name === 'Undergear') ? 'COMMISSIONARY' : (area.type === 'WSP' ? 'WSP' : 'AMENITY'),
             session_id: sessionId,
-            train_id: trainId,
-            train_number: trainNumber,
-            coach_id: coachId,
-            coach_number: coachNumber,
-            areaName: area.name,
-            subcategoryId: area.id,
-            subcategory_id: area.id
+            area_name: area.name,
+            subcategory_id: area.id,
+            category_name: (area.type === 'UNDERGEAR' || area.name === 'Undergear') ? 'Coach Commissioning' : (area.type === 'WSP' ? 'WSP Examination' : 'Amenity')
         };
 
         if (area.type === 'WSP') {
             navigation.navigate('WspScheduleScreen', { ...params, mode: 'INDEPENDENT', module_type: 'pitline_wsp' });
         } else {
-            navigation.navigate('QuestionsScreen', { ...params, categoryName: area.type === 'UNDERGEAR' ? 'Undergear' : 'Amenity' });
+            navigation.navigate('ActivitySelection', params);
         }
     };
 

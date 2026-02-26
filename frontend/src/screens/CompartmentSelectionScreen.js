@@ -10,8 +10,8 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
     const [compartments, setCompartments] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const isCommissionary = params.categoryName === 'Coach Commissionary';
-    const isLavatory = params.subcategoryName?.toLowerCase().includes('lavatory');
+    const isCommissionary = (params.category_name || params.categoryName) === 'Coach Commissionary';
+    const isLavatory = (params.subcategory_name || params.subcategoryName)?.toLowerCase().includes('lavatory');
 
     function getCompartments(subcategoryName) {
         const name = subcategoryName?.toLowerCase() || '';
@@ -21,25 +21,25 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
     }
 
     useEffect(() => {
-        setCompartments(getCompartments(params.subcategoryName));
+        setCompartments(getCompartments(params.subcategory_name || params.subcategoryName));
         if (!isCommissionary) {
             checkExistingReports();
         } else {
             setLoading(false);
         }
-    }, [params.subcategoryName]);
+    }, [params.subcategory_name || params.subcategoryName]);
 
     const checkExistingReports = async () => {
         try {
             const today = new Date().toISOString().split('T')[0];
             const result = await getReports({
-                coach_no: params.coachNumber,
+                coach_no: params.coach_number || params.coachNumber,
                 start_date: today,
                 end_date: today
             });
 
             // Filter for reports matching current subcategory and activity types (case-insensitive)
-            const currentSubBase = params.subcategoryName?.split(' [')[0].toLowerCase();
+            const currentSubBase = (params.subcategory_name || params.subcategoryName)?.split(' [')[0].toLowerCase();
 
             const reports = result?.data || [];
 
@@ -80,30 +80,32 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
             compartment: comp
         }));
 
+        const navParams = {
+            ...params,
+            compartment_id: comp
+        };
+
         if (isCommissionary) {
-            navigation.navigate('CommissionaryQuestions', {
-                ...params,
-                compartmentId: comp
-            });
+            navigation.navigate('CommissionaryQuestions', navParams);
             return;
         }
 
-        navigation.navigate('ActivitySelection', {
-            ...params,
-            compartment: comp
-        });
+        navigation.navigate('ActivitySelection', navParams);
     };
 
     return (
         <View style={styles.container}>
             <View style={styles.pills}>
-                <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coachNumber}</Text></View>
+                <View style={styles.pill}><Text style={styles.pillText}>COACH: {params.coach_number || params.coachNumber}</Text></View>
                 <View style={[styles.pill, styles.activePill]}>
                     <Text style={[styles.pillText, { color: '#fff' }]}>
-                        {params.categoryName === 'Coach Commissionary' ? 'Coach Commissioning' : params.categoryName}
+                        {(() => {
+                            const catName = params.category_name || params.categoryName;
+                            return catName === 'Coach Commissionary' ? 'Coach Commissioning' : catName;
+                        })()}
                     </Text>
                 </View>
-                <View style={[styles.pill, { backgroundColor: '#eff6ff' }]}><Text style={[styles.pillText, { color: '#2563eb' }]}>{params.subcategoryName}</Text></View>
+                <View style={[styles.pill, { backgroundColor: '#eff6ff' }]}><Text style={[styles.pillText, { color: '#2563eb' }]}>{params.subcategory_name || params.subcategoryName}</Text></View>
             </View>
 
             <Text style={styles.title}>Select Compartment</Text>
@@ -144,8 +146,8 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
                                     <TouchableOpacity
                                         style={[styles.combinedBtn, { backgroundColor: '#ef4444' }]}
                                         onPress={() => navigation.navigate('CombinedReport', {
-                                            coach_id: params.coachId,
-                                            subcategory_id: params.subcategoryId,
+                                            coach_id: params.coach_id || params.coachId,
+                                            subcategory_id: params.subcategory_id || params.subcategoryId,
                                             activity_type: 'Major',
                                             date: new Date().toISOString().split('T')[0]
                                         })}
@@ -161,8 +163,8 @@ const CompartmentSelectionScreen = ({ route, navigation }) => {
                                     <TouchableOpacity
                                         style={[styles.combinedBtn, { backgroundColor: '#f59e0b' }]}
                                         onPress={() => navigation.navigate('CombinedReport', {
-                                            coach_id: params.coachId,
-                                            subcategory_id: params.subcategoryId,
+                                            coach_id: params.coach_id || params.coachId,
+                                            subcategory_id: params.subcategory_id || params.subcategoryId,
                                             activity_type: 'Minor',
                                             date: new Date().toISOString().split('T')[0]
                                         })}
