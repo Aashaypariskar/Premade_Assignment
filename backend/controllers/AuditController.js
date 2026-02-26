@@ -209,12 +209,22 @@ exports.getAmenitySubcategories = async (req, res) => {
 // GET /checklist?activity_id=X&schedule_id=Y&subcategory_id=Z
 exports.getQuestions = async (req, res) => {
     try {
-        const { activity_id, schedule_id, subcategory_id } = req.query;
+        const { activity_id, schedule_id, subcategory_id, framework } = req.query;
 
         let where = {};
         let categoryName = '';
 
-        if (activity_id && subcategory_id) {
+        if (subcategory_id && framework && ['AMENITY', 'COMMISSIONARY', 'WSP'].includes(framework)) {
+            // Pit Line mapped frameworks - allow fetch with subcategory + framework only
+            where.subcategory_id = subcategory_id;
+            // Map framework back to internal category name for RBAC
+            categoryName = (framework === 'AMENITY') ? 'Amenity' :
+                (framework === 'COMMISSIONARY') ? 'Coach Commissioning' :
+                    (framework === 'WSP') ? 'WSP Examination' : 'Standard';
+        } else if (framework === 'PITLINE' && subcategory_id) {
+            where.subcategory_id = subcategory_id;
+            categoryName = 'Pit Line Examination';
+        } else if (activity_id && subcategory_id) {
             where.activity_id = activity_id;
             where.subcategory_id = subcategory_id;
             categoryName = 'Amenity';
@@ -229,10 +239,19 @@ exports.getQuestions = async (req, res) => {
         }
 
         // RBAC Check
-        const user = await User.findByPk(req.user.id, {
-            include: [{ model: CategoryMaster, where: { name: categoryName } }]
+        const userCategories = await CategoryMaster.findAll({
+            include: [{
+                model: User,
+                where: { id: req.user.id }
+            }]
         });
-        if (!user && req.user.role !== 'Admin') {
+
+        const userCategoryNames = userCategories.map(c => c.name);
+        const hasAccess = req.user.role === 'Admin' ||
+            userCategoryNames.includes(categoryName) ||
+            userCategoryNames.includes('Pit Line Examination');
+
+        if (!hasAccess) {
             return res.status(403).json({ error: 'Access denied' });
         }
 
@@ -258,6 +277,7 @@ exports.getQuestions = async (req, res) => {
                     const act = await Activity.findByPk(activity_id);
                     type = act ? act.type : 'Minor';
                 }
+                if (!type) type = 'Major'; // Default for PitLine or other generic fetches
                 filteredItems = allItems.filter(item => item.activity_type === type);
             }
 

@@ -20,6 +20,22 @@ exports.createTrain = async (req, res) => {
         if (!train_number) return res.status(400).json({ error: 'Train number is required' });
 
         const train = await PitLineTrain.create({ train_number });
+
+        // Part 1: Default 20 real coaches
+        const coachList = [
+            "EOG1", "GEN1", "GEN2", "S1", "S2", "S3", "S4", "S5", "S6",
+            "B1", "B2", "B3", "B4", "B5", "B6", "A1", "A2", "H1",
+            "PANTRY", "EOG2"
+        ];
+
+        const coaches = coachList.map((coach, index) => ({
+            train_id: train.id,
+            coach_number: coach,
+            position: index + 1
+        }));
+
+        await PitLineCoach.bulkCreate(coaches);
+
         res.json(train);
     } catch (err) {
         if (err.name === 'SequelizeUniqueConstraintError') {
@@ -67,7 +83,7 @@ exports.addCoach = async (req, res) => {
 
         const count = await PitLineCoach.count({ where: { train_id } });
         if (count >= 24) {
-            return res.status(400).json({ error: 'Maximum 24 coaches allowed per train' });
+            return res.status(400).json({ error: 'Maximum 24 coaches allowed' });
         }
 
         const coach = await PitLineCoach.create({

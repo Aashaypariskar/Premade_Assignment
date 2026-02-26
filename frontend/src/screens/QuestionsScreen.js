@@ -37,13 +37,30 @@ const QuestionsScreen = ({ route, navigation }) => {
             setLoading(true);
             setQuestions([]); // State Reset
 
-            console.log(`[FETCHING QUESTIONS] Generic - Subcategory: ${subId}, Activity: ${params.activityId}`);
+            let frameworkToUse = null;
+            const moduleType = (params.module_type === 'PITLINE' || params.categoryName === 'Pit Line Examination') ? 'PITLINE' :
+                (params.categoryName === 'Amenity' ? 'AMENITY' :
+                    (params.categoryName === 'WSP Examination' ? 'WSP' : (params.module_type || params.type || 'GENERIC')));
+
+            if (moduleType === 'PITLINE') {
+                if (params.areaName === 'WSP Maintenance') {
+                    frameworkToUse = 'WSP';
+                } else if (params.areaName === 'Undergear') {
+                    frameworkToUse = 'COMMISSIONARY';
+                } else {
+                    frameworkToUse = 'AMENITY';
+                }
+                console.log('[PITLINE FRAMEWORK]', frameworkToUse);
+                console.log('[PITLINE SUBCATEGORY]', subId);
+            } else {
+                frameworkToUse = (params.framework || moduleType);
+            }
 
             let rawResponse;
             if (params.categoryName === 'WSP Examination') {
                 rawResponse = await getWspQuestions(params.scheduleId);
             } else {
-                rawResponse = await getQuestions(params.activityId, params.scheduleId, subId);
+                rawResponse = await getQuestions(params.activityId, params.scheduleId, subId, frameworkToUse);
             }
 
             if (!isMounted.current) return;
@@ -52,14 +69,13 @@ const QuestionsScreen = ({ route, navigation }) => {
             setQuestions(normalized.groups);
 
             // Fetch actual pending defects from server
-            const moduleType = params.categoryName === 'Amenity' ? 'AMENITY' :
-                (params.categoryName === 'Pit Line Examination' ? 'PITLINE' :
-                    (params.categoryName === 'WSP Examination' ? 'WSP' : 'GENERIC'));
-
+            // moduleType is already defined above
             const defectsRes = await require('../api/api').getDefects({
-                session_id: params.sessionId,
-                subcategory_id: params.subcategoryId || params.subcategory_id,
-                schedule_id: params.scheduleId || params.schedule_id,
+                session_id: params.session_id || params.sessionId,
+                train_id: params.train_id || params.trainId,
+                coach_id: params.coach_id || params.coachId,
+                subcategory_id: params.subcategory_id || params.subcategoryId,
+                schedule_id: params.schedule_id || params.scheduleId,
                 compartment_id: params.compartment,
                 mode: params.mode,
                 type: moduleType

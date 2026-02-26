@@ -10,9 +10,10 @@ const PitLineSelectAreaScreen = () => {
     const { trainId, trainNumber, coachId, coachNumber } = route.params;
 
     const [loading, setLoading] = useState(false);
+    const [sessionId, setSessionId] = useState(null);
 
     const areas = [
-        { id: 119, name: "Exterior", icon: "buffer", type: 'AMENITY' },
+        { id: 119, name: "Exterior", icon: "train-car", type: 'AMENITY' },
         { id: 120, name: "Interior passenger area", icon: "seat-recline-normal", type: 'AMENITY' },
         { id: 175, name: "Door Area", icon: "door", type: 'AMENITY' },
         { id: 176, name: "Passage area", icon: "human-male-height-variant", type: 'AMENITY' },
@@ -22,40 +23,52 @@ const PitLineSelectAreaScreen = () => {
         { id: 186, name: "WSP Maintenance", icon: "wrench", type: 'WSP' }
     ];
 
-    const handleAreaSelect = async (area) => {
-        try {
-            setLoading(true);
-            // 1. Start/Resume Session
-            const sessionRes = await api.post('/pitline/session/start', {
-                train_id: trainId,
-                coach_id: coachId
-            });
-
-            if (sessionRes.data.success) {
-                const sessionId = sessionRes.data.session_id;
-
-                // 2. Navigate based on area type
-                const params = {
-                    module_type: 'PITLINE',
-                    session_id: sessionId,
+    React.useEffect(() => {
+        const startSession = async () => {
+            try {
+                setLoading(true);
+                const res = await api.post('/pitline/session/start', {
                     train_id: trainId,
-                    coach_id: coachId,
-                    coach_number: coachNumber,
-                    areaName: area.name,
-                    subcategoryId: area.id
-                };
-
-                if (area.type === 'WSP') {
-                    navigation.navigate('WspScheduleScreen', { ...params, mode: 'INDEPENDENT', module_type: 'pitline_wsp' });
-                } else {
-                    navigation.navigate('QuestionsScreen', { ...params, categoryName: area.type === 'UNDERGEAR' ? 'Undergear' : 'Amenity' });
+                    coach_id: coachId
+                });
+                if (res.data.success) {
+                    setSessionId(res.data.session_id);
                 }
+            } catch (err) {
+                console.error('[PITLINE SESSION START ERROR]', err);
+                Alert.alert('Error', 'Failed to initialize session');
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error(err);
-            Alert.alert('Error', 'Failed to initialize session');
-        } finally {
-            setLoading(false);
+        };
+
+        if (!sessionId) {
+            startSession();
+        }
+    }, []);
+
+    const handleAreaSelect = (area) => {
+        if (!sessionId) {
+            Alert.alert('Please Wait', 'Session is still initializing...');
+            return;
+        }
+
+        const params = {
+            module_type: 'PITLINE',
+            session_id: sessionId,
+            train_id: trainId,
+            train_number: trainNumber,
+            coach_id: coachId,
+            coach_number: coachNumber,
+            areaName: area.name,
+            subcategoryId: area.id,
+            subcategory_id: area.id
+        };
+
+        if (area.type === 'WSP') {
+            navigation.navigate('WspScheduleScreen', { ...params, mode: 'INDEPENDENT', module_type: 'pitline_wsp' });
+        } else {
+            navigation.navigate('QuestionsScreen', { ...params, categoryName: area.type === 'UNDERGEAR' ? 'Undergear' : 'Amenity' });
         }
     };
 

@@ -128,9 +128,15 @@ exports.getPendingDefects = async (req, res) => {
         } else if (type === 'PITLINE') {
             Model = InspectionAnswer;
             where.module_type = 'PITLINE';
+            where.train_id = train_id;
+            where.coach_id = coach_id;
+            // Strict PitLine validation
+            if (!train_id || !coach_id) {
+                return res.status(400).json({ error: 'Missing train_id or coach_id for PitLine context' });
+            }
+            // session_id is optional for cumulative coach defects
             if (session_id) where.session_id = session_id;
-            if (train_id) where.train_id = train_id;
-            if (coach_id) where.coach_id = coach_id;
+            // DO NOT filter by subcategory_id or compartment_id for PITLINE cumulative defects
         } else {
             Model = InspectionAnswer;
             if (subcategory_id) where.subcategory_id = subcategory_id;
@@ -312,54 +318,12 @@ exports.autosave = async (req, res) => {
                     photo_url: photo_url || ansRecord.photo_url
                 });
             }
-        } else if (moduleType === 'WSP') {
-            console.log('[AUTOSAVE WSP BLOCK ENTERED]');
-
-            const {
-                coach_id,
-            } = session;
-
-            const finalReasons = Array.isArray(reason_ids)
-                ? JSON.stringify(reason_ids)
-                : JSON.stringify([]);
-
-            const [answer, created] = await InspectionAnswer.findOrCreate({
-                where: {
-                    session_id,
-                    question_id
-                },
-                defaults: {
-                    session_id,
-                    question_id,
-                    coach_id,
-                    status,
-                    remarks,
-                    reasons: finalReasons,
-                    photo_url: photo_url,
-                    resolved: 0
-                }
-            });
-
-            if (!created) {
-                await InspectionAnswer.update({
-                    status,
-                    remarks,
-                    reasons: finalReasons,
-                    photo_url: photo_url
-                }, {
-                    where: { id: answer.id }
-                });
-            }
-
-            return res.json({
-                success: true
-            });
-        } else if (module_type && module_type.toUpperCase() === 'PITLINE') {
-            const { train_id, coach_id, session_id, question_id } = req.body;
+        } else if (moduleType === 'PITLINE') {
+            const { train_id, coach_id, session_id, question_id, status, remarks, reason_ids, photo_url } = req.body;
             console.log('[AUTOSAVE PITLINE] Isolated block entered', { train_id, coach_id, session_id, question_id });
 
-            if (!train_id || !coach_id || !session_id) {
-                return res.status(400).json({ error: 'train_id, coach_id and session_id required for PITLINE' });
+            if (!train_id || !coach_id || !session_id || !question_id) {
+                return res.status(400).json({ error: 'train_id, coach_id, session_id and question_id required for PITLINE' });
             }
 
             // Standardized reason handling
@@ -406,6 +370,36 @@ exports.autosave = async (req, res) => {
             }
 
             return res.json({ success: true, message: 'PitLine autosave successful' });
+        } else if (moduleType === 'WSP') {
+            console.log('[AUTOSAVE WSP BLOCK ENTERED]');
+            const { coach_id } = session;
+            const finalReasons = Array.isArray(reason_ids) ? JSON.stringify(reason_ids) : JSON.stringify([]);
+
+            const [answer, created] = await InspectionAnswer.findOrCreate({
+                where: { session_id, question_id },
+                defaults: {
+                    session_id,
+                    question_id,
+                    coach_id,
+                    status: status || 'OK',
+                    remarks: remarks || '',
+                    reasons: finalReasons,
+                    photo_url: photo_url || null,
+                    resolved: 0
+                }
+            });
+
+            if (!created) {
+                await InspectionAnswer.update({
+                    status: status || answer.status,
+                    remarks: remarks !== undefined ? remarks : answer.remarks,
+                    reasons: finalReasons,
+                    photo_url: photo_url || answer.photo_url
+                }, {
+                    where: { id: answer.id }
+                });
+            }
+            return res.json({ success: true });
         } else {
             // EXISTING Amenity logic
             // Standardized reason handling to prevent crashes
