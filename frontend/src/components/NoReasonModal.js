@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, Alert, Image, ActivityIndicator } from 'react-native';
 import { getReasonsByQuestion } from '../api/api';
+import * as ImagePicker from 'expo-image-picker';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 // This modal opens up when student/engineer selects "NO" as an answer
 const NoReasonModal = ({ question, onDone, onCancel }) => {
@@ -47,9 +49,8 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
         }
 
         let result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.5,
+            allowsEditing: false,  // No crop screen
+            quality: 0.65,
         });
 
         if (!result.canceled) {
@@ -115,12 +116,20 @@ const NoReasonModal = ({ question, onDone, onCancel }) => {
                         multiline
                     />
 
-                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                    <View style={{ width: '100%', marginBottom: 12 }}>
                         <TouchableOpacity style={styles.camBtn} onPress={pickImage}>
-                            <Text>{image ? 'Change Photo' : 'Take Photo'}</Text>
+                            <Text style={{ fontWeight: '600', color: COLORS.textPrimary }}>
+                                {image ? '📷 Change Photo' : '📷 Take Photo'}
+                            </Text>
                         </TouchableOpacity>
-                        {image && (
-                            <Image source={{ uri: image }} style={styles.img} />
+                        {image ? (
+                            <View style={styles.imgContainer}>
+                                <Image source={{ uri: image }} style={styles.img} resizeMode="cover" />
+                            </View>
+                        ) : (
+                            <View style={styles.imgPlaceholder}>
+                                <Text style={styles.imgPlaceholderText}>No photo uploaded</Text>
+                            </View>
                         )}
                     </View>
 
@@ -152,8 +161,11 @@ const styles = StyleSheet.create({
     tag: { padding: 8, backgroundColor: '#eee', marginRight: 8, marginBottom: 8, borderRadius: 5 },
     tagActive: { backgroundColor: '#2563eb' },
     textArea: { height: 60, backgroundColor: '#f9f9f9', padding: 10, borderRadius: 5, marginBottom: 15, textAlignVertical: 'top' },
-    camBtn: { padding: 10, backgroundColor: '#e2e8f0', borderRadius: 5, width: '100%', alignItems: 'center' },
-    img: { width: 80, height: 80, marginTop: 10, borderRadius: 5 },
+    camBtn: { padding: 11, backgroundColor: COLORS.mutedLight, borderRadius: RADIUS.sm, width: '100%', alignItems: 'center', marginBottom: SPACING.sm },
+    imgContainer: { width: '100%', borderRadius: RADIUS.sm, overflow: 'hidden', marginTop: 4 },
+    img: { width: '100%', aspectRatio: 4 / 3 },
+    imgPlaceholder: { height: 140, borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.border, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
+    imgPlaceholderText: { color: COLORS.textSecondary, fontSize: 12 },
     btns: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
     btn1: { padding: 12, marginRight: 10 },
     btn2: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 5 },
