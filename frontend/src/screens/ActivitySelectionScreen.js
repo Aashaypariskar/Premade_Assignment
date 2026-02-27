@@ -122,12 +122,13 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
         const screen = (category_name === 'Coach Commissionary' && !isPitLine) ? 'CommissionaryQuestions' : 'QuestionsScreen';
 
         const subId = params.subcategory_id || params.subcategoryId;
+        const isCommissionary = category_name === 'Coach Commissionary' || params.module_type === 'COMMISSIONARY';
         const isUndergear =
             params.subcategoryName === 'Undergear' ||
             category_name === 'Undergear' ||
             params.area_name === 'Undergear' ||
             Number(subId) === 179 ||
-            Number(subId) === 185;
+            (isCommissionary && Number(subId) === 185);
 
         // Requirement Part 10: Param propagation
         navigation.navigate(screen, {
@@ -181,7 +182,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                                 onPress={() => navigation.navigate('QuestionManagement', {
                                     activityId: activities.length ? activities[0].id : null,
                                     activityType: activities.length ? activities[0].type : null,
-                                    categoryName: (params.area_name === 'Undergear' || params.category_name === 'Undergear' || params.subcategoryName === 'Undergear' || params.subcategory_id == '179' || params.subcategoryId == '179' || params.subcategory_id == '185' || params.subcategoryId == '185') ? 'Undergear' : (params.category_name || params.categoryName),
+                                    categoryName: (params.area_name === 'Undergear' || params.category_name === 'Undergear' || params.subcategoryName === 'Undergear' || params.subcategory_id == '179' || params.subcategoryId == '179' || ((params.category_name === 'Coach Commissionary' || params.module_type === 'COMMISSIONARY') && (params.subcategory_id == '185' || params.subcategoryId == '185'))) ? 'Undergear' : (params.category_name || params.categoryName),
                                     subcategoryId: params.subcategory_id || params.subcategoryId,
                                     module_type: params.module_type || params.type,
                                     scheduleId: params.scheduleId || params.schedule_id,
@@ -234,7 +235,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                                         onPress={() => navigation.navigate('QuestionManagement', {
                                             activityId: act.id,
                                             activityType: act.type,
-                                            categoryName: (params.area_name === 'Undergear' || params.category_name === 'Undergear' || params.subcategoryName === 'Undergear' || params.subcategory_id == '179' || params.subcategoryId == '179' || params.subcategory_id == '185' || params.subcategoryId == '185') ? 'Undergear' : (params.category_name || params.categoryName),
+                                            categoryName: (params.area_name === 'Undergear' || params.category_name === 'Undergear' || params.subcategoryName === 'Undergear' || params.subcategory_id == '179' || params.subcategoryId == '179' || ((params.category_name === 'Coach Commissionary' || params.module_type === 'COMMISSIONARY') && (params.subcategory_id == '185' || params.subcategoryId == '185'))) ? 'Undergear' : (params.category_name || params.categoryName),
                                             subcategoryId: params.subcategory_id || params.subcategoryId,
                                             module_type: params.module_type || params.type,
                                             scheduleId: params.scheduleId || params.schedule_id,

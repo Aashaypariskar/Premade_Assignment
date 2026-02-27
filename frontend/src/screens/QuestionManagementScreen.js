@@ -7,7 +7,22 @@ import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const QuestionManagementScreen = ({ route, navigation }) => {
-    const { activityId, activityType, categoryName, subcategoryId, scheduleId, coachId } = route.params;
+    const {
+        activityId,
+        activityType,
+        categoryName: _categoryName,
+        category_name,
+        subcategoryId,
+        subcategory_id,
+        scheduleId: _scheduleId,
+        schedule_id,
+        coachId
+    } = route.params;
+
+    // Normalise both snake_case and camelCase param variants
+    const categoryName = _categoryName || category_name;
+    const subcategoryIdResolved = subcategoryId || subcategory_id;
+    const scheduleId = _scheduleId || schedule_id;
 
     console.log("QB PARAMS:", route.params);
 
@@ -41,7 +56,7 @@ const QuestionManagementScreen = ({ route, navigation }) => {
             if (categoryName === 'Coach Commissionary' || categoryName === 'Undergear') {
                 const res = await api.get('/commissionary/questions', {
                     params: {
-                        subcategory_id: subcategoryId,
+                        subcategory_id: subcategoryIdResolved,
                         activity_type: activityType,
                         categoryName: categoryName
                     }
@@ -49,15 +64,14 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                 console.log('[EDIT_QS] categoryName:', categoryName, 'res.data keys:', Object.keys(res.data || {}), 'len:', (res.data?.questions || res.data?.groups || []).length);
                 data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : (res.data.questions || []));
             } else if (categoryName === 'Sick Line Examination' || route.params.module_type === 'SICKLINE') {
-                const res = await getQuestionsByActivity(activityId || null, 'SICKLINE', subcategoryId, null, categoryName);
+                const res = await getQuestionsByActivity(activityId || null, 'SICKLINE', subcategoryIdResolved, null, categoryName);
                 data = res?.questions || [];
             } else if (categoryName === 'WSP Examination' || route.params.module_type === 'WSP') {
-                // Rely on native generic question store mapped to scheduleId directly
                 const res = await getQuestionsByActivity(activityId || null, 'WSP', null, scheduleId, categoryName);
                 data = res?.questions || [];
             } else {
                 const res = await getQuestionsByActivity(activityId, null, null, null, categoryName);
-                data = res?.questions || res || []; // Fallback handler for previous structures
+                data = res?.questions || res || [];
             }
 
             setQuestions(data);

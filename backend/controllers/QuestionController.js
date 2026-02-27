@@ -1,4 +1,4 @@
-const { Question, Activity, Category, Reason, WspQuestion, SickLineQuestion } = require('../models');
+const { Question, Activity, Category, Reason } = require('../models');
 
 /**
  * QuestionController - Admin Question Management
@@ -22,28 +22,25 @@ exports.getQuestionsByActivity = async (req, res) => {
             return res.json({ questions });
         }
 
-        // WSP Branch
+        // WSP Branch — queries generic questions table by schedule_id
         if (module_type === 'WSP') {
             if (!schedule_id) {
                 return res.status(400).json({ error: 'schedule_id is required for WSP' });
             }
-            const questions = await WspQuestion.findAll({
+            const questions = await Question.findAll({
                 where: { schedule_id },
-                order: [['id', 'ASC']]
+                order: [['display_order', 'ASC'], ['id', 'ASC']]
             });
-            return res.json({ questions }); // Returning matched object
+            return res.json({ questions });
         }
 
-        // SICKLINE Branch
+        // SICKLINE Branch — queries by section_code/ss1_flag (same as SickLineController)
         if (module_type === 'SICKLINE') {
-            if (!subcategory_id) {
-                return res.status(400).json({ error: 'subcategory_id is required for Sick Line' });
-            }
-            const questions = await SickLineQuestion.findAll({
-                where: { subcategory_id },
-                order: [['id', 'ASC']]
+            const questions = await Question.findAll({
+                where: { section_code: 'SS1-C', ss1_flag: 'C' },
+                order: [['section_order', 'ASC'], ['display_order', 'ASC'], ['id', 'ASC']]
             });
-            return res.json({ questions }); // Returning matched object
+            return res.json({ questions });
         }
 
         // DEFAULT Generic Branch
