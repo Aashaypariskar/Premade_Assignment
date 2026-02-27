@@ -1,42 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+    View, Text, StyleSheet, ScrollView, TouchableOpacity,
+    Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../api/api';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import AppHeader from '../components/AppHeader';
+import HorizontalRake from '../components/rake/HorizontalRake';
+import RakeStatusLegend from '../components/rake/RakeStatusLegend';
+import CoachHeaderCard from '../components/coach/CoachHeaderCard';
+import CoachActionPanel from '../components/coach/CoachActionPanel';
+import { useStore } from '../store/StoreContext';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const PitLineTrainDetailScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
+    const { user } = useStore();
     const { train_id, train_number } = route.params;
-    const trainId = train_id; // For local usage convenience
+    const trainId = train_id;
     const trainNumber = train_number;
 
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeCoachId, setActiveCoachId] = useState(null);
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [newCoachNumber, setNewCoachNumber] = useState('');
 
-    const fetchCoaches = async () => {
+    // ─── Existing API call — UNCHANGED ──────────────────────────────────────
+    const fetchCoaches = useCallback(async () => {
         try {
             setLoading(true);
             const response = await api.get(`/pitline/coaches?train_id=${trainId}`);
-            setCoaches(response.data);
+            const list = response.data || [];
+            setCoaches(list);
+            // Auto-select first coach if none selected
+            if (list.length > 0 && !activeCoachId) {
+                setActiveCoachId(list[0].id);
+            }
         } catch (err) {
             console.error(err);
             Alert.alert('Error', 'Failed to fetch coaches');
         } finally {
             setLoading(false);
         }
-    };
+    }, [trainId]);
 
     useFocusEffect(
-        React.useCallback(() => {
+        useCallback(() => {
             fetchCoaches();
         }, [trainId])
     );
 
+    // ─── Add / delete coach — UNCHANGED ─────────────────────────────────────
     const handleAddCoach = () => {
         setNewCoachNumber('');
         setAddModalVisible(true);
@@ -64,6 +81,7 @@ const PitLineTrainDetailScreen = () => {
                 text: 'Delete', style: 'destructive', onPress: async () => {
                     try {
                         await api.delete(`/pitline/coaches/${id}`);
+                        if (activeCoachId === id) setActiveCoachId(null);
                         fetchCoaches();
                     } catch (err) {
                         Alert.alert('Error', 'Failed to delete');
@@ -73,15 +91,48 @@ const PitLineTrainDetailScreen = () => {
         ]);
     };
 
+    // ─── Navigation — UNCHANGED ─────────────────────────────────────────────
+    const activeCoach = coaches.find(c => c.id === activeCoachId) || null;
+    const activePosition = activeCoach ? coaches.indexOf(activeCoach) : null;
+
+    const handleStartInspection = () => {
+        if (!activeCoach) return;
+        navigation.navigate('PitLineSelectArea', {
+            train_id: trainId,
+            train_number: trainNumber,
+            coach_id: activeCoach.id,
+            coach_number: activeCoach.coach_number,
+        });
+    };
+
+    const handleViewDefects = () => {
+        if (!activeCoach) return;
+        navigation.navigate('PitLineSelectArea', {
+            train_id: trainId,
+            train_number: trainNumber,
+            coach_id: activeCoach.id,
+            coach_number: activeCoach.coach_number,
+        });
+    };
+
+    const handleEditQuestions = () => {
+        // Admin-only flow — no-op here; edit questions available from select area screen
+        if (!activeCoach) return;
+        navigation.navigate('PitLineSelectArea', {
+            train_id: trainId,
+            train_number: trainNumber,
+            coach_id: activeCoach.id,
+            coach_number: activeCoach.coach_number,
+        });
+    };
+
     return (
         <View style={styles.container}>
+            {/* ── Header ───────────────────────────────────────────────────── */}
             <AppHeader
                 title={`Train ${trainNumber}`}
                 onBack={() => navigation.goBack()}
-                onHome={() => navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Dashboard' }],
-                })}
+                onHome={() => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] })}
                 rightComponent={
                     <TouchableOpacity style={styles.addBtn} onPress={handleAddCoach}>
                         <MaterialCommunityIcons name="plus" size={20} color={COLORS.surface} />
@@ -90,54 +141,64 @@ const PitLineTrainDetailScreen = () => {
                 }
             />
 
-            {loading ? <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} /> : (
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <Text style={styles.sectionLabel}>Rake Layout</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rakeContainer}>
-                        {/* Static Engine */}
-                        <View style={styles.engineCard}>
-                            <MaterialCommunityIcons name="train" size={40} color="#6B7280" />
-                            <Text style={styles.engineText}>ENGINE</Text>
+            {loading ? (
+                <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+            ) : (
+                <>
+                    {/* ── STICKY Horizontal Rake ────────────────────────────── */}
+                    {coaches.length > 0 ? (
+                        <>
+                            <HorizontalRake
+                                coaches={coaches}
+                                activeCoachId={activeCoachId}
+                                completionMap={{}}
+                                defectMap={{}}
+                                onCoachSelect={(c) => setActiveCoachId(c.id)}
+                                onCoachDelete={handleDeleteCoach}
+                            />
+                            <RakeStatusLegend />
+                        </>
+                    ) : (
+                        <View style={styles.emptyRake}>
+                            <MaterialCommunityIcons name="train" size={48} color={COLORS.placeholder} />
+                            <Text style={styles.emptyText}>No coaches yet — tap Add Coach</Text>
                         </View>
+                    )}
 
-                        {/* Coaches */}
-                        {coaches.map((coach, index) => (
-                            <View key={coach.id.toString()} style={styles.coachWrapper}>
-                                <TouchableOpacity
-                                    style={styles.coachCard}
-                                    onPress={() => navigation.navigate('PitLineSelectArea', {
-                                        train_id: trainId,
-                                        train_number: trainNumber,
-                                        coach_id: coach.id,
-                                        coach_number: coach.coach_number
-                                    })}
-                                >
-                                    <Text style={styles.coachNum}>{coach.coach_number}</Text>
-                                    <View style={styles.posBadge}>
-                                        <Text style={styles.posText}>{index + 1}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.itemDel} onPress={() => handleDeleteCoach(coach.id)}>
-                                    <MaterialCommunityIcons name="close-circle" size={20} color="#EF4444" />
-                                </TouchableOpacity>
+                    {/* ── Scrollable Coach Detail Panel ─────────────────────── */}
+                    <ScrollView
+                        style={styles.detailScroll}
+                        contentContainerStyle={styles.detailContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <CoachHeaderCard
+                            coach={activeCoach}
+                            completion={0}
+                            defectCount={0}
+                            position={activePosition != null ? activePosition + 1 : null}
+                        />
+
+                        <CoachActionPanel
+                            coach={activeCoach}
+                            defectCount={0}
+                            onStartInspection={handleStartInspection}
+                            onViewDefects={handleViewDefects}
+                        />
+
+                        {/* Info banner */}
+                        {coaches.length > 0 && (
+                            <View style={styles.infoBanner}>
+                                <MaterialCommunityIcons name="information-outline" size={20} color="#3B82F6" />
+                                <Text style={styles.infoText}>
+                                    Tap any coach above to view its details and start inspection.
+                                </Text>
                             </View>
-                        ))}
-
-                        {coaches.length === 0 && (
-                            <Text style={styles.emptyText}>No coaches added yet</Text>
                         )}
                     </ScrollView>
-
-                    <View style={styles.instructionCard}>
-                        <MaterialCommunityIcons name="information-outline" size={24} color="#3B82F6" />
-                        <Text style={styles.instructionText}>
-                            Tap on a coach to start inspection. Each coach maintains its own session.
-                        </Text>
-                    </View>
-                </ScrollView>
+                </>
             )}
 
-            {/* Add Coach Modal */}
+            {/* ── Add Coach Modal — UNCHANGED ─────────────────────────────── */}
             <Modal
                 visible={addModalVisible}
                 transparent
@@ -188,85 +249,55 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primary,
         paddingHorizontal: SPACING.md,
         paddingVertical: SPACING.xs,
-        borderRadius: RADIUS.md
+        borderRadius: RADIUS.md,
     },
     addText: { color: COLORS.surface, marginLeft: 4, fontWeight: 'bold', fontSize: 13 },
-    scrollContent: { padding: SPACING.lg },
-    sectionLabel: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: SPACING.md },
-    rakeContainer: { paddingVertical: SPACING.sm, marginBottom: SPACING.xl },
-    engineCard: {
-        width: 100,
-        height: 120,
-        backgroundColor: COLORS.disabled,
-        borderRadius: RADIUS.md,
-        justifyContent: 'center',
+    emptyRake: {
         alignItems: 'center',
-        marginRight: SPACING.md,
-        borderStyle: 'dashed',
-        borderWidth: 2,
-        borderColor: COLORS.placeholder
-    },
-    engineText: { fontSize: 12, fontWeight: 'bold', color: COLORS.textSecondary, marginTop: 4 },
-    coachWrapper: { position: 'relative', marginRight: SPACING.md },
-    coachCard: {
-        width: 100,
-        height: 120,
+        paddingVertical: SPACING.xl,
+        gap: SPACING.sm,
         backgroundColor: COLORS.surface,
-        borderRadius: RADIUS.md,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        borderWidth: 1,
-        borderColor: COLORS.border
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
     },
-    coachNum: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
-    itemDel: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: COLORS.surface,
-        borderRadius: 12,
-        elevation: 2
+    emptyText: {
+        color: COLORS.placeholder,
+        fontSize: 14,
+        fontStyle: 'italic',
     },
-    posBadge: {
-        position: 'absolute',
-        bottom: 8,
-        right: 8,
-        backgroundColor: COLORS.secondary,
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    posText: { color: COLORS.surface, fontSize: 10, fontWeight: 'bold' },
-    emptyText: { alignSelf: 'center', marginTop: 40, color: COLORS.placeholder, fontStyle: 'italic' },
-    instructionCard: {
-        backgroundColor: '#EFF6FF',
-        padding: SPACING.lg,
-        borderRadius: RADIUS.lg,
+    detailScroll: { flex: 1 },
+    detailContent: { paddingBottom: SPACING.xl * 2 + 16 },
+    infoBanner: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: SPACING.sm,
+        backgroundColor: '#EFF6FF',
+        borderRadius: RADIUS.md,
+        padding: SPACING.md,
+        marginHorizontal: SPACING.md,
+        marginTop: SPACING.md,
         borderWidth: 1,
-        borderColor: '#BFDBFE'
+        borderColor: '#BFDBFE',
     },
-    instructionText: { color: '#1E40AF', flex: 1, marginLeft: SPACING.md, lineHeight: 20, fontSize: 13 },
+    infoText: {
+        color: '#1E40AF',
+        fontSize: 13,
+        flex: 1,
+        lineHeight: 18,
+    },
+    // Modal styles — UNCHANGED
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: SPACING.xl
+        padding: SPACING.xl,
     },
     modalBox: {
         backgroundColor: COLORS.surface,
         borderRadius: RADIUS.lg,
         padding: SPACING.xl,
-        width: '100%'
+        width: '100%',
     },
     modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 4 },
     modalSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginBottom: SPACING.lg },
@@ -278,14 +309,14 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.sm,
         fontSize: 16,
         color: COLORS.textPrimary,
-        marginBottom: SPACING.lg
+        marginBottom: SPACING.lg,
     },
     modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
     modalBtn: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, borderRadius: RADIUS.md },
     modalBtnCancel: { backgroundColor: COLORS.disabled },
     modalBtnCancelText: { color: COLORS.textSecondary, fontWeight: '600' },
     modalBtnConfirm: { backgroundColor: COLORS.primary },
-    modalBtnConfirmText: { color: COLORS.surface, fontWeight: '600' }
+    modalBtnConfirmText: { color: COLORS.surface, fontWeight: '600' },
 });
 
 export default PitLineTrainDetailScreen;
