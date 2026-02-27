@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../api/api';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -15,6 +15,8 @@ const PitLineTrainDetailScreen = () => {
 
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [addModalVisible, setAddModalVisible] = useState(false);
+    const [newCoachNumber, setNewCoachNumber] = useState('');
 
     const fetchCoaches = async () => {
         try {
@@ -36,15 +38,23 @@ const PitLineTrainDetailScreen = () => {
     );
 
     const handleAddCoach = () => {
-        Alert.prompt('Add Coach', 'Enter Coach Number (e.g. B1)', async (coachNum) => {
-            if (!coachNum) return;
-            try {
-                await api.post('/pitline/coaches/add', { train_id: trainId, coach_number: coachNum });
-                fetchCoaches();
-            } catch (err) {
-                Alert.alert('Error', err.response?.data?.error || 'Failed to add coach');
-            }
-        });
+        setNewCoachNumber('');
+        setAddModalVisible(true);
+    };
+
+    const confirmAddCoach = async () => {
+        if (!newCoachNumber.trim()) {
+            Alert.alert('Error', 'Please enter a coach number');
+            return;
+        }
+        try {
+            await api.post('/pitline/coaches/add', { train_id: trainId, coach_number: newCoachNumber.trim() });
+            setAddModalVisible(false);
+            setNewCoachNumber('');
+            fetchCoaches();
+        } catch (err) {
+            Alert.alert('Error', err.response?.data?.error || 'Failed to add coach');
+        }
     };
 
     const handleDeleteCoach = (id) => {
@@ -126,6 +136,46 @@ const PitLineTrainDetailScreen = () => {
                     </View>
                 </ScrollView>
             )}
+
+            {/* Add Coach Modal */}
+            <Modal
+                visible={addModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setAddModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                        <View style={styles.modalBox}>
+                            <Text style={styles.modalTitle}>Add Coach</Text>
+                            <Text style={styles.modalSubtitle}>Enter coach number (e.g. B1, C3)</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                value={newCoachNumber}
+                                onChangeText={setNewCoachNumber}
+                                placeholder="Coach Number"
+                                placeholderTextColor={COLORS.placeholder}
+                                autoFocus
+                                autoCapitalize="characters"
+                            />
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={[styles.modalBtn, styles.modalBtnCancel]}
+                                    onPress={() => setAddModalVisible(false)}
+                                >
+                                    <Text style={styles.modalBtnCancelText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalBtn, styles.modalBtnConfirm]}
+                                    onPress={confirmAddCoach}
+                                >
+                                    <Text style={styles.modalBtnConfirmText}>Add</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -204,7 +254,38 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#BFDBFE'
     },
-    instructionText: { color: '#1E40AF', flex: 1, marginLeft: SPACING.md, lineHeight: 20, fontSize: 13 }
+    instructionText: { color: '#1E40AF', flex: 1, marginLeft: SPACING.md, lineHeight: 20, fontSize: 13 },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: SPACING.xl
+    },
+    modalBox: {
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.lg,
+        padding: SPACING.xl,
+        width: '100%'
+    },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 4 },
+    modalSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginBottom: SPACING.lg },
+    modalInput: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: RADIUS.md,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        fontSize: 16,
+        color: COLORS.textPrimary,
+        marginBottom: SPACING.lg
+    },
+    modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+    modalBtn: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, borderRadius: RADIUS.md },
+    modalBtnCancel: { backgroundColor: COLORS.disabled },
+    modalBtnCancelText: { color: COLORS.textSecondary, fontWeight: '600' },
+    modalBtnConfirm: { backgroundColor: COLORS.primary },
+    modalBtnConfirmText: { color: COLORS.surface, fontWeight: '600' }
 });
 
 export default PitLineTrainDetailScreen;
