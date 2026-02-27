@@ -85,7 +85,9 @@ const Question = sequelize.define('Question', {
     specified_value: { type: DataTypes.STRING, allowNull: true },
     answer_type: { type: DataTypes.ENUM('BOOLEAN', 'VALUE'), defaultValue: 'BOOLEAN' },
     unit: { type: DataTypes.STRING(50) },
-    display_order: { type: DataTypes.INTEGER, defaultValue: 0 } // New: Strict Ordering
+    display_order: { type: DataTypes.INTEGER, defaultValue: 0 }, // New: Strict Ordering
+    category: { type: DataTypes.STRING(255), allowNull: true },
+    is_active: { type: DataTypes.INTEGER, defaultValue: 1 }
 }, { tableName: 'questions', timestamps: false });
 
 const Reason = require('./Reason')(sequelize, DataTypes);

@@ -87,6 +87,11 @@ const QuestionsScreen = ({ route, navigation }) => {
 
             console.log('[API CALL] Fetching checklist...');
             let rawResponse;
+            let apiCategoryName = categoryName;
+            if (params.subcategoryName?.toLowerCase() === 'undergear' || params.area_name?.toLowerCase() === 'undergear' || categoryName?.toLowerCase() === 'undergear') {
+                apiCategoryName = 'Undergear';
+            }
+
             if (categoryName === 'WSP Examination' && !params.subcategory_id) {
                 rawResponse = await getWspQuestions(params.schedule_id || params.scheduleId);
             } else {
@@ -95,7 +100,8 @@ const QuestionsScreen = ({ route, navigation }) => {
                     params.schedule_id || params.scheduleId,
                     subId,
                     frameworkToUse,
-                    params.activity_type || params.activityType
+                    params.activity_type || params.activityType,
+                    apiCategoryName
                 );
             }
 
@@ -103,8 +109,18 @@ const QuestionsScreen = ({ route, navigation }) => {
 
             if (!isMounted.current) return;
 
-            const normalized = normalizeQuestionResponse(rawResponse);
-            setQuestions(normalized.groups);
+            let apiQuestions = [];
+            if (rawResponse?.questions && Array.isArray(rawResponse.questions)) {
+                apiQuestions = rawResponse.questions;
+            } else if (rawResponse?.data?.questions && Array.isArray(rawResponse.data.questions)) {
+                apiQuestions = rawResponse.data.questions;
+            } else {
+                const normalized = normalizeQuestionResponse(rawResponse);
+                apiQuestions = normalized.groups;
+            }
+
+            console.log('API QUESTIONS LENGTH:', apiQuestions.length);
+            setQuestions(apiQuestions);
 
             // Fetch actual pending defects from server
             const defectsRes = await api.get('/inspection/defects', {
@@ -182,7 +198,7 @@ const QuestionsScreen = ({ route, navigation }) => {
                     if (params.categoryName === 'WSP Examination') moduleType = 'wsp';
                 }
 
-                await autosaveInspection({
+                const res = await autosaveInspection({
                     module_type: moduleType,
                     session_id: params.session_id,
                     train_id: params.train_id,
@@ -196,7 +212,12 @@ const QuestionsScreen = ({ route, navigation }) => {
                     subcategory_id: params.subcategory_id || 0,
                     activity_type: params.activity_type || params.activityType || 'Major'
                 });
-                setSaveStatus('saved');
+
+                if (res && res.success === true) {
+                    setSaveStatus('saved');
+                } else {
+                    setSaveStatus('error');
+                }
             } catch (err) {
                 console.error('AutoSave Error:', err);
                 setSaveStatus('error');
@@ -216,10 +237,43 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     const currentAnswers = draft?.answers || {};
 
-    // Flatten questions for logic/progress since we now guarantee they are grouped
-    const flatQuestions = questions.flatMap(group => group.questions || []);
+    const selectedCategory = params.category_name || params.categoryName || params.area_name;
+    const selectedSeverity = params.activity_type || params.activityType;
 
-    const qList = flatQuestions || [];
+    // 1. Update Question Filtering Logic:
+    const isUndergear = selectedCategory?.toLowerCase() === 'undergear';
+
+    const safeQuestions = Array.isArray(questions) ? questions : [];
+
+    const filteredQuestions = isUndergear
+        ? safeQuestions
+        : safeQuestions.flatMap(group => group?.questions || []).filter(q => {
+            if (!selectedSeverity) return true;
+            return q?.activity_type === selectedSeverity;
+        });
+
+    let filteredGroups = [];
+    if (isUndergear) {
+        filteredGroups = [
+            {
+                title: 'UNDERGEAR',
+                data: filteredQuestions || []
+            }
+        ];
+    } else {
+        filteredGroups = safeQuestions.map(group => {
+            if (!group?.questions) return group;
+            const filteredQ = group.questions.filter(q => {
+                if (!selectedSeverity) return true;
+                return q?.activity_type === selectedSeverity;
+            });
+            return { ...group, questions: filteredQ };
+        }).filter(g => g?.questions?.length > 0);
+    }
+
+    // Flattening handled above for Undergear
+
+    const qList = filteredQuestions || [];
     const ansMap = currentAnswers || {};
     const currentQIds = qList.map(q => {
         try {
@@ -283,7 +337,7 @@ const QuestionsScreen = ({ route, navigation }) => {
             const parts = key.split('_');
             const qId = parts.length > 1 ? parts[1] : parts[0];
             const qObj = qList.find(q => q?.id?.toString() === qId);
-            const qText = qObj?.text || 'Question';
+            const qText = qObj?.question_text || qObj?.text || 'Question';
 
             let missing = [];
             if (!ans?.reasons || ans.reasons.length === 0) missing.push('Reasons');
@@ -304,10 +358,23 @@ const QuestionsScreen = ({ route, navigation }) => {
 
     const isWsp = params.categoryName === 'WSP Examination' || params.mode === 'WSP';
 
+    if (!Array.isArray(questions)) {
+        console.error('Questions is not an array');
+        return null;
+    }
+
+    if (!filteredGroups) {
+        return null;
+    }
+
+    const headerTitle = isUndergear
+        ? 'Undergear'
+        : params.subcategoryName || 'Checklist';
+
     return (
         <View style={styles.container}>
             <AppHeader
-                title={params.subcategoryName || 'Checklist'}
+                title={headerTitle}
                 onBack={() => navigation.goBack()}
                 onHome={() => navigation.reset({
                     index: 0,
@@ -326,13 +393,17 @@ const QuestionsScreen = ({ route, navigation }) => {
                                 <Text style={styles.separator}>›</Text>
                                 <Text style={styles.breadcrumb}>{params.categoryName}</Text>
                                 <Text style={styles.separator}>›</Text>
-                                <Text style={styles.breadcrumb}>
+                                <Text style={[styles.breadcrumb, isUndergear && styles.activeBreadcrumb]}>
                                     {params.compartment ? `${params.subcategoryName} (${params.compartment})` : params.subcategoryName}
                                 </Text>
-                                <Text style={styles.separator}>›</Text>
-                                <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
-                                    {params.activityType || params.activity_type}
-                                </Text>
+                                {!isUndergear && (
+                                    <>
+                                        <Text style={styles.separator}>›</Text>
+                                        <Text style={[styles.breadcrumb, styles.activeBreadcrumb]}>
+                                            {params.activityType || params.activity_type}
+                                        </Text>
+                                    </>
+                                )}
                             </>
                         ) : (
                             <>
@@ -381,31 +452,50 @@ const QuestionsScreen = ({ route, navigation }) => {
                 )}
             </View>
 
-            <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-                {Array.isArray(questions) && questions.length > 0 ? (
-                    questions.map((group, gIdx) => (
-                        <View key={`group-${gIdx}`} style={styles.groupContainer}>
-                            <View style={styles.itemHeader}>
-                                <Text style={styles.itemHeaderText}>{group.item_name || group.item || 'Questions'}</Text>
+            {console.log('QUESTIONS STATE:', questions)}
+            {isUndergear ? (
+                <ScrollView contentContainerStyle={{ padding: 16 }}>
+                    {questions?.map((q, index) => (
+                        <QuestionCard
+                            key={q.id || index}
+                            question={q}
+                            session_id={params.session_id || params.sessionId}
+                            module_type={params.module_type || params.type}
+                            train_id={params.train_id}
+                            coach_id={params.coach_id}
+                            answerData={currentAnswers[getAnswerKey(q.id)]}
+                            onUpdate={(data) => updateAnswer(q.id, data)}
+                            isDraft={true}
+                        />
+                    ))}
+                </ScrollView>
+            ) : (
+                <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+                    {Array.isArray(filteredGroups) && filteredGroups.length > 0 ? (
+                        filteredGroups.map((group, gIdx) => (
+                            <View key={`group-${gIdx}`} style={styles.groupContainer}>
+                                <View style={styles.itemHeader}>
+                                    <Text style={styles.itemHeaderText}>{group.item_name || group.item || group.title || 'Questions'}</Text>
+                                </View>
+                                {Array.isArray(group.questions) && group.questions.map((q, idx) => (
+                                    <QuestionCard
+                                        key={q.id || `q-${idx}`}
+                                        question={q}
+                                        answerData={currentAnswers[getAnswerKey(q.id)]}
+                                        onUpdate={(data) => updateAnswer(q.id, data)}
+                                        isDraft={true}
+                                    />
+                                ))}
                             </View>
-                            {Array.isArray(group.questions) && group.questions.map((q, idx) => (
-                                <QuestionCard
-                                    key={q.id || `q-${idx}`}
-                                    question={q}
-                                    answerData={currentAnswers[getAnswerKey(q.id)]}
-                                    onUpdate={(data) => updateAnswer(q.id, data)}
-                                    isDraft={true}
-                                />
-                            ))}
+                        ))
+                    ) : (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="information-circle-outline" size={60} color="#94a3b8" />
+                            <Text style={styles.emptyText}>No questions available for this area.</Text>
                         </View>
-                    ))
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="information-circle-outline" size={60} color="#94a3b8" />
-                        <Text style={styles.emptyText}>No questions available for this area.</Text>
-                    </View>
-                )}
-            </ScrollView>
+                    )}
+                </ScrollView>
+            )}
 
             <View style={styles.bottomButtons}>
                 <TouchableOpacity

@@ -59,8 +59,13 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
             console.log(`[FETCHING QUESTIONS] Commissionary - Subcategory: ${subcategoryId}, Tab: ${activeTab}`);
 
+            let apiCategoryName = categoryName;
+            if (subcategoryName?.toLowerCase() === 'undergear' || categoryName?.toLowerCase() === 'undergear') {
+                apiCategoryName = 'Undergear';
+            }
+
             const [response, savedAnswers] = await Promise.all([
-                getCommissionaryQuestions(subcategoryId, activeTab),
+                getCommissionaryQuestions(subcategoryId, activeTab, apiCategoryName),
                 getCommissionaryAnswers((sessionId || 'NA').toString(), (subcategoryId || 'NA').toString(), activeTab, compartmentId)
             ]);
 
@@ -149,7 +154,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
         autoSaveTimer.current = setTimeout(async () => {
             try {
-                await autosaveInspection({
+                const res = await autosaveInspection({
                     module_type: 'commissionary',
                     session_id: sessionId,
                     coach_id: coachId,
@@ -162,7 +167,12 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                     subcategory_id: subcategoryId,
                     activity_type: activeTab
                 });
-                setSaveStatus('saved');
+
+                if (res && res.success === true) {
+                    setSaveStatus('saved');
+                } else {
+                    setSaveStatus('error');
+                }
                 refreshProgress();
             } catch (err) {
                 console.error('AutoSave Error:', err);
@@ -177,7 +187,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
     };
 
     const validate = () => {
-        const currentQs = activeTab === 'Major' ? majorQs : minorQs;
+        const currentQs = activeTab === 'Minor' ? minorQs : majorQs;
         for (const q of currentQs) {
             const ans = answers[q.id];
             if (!ans || !ans.status) return { valid: false, msg: `Status is required for "${q.text}".` };
@@ -206,7 +216,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
 
         setSaving(true);
         try {
-            const currentQs = activeTab === 'Major' ? majorQs : minorQs;
+            const currentQs = activeTab === 'Minor' ? minorQs : majorQs;
             const answeredQs = currentQs.filter(q => answers[q.id]?.status);
 
             for (const q of answeredQs) {
@@ -266,7 +276,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
         navigation.pop(2);
     };
 
-    const currentQs = activeTab === 'Major' ? majorQs : minorQs;
+    const currentQs = (subcategoryName === 'Undergear' || categoryName === 'Undergear') ? majorQs : (activeTab === 'Major' ? majorQs : minorQs);
     const allAnswered = currentQs.length > 0 && currentQs.every(q => answers[q.id]?.status);
 
     let btnText = 'Save & Sync';
@@ -346,7 +356,7 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
             )}
 
-            {supportsActivityType && (
+            {supportsActivityType && subcategoryName !== 'Undergear' && categoryName !== 'Undergear' && (
                 <View style={styles.tabBar}>
                     <TouchableOpacity
                         style={[styles.tab, activeTab === 'Major' && styles.activeTab]}
@@ -368,8 +378,8 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
             )}
 
             <ScrollView contentContainerStyle={styles.scroll}>
-                {Array.isArray(activeTab === 'Major' ? majorQs : minorQs) && (activeTab === 'Major' ? majorQs : minorQs).length > 0 ? (
-                    (activeTab === 'Major' ? majorQs : minorQs).map(renderQuestion)
+                {Array.isArray(currentQs) && currentQs.length > 0 ? (
+                    currentQs.map(renderQuestion)
                 ) : (
                     <View style={styles.emptyContainer}>
                         <Ionicons name="information-circle-outline" size={48} color="#94a3b8" />

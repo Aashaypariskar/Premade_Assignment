@@ -109,8 +109,8 @@ export const getCommissionarySession = (coach_number) => api.get(`/commissionary
 export const getCommissionaryCoaches = () => api.get('/commissionary/coaches').then(res => res.data);
 export const createCommissionaryCoach = (data) => api.post('/commissionary/coaches', data).then(res => res.data);
 
-export const getCommissionaryQuestions = (subId, actType) =>
-    api.get('/commissionary/questions', { params: { subcategory_id: subId, activity_type: actType } }).then(r => r.data);
+export const getCommissionaryQuestions = (subId, actType, categoryName) =>
+    api.get('/commissionary/questions', { params: { subcategory_id: subId, activity_type: actType, categoryName } }).then(r => r.data);
 
 export const getCommissionaryAnswers = (sessionId, subId, actType, compartmentId) =>
     api.get('/commissionary/answers', { params: { session_id: sessionId, subcategory_id: subId, activity_type: actType, compartment_id: compartmentId } }).then(r => r.data);
@@ -183,7 +183,7 @@ export const completeSickLineSession = (coach_number) => api.post('/sickline/com
 export const getSickLineCombinedReport = (sessionId) =>
     api.get('/sickline/combined-report', { params: { session_id: sessionId } }).then(r => r.data);
 
-export const getQuestions = async (activityId, scheduleId = null, subcategoryId = null, framework = null, activityType = null) => {
+export const getQuestions = async (activityId, scheduleId = null, subcategoryId = null, framework = null, activityType = null, categoryName = null) => {
     let url = `/checklist?`;
     if (scheduleId) {
         url += `schedule_id=${scheduleId}`;
@@ -193,6 +193,7 @@ export const getQuestions = async (activityId, scheduleId = null, subcategoryId 
     if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
     if (framework) url += `&framework=${framework}`;
     if (activityType) url += `&activity_type=${activityType}`;
+    if (categoryName) url += `&categoryName=${encodeURIComponent(categoryName)}`;
     const res = await api.get(url);
     return res.data;
 };

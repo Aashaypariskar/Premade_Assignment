@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
     getCaiQuestions,
@@ -7,7 +7,8 @@ import {
     autosaveInspection,
     saveInspectionCheckpoint,
     submitCaiSession,
-    getDefects
+    getDefects,
+    addCaiQuestion
 } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import QuestionCard from '../components/QuestionCard';
@@ -34,6 +35,10 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
     const [saveStatus, setSaveStatus] = useState('saved');
 
     const isLocked = status === 'SUBMITTED';
+
+    const [isAddModalVisible, setAddModalVisible] = useState(false);
+    const [newAdminQ, setNewAdminQ] = useState({ cai_code: '', question_text: '' });
+    const [adding, setAdding] = useState(false);
 
     const loadData = useCallback(async () => {
         try {
@@ -176,6 +181,27 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
         );
     };
 
+    const handleAddQuestionSubmit = async () => {
+        if (!newAdminQ.cai_code || !newAdminQ.question_text) {
+            Alert.alert('Error', 'Please fill both code and text.');
+            return;
+        }
+        try {
+            setAdding(true);
+            await addCaiQuestion(newAdminQ);
+            setNewAdminQ({ cai_code: '', question_text: '' });
+            setAddModalVisible(false);
+            Alert.alert('Success', 'Question added successfully.');
+            // Reload list
+            loadData();
+        } catch (err) {
+            console.error('Add Q Error:', err);
+            Alert.alert('Error', 'Failed to add question');
+        } finally {
+            setAdding(false);
+        }
+    };
+
     if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
@@ -206,6 +232,15 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
                 answeredCount={progress.answeredCount}
                 color={COLORS.primary}
             />
+
+            {user?.role === 'Admin' && !isLocked && (
+                <View style={{ paddingHorizontal: 15, paddingTop: 10 }}>
+                    <TouchableOpacity style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+                        <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                        <Text style={styles.addBtnText}>Add Question</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {pendingDefects > 0 && (
                 <View style={styles.defectsContainer}>
@@ -242,6 +277,40 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
                     {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>FINAL SUBMIT</Text>}
                 </TouchableOpacity>
             </ScrollView>
+
+            <Modal visible={isAddModalVisible} transparent={true} animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Add New CAI Question</Text>
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder="CAI Code (e.g. CAI-10)"
+                            value={newAdminQ.cai_code}
+                            onChangeText={(t) => setNewAdminQ(p => ({ ...p, cai_code: t }))}
+                            placeholderTextColor={COLORS.placeholder}
+                        />
+
+                        <TextInput
+                            style={[styles.input, { height: 80, color: COLORS.textPrimary }]}
+                            placeholder="Question Text"
+                            multiline
+                            value={newAdminQ.question_text}
+                            onChangeText={(t) => setNewAdminQ(p => ({ ...p, question_text: t }))}
+                            placeholderTextColor={COLORS.placeholder}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity onPress={() => setAddModalVisible(false)} style={{ padding: 10, marginRight: 15 }}>
+                                <Text style={{ color: COLORS.textSecondary, fontWeight: 'bold' }}>CANCEL</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleAddQuestionSubmit} disabled={adding} style={{ backgroundColor: COLORS.primary, padding: 10, borderRadius: 8, paddingHorizontal: 20 }}>
+                                {adding ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>ADD</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -262,7 +331,14 @@ const styles = StyleSheet.create({
     saveIndicator: { marginLeft: 10 },
     savingText: { color: COLORS.textSecondary, fontStyle: 'italic', fontSize: 12 },
     savedText: { color: COLORS.success, fontWeight: 'bold', fontSize: 12 },
-    errorText: { color: COLORS.error, fontWeight: 'bold', fontSize: 12 }
+    errorText: { color: COLORS.error, fontWeight: 'bold', fontSize: 12 },
+    addBtn: { flexDirection: 'row', backgroundColor: COLORS.success, padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    addBtnText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+    modalContent: { backgroundColor: '#fff', padding: 20, borderRadius: RADIUS.lg },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+    input: { borderBottomWidth: 1, borderColor: COLORS.border, marginBottom: 15, padding: 8, fontSize: 16, color: COLORS.textPrimary },
+    modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }
 });
 
 export default CaiQuestionsScreen;

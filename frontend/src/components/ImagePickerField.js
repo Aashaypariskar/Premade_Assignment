@@ -54,7 +54,9 @@ const ImagePickerField = ({ image, onImagePicked, onRemove }) => {
         <View style={styles.container}>
             {image ? (
                 <View style={styles.previewContainer}>
-                    <Image source={{ uri: image }} style={styles.preview} />
+                    <View style={styles.imagePreview}>
+                        <Image source={{ uri: image }} style={styles.image} resizeMode="cover" />
+                    </View>
                     <TouchableOpacity style={styles.removeBtn} onPress={onRemove}>
                         <Text style={styles.removeText}>Remove</Text>
                     </TouchableOpacity>
@@ -79,8 +81,9 @@ const styles = StyleSheet.create({
     btn: { flex: 1, backgroundColor: '#2563eb', padding: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 5 },
     secondaryBtn: { backgroundColor: '#64748b' },
     btnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-    previewContainer: { alignItems: 'center' },
-    preview: { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#eee' },
+    previewContainer: { alignItems: 'center', width: '100%' },
+    imagePreview: { width: '100%', height: 160, borderRadius: 12, overflow: 'hidden', backgroundColor: '#eee' },
+    image: { width: '100%', height: '100%' },
     removeBtn: { marginTop: 8, padding: 5 },
     removeText: { color: '#ef4444', fontWeight: 'bold' }
 });

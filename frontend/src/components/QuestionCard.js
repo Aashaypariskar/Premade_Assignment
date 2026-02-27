@@ -81,7 +81,7 @@ const QuestionCard = ({ question, answerData, onUpdate, readOnly = false }) => {
                     <Text style={styles.resolvedLabelText}>RESOLVED ✓</Text>
                 </View>
             ) : null}
-            <Text style={styles.qText}>{question.text}</Text>
+            <Text style={styles.qText}>{question.question_text || question.text || 'Untitled Question'}</Text>
 
             {question.specified_value && (
                 <View style={styles.specBox}>

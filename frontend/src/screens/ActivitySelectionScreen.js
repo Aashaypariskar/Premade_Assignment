@@ -121,12 +121,14 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
         const screen = (category_name === 'Coach Commissionary' && !isPitLine) ? 'CommissionaryQuestions' : 'QuestionsScreen';
 
+        const isUndergear = params.subcategoryName === 'Undergear' || category_name === 'Undergear';
+
         // Requirement Part 10: Param propagation
         navigation.navigate(screen, {
             ...params,
-            category_name: category_name,
-            activity_id: act.id,
-            activity_type: act.type,
+            category_name: isUndergear ? 'Undergear' : category_name,
+            activity_id: isUndergear ? null : act.id,
+            activity_type: isUndergear ? null : act.type,
             compartment_id: params.compartment_id || 'NA'
         });
     };
@@ -156,7 +158,7 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
 
                 <Text style={styles.title}>Select Activity Type</Text>
 
-                {supportsActivityType === false ? (
+                {supportsActivityType === false || params.area_name === 'Undergear' || params.category_name === 'Undergear' || params.subcategoryName === 'Undergear' ? (
                     <View style={styles.singleModeContainer}>
                         <TouchableOpacity
                             style={[styles.tab, styles.tabMajor, { width: '100%', height: 200 }]}
@@ -166,6 +168,21 @@ const ActivitySelectionScreen = ({ route, navigation }) => {
                             <Text style={[styles.tabText, styles.tabMajorText]}>Start Inspection</Text>
                             <Text style={[styles.subText, styles.tabMajorText]}>Complete check for this area</Text>
                         </TouchableOpacity>
+
+                        {user?.role === 'Admin' && (
+                            <TouchableOpacity
+                                style={[styles.adminEditBtn, { alignSelf: 'center', marginTop: 20, paddingHorizontal: 20, paddingVertical: 12 }]}
+                                onPress={() => navigation.navigate('QuestionManagement', {
+                                    activityId: activities.length ? activities[0].id : null,
+                                    activityType: activities.length ? activities[0].type : null,
+                                    categoryName: params.category_name || params.categoryName,
+                                    subcategoryId: params.subcategory_id || params.subcategoryId
+                                })}
+                            >
+                                <Ionicons name="settings-outline" size={16} color="#2563eb" />
+                                <Text style={[styles.adminEditBtnText, { fontSize: 14 }]}>Edit Questions</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 ) : (
                     <View style={styles.tabContainer}>

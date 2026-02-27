@@ -211,12 +211,33 @@ exports.getQuestions = async (req, res) => {
     try {
         const { schedule_id, subcategory_id, framework, activity_type, activity_id } = req.query;
 
+        const categoryNameInput = req.query.categoryName || req.query.category_name || '';
+
         console.log('[CHECKLIST PARAMS]', {
-            subcategory_id,
-            schedule_id,
+            categoryName: categoryNameInput,
             framework,
+            subcategory_id,
             activity_type
         });
+
+        if (categoryNameInput?.toLowerCase() === 'undergear') {
+            console.log('[UNDERGEAR BYPASS ACTIVE]');
+
+            const questions = await Question.findAll({
+                where: {
+                    category: 'Undergear',
+                    is_active: 1
+                },
+                order: [['id', 'ASC']]
+            });
+
+            console.log('[UNDERGEAR FETCH COUNT]', questions.length);
+
+            return res.json({
+                success: true,
+                questions
+            });
+        }
 
         let where = {};
         let categoryName = '';

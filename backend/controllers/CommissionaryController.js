@@ -86,11 +86,22 @@ exports.getOrCreateSession = async (req, res) => {
 // GET /api/commissionary/questions?subcategory_id=X&activity_type=Y
 exports.getQuestions = async (req, res) => {
     try {
-        const { subcategory_id, activity_type } = req.query;
+        const { subcategory_id, activity_type, categoryName } = req.query;
         if (!subcategory_id) return res.status(400).json({ error: 'Missing subcategory_id' });
 
         console.log('[SUBCATEGORY REQUESTED]', req.query.subcategory_id);
-        console.log(`[STABILIZATION-INPUT] subcategory_id: ${subcategory_id}, activity_type: ${activity_type}`);
+        console.log(`[STABILIZATION-INPUT] subcategory_id: ${subcategory_id}, activity_type: ${activity_type}, categoryName: ${categoryName}`);
+
+        if (categoryName === 'Undergear') {
+            const questions = await Question.findAll({
+                where: { category: 'Undergear', is_active: 1 },
+                order: [['display_order', 'ASC']]
+            });
+            return res.json({
+                groups: [{ item_name: 'Undergear', questions }],
+                supportsActivityType: false
+            });
+        }
 
         // Phase 1 & 2: Enforce strict item filtering, remove ANY loose filtering
         const includeConfig = {
