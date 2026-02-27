@@ -135,7 +135,7 @@ const PitLineTrainDetailScreen = () => {
                 onHome={() => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] })}
                 rightComponent={
                     <TouchableOpacity style={styles.addBtn} onPress={handleAddCoach}>
-                        <MaterialCommunityIcons name="plus" size={20} color={COLORS.surface} />
+                        <MaterialCommunityIcons name="plus" size={16} color={COLORS.surface} />
                         <Text style={styles.addText}>Add Coach</Text>
                     </TouchableOpacity>
                 }
@@ -246,12 +246,13 @@ const styles = StyleSheet.create({
     addBtn: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 6,
         backgroundColor: COLORS.primary,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: SPACING.xs,
-        borderRadius: RADIUS.md,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 8,
     },
-    addText: { color: COLORS.surface, marginLeft: 4, fontWeight: 'bold', fontSize: 13 },
+    addText: { color: COLORS.surface, fontWeight: '600', fontSize: 14 },
     emptyRake: {
         alignItems: 'center',
         paddingVertical: SPACING.xl,
