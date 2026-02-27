@@ -241,7 +241,7 @@ const QuestionsScreen = ({ route, navigation }) => {
     const selectedSeverity = params.activity_type || params.activityType;
 
     // 1. Update Question Filtering Logic:
-    const isUndergear = selectedCategory?.toLowerCase() === 'undergear';
+    const isUndergear = selectedCategory?.toLowerCase() === 'undergear' || Number(params.subcategory_id || params.subcategoryId) === 179;
 
     const safeQuestions = Array.isArray(questions) ? questions : [];
 
