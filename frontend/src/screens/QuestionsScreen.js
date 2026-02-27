@@ -470,30 +470,32 @@ const QuestionsScreen = ({ route, navigation }) => {
                     ))}
                 </ScrollView>
             ) : (
-                <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-                    {Array.isArray(filteredGroups) && filteredGroups.length > 0 ? (
-                        filteredGroups.map((group, gIdx) => (
-                            <View key={`group-${gIdx}`} style={styles.groupContainer}>
-                                <View style={styles.itemHeader}>
-                                    <Text style={styles.itemHeaderText}>{group.item_name || group.item || group.title || 'Questions'}</Text>
-                                </View>
-                                {Array.isArray(group.questions) && group.questions.map((q, idx) => (
-                                    <QuestionCard
-                                        key={q.id || `q-${idx}`}
-                                        question={q}
-                                        answerData={currentAnswers[getAnswerKey(q.id)]}
-                                        onUpdate={(data) => updateAnswer(q.id, data)}
-                                        isDraft={true}
-                                    />
-                                ))}
-                            </View>
-                        ))
-                    ) : (
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="information-circle-outline" size={60} color="#94a3b8" />
-                            <Text style={styles.emptyText}>No questions available for this area.</Text>
+                <ScrollView contentContainerStyle={{ padding: 16 }}>
+                    {questions?.map((group, groupIndex) => (
+                        <View key={groupIndex} style={{ marginBottom: 20 }}>
+                            <Text style={{
+                                fontSize: 16,
+                                fontWeight: 'bold',
+                                marginBottom: 8
+                            }}>
+                                {group.item_name}
+                            </Text>
+
+                            {group.questions?.map((q, index) => (
+                                <QuestionCard
+                                    key={q.id || index}
+                                    question={q}
+                                    session_id={params.session_id || params.sessionId}
+                                    module_type={params.module_type || params.type}
+                                    train_id={params.train_id}
+                                    coach_id={params.coach_id}
+                                    answerData={currentAnswers[getAnswerKey(q.id)]}
+                                    onUpdate={(data) => updateAnswer(q.id, data)}
+                                    isDraft={true}
+                                />
+                            ))}
                         </View>
-                    )}
+                    ))}
                 </ScrollView>
             )}
 
