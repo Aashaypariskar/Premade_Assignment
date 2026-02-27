@@ -64,6 +64,10 @@ const PitLineTrainDetailScreen = () => {
             Alert.alert('Error', 'Please enter a coach number');
             return;
         }
+        if (!/^[0-9]{6}$/.test(newCoachNumber.trim())) {
+            Alert.alert('Invalid', 'Coach number must be exactly 6 digits (e.g. 123456)');
+            return;
+        }
         try {
             await api.post('/pitline/coaches/add', { train_id: trainId, coach_number: newCoachNumber.trim() });
             setAddModalVisible(false);
@@ -89,6 +93,15 @@ const PitLineTrainDetailScreen = () => {
                 }
             }
         ]);
+    };
+
+    // ─── Update coach number — NEW ───────────────────────────────────────
+    const handleUpdateCoach = async (coachId, payload) => {
+        // May throw — CoachHeaderCard catches and shows error inline
+        const response = await api.put(`/pitline/coaches/${coachId}`, payload);
+        const updated = response.data;
+        // Update only the changed coach in local state — no full reload
+        setCoaches(prev => prev.map(c => c.id === coachId ? { ...c, ...updated } : c));
     };
 
     // ─── Navigation — UNCHANGED ─────────────────────────────────────────────
@@ -176,6 +189,7 @@ const PitLineTrainDetailScreen = () => {
                             completion={0}
                             defectCount={0}
                             position={activePosition != null ? activePosition + 1 : null}
+                            onUpdateCoach={handleUpdateCoach}
                         />
 
                         <CoachActionPanel
@@ -209,15 +223,16 @@ const PitLineTrainDetailScreen = () => {
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                         <View style={styles.modalBox}>
                             <Text style={styles.modalTitle}>Add Coach</Text>
-                            <Text style={styles.modalSubtitle}>Enter coach number (e.g. B1, C3)</Text>
+                            <Text style={styles.modalSubtitle}>Enter a unique 6-digit number (e.g. 123456)</Text>
                             <TextInput
                                 style={styles.modalInput}
                                 value={newCoachNumber}
-                                onChangeText={setNewCoachNumber}
-                                placeholder="Coach Number"
+                                onChangeText={t => setNewCoachNumber(t.replace(/[^0-9]/g, ''))}
+                                placeholder="e.g. 123456"
                                 placeholderTextColor={COLORS.placeholder}
+                                keyboardType="numeric"
+                                maxLength={6}
                                 autoFocus
-                                autoCapitalize="characters"
                             />
                             <View style={styles.modalActions}>
                                 <TouchableOpacity

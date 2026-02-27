@@ -49,9 +49,9 @@ const CoachItem = memo(({ coach, index, isActive, completion = 0, defectCount = 
                     ))}
                 </View>
 
-                {/* Coach label */}
+                {/* Coach label — show name (B1, GEN1) falling back to number */}
                 <Text style={[styles.coachNum, isActive && { color: COLORS.primary }]} numberOfLines={1}>
-                    {coach.coach_number}
+                    {coach.coach_name || coach.coach_number}
                 </Text>
 
                 {/* Defect badge */}

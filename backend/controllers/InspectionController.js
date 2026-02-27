@@ -186,8 +186,11 @@ exports.autosave = async (req, res) => {
 
         // 0. PITLINE Block (PRIORITIZED & ISOLATED)
         if (moduleType === 'PITLINE') {
-            if (!train_id || !coach_id) {
-                return res.status(400).json({ error: 'train_id and coach_id required for PITLINE' });
+            // NOTE: train_id here is a pitline_trains.id — NOT the `trains` table FK.
+            // inspection_answers.train_id has a FK to `trains`, so we must NOT pass
+            // the pitline train id. Use NULL — session_id + coach_id uniquely identify the record.
+            if (!coach_id) {
+                return res.status(400).json({ error: 'coach_id required for PITLINE' });
             }
 
             // Standardize reasons
@@ -198,18 +201,22 @@ exports.autosave = async (req, res) => {
 
             await InspectionAnswer.upsert({
                 session_id,
-                train_id,
-                coach_id,
+                train_id: null,   // <-- FK is to `trains` table; pitline uses pitline_trains separately
+                coach_id: null,   // <-- FK is to `coaches` table; pitline uses pitline_coaches separately
                 question_id,
                 status: status || 'OK',
                 remarks: remarks || '',
                 reasons: finalReasons,
                 photo_url: photo_url || null,
                 module_type: 'PITLINE',
-                resolved: 0
+                resolved: 0,
+                subcategory_id: subcategory_id || null,
+                compartment_id: compartment_id || 'NA',
+                activity_type: activity_type || null,
             });
             return res.json({ success: true, message: 'PitLine autosave successful' });
         }
+
 
         // 1. Resolve Models and Session Locking
         let AnswerModel, SessionModel;

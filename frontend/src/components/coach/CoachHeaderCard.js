@@ -1,9 +1,21 @@
-import React, { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { memo, useState } from 'react';
+import {
+    View, Text, StyleSheet, TouchableOpacity,
+    Modal, TextInput, Alert, ActivityIndicator,
+    KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS } from '../../config/theme';
 
-const CoachHeaderCard = memo(({ coach, completion = 0, defectCount = 0, position }) => {
+/** Exactly 6 numeric digits — e.g. 123456 */
+const COACH_NUM_REGEX = /^[0-9]{6}$/;
+
+const CoachHeaderCard = memo(({ coach, completion = 0, defectCount = 0, position, onUpdateCoach }) => {
+    const [editVisible, setEditVisible] = useState(false);
+    const [editNumber, setEditNumber] = useState('');
+    const [editError, setEditError] = useState('');
+    const [saving, setSaving] = useState(false);
+
     if (!coach) {
         return (
             <View style={styles.placeholder}>
@@ -14,9 +26,38 @@ const CoachHeaderCard = memo(({ coach, completion = 0, defectCount = 0, position
     }
 
     const completionColor =
-        defectCount > 0 ? '#EF4444' :
-            completion >= 100 ? '#10B981' :
-                completion > 0 ? '#F59E0B' : COLORS.textSecondary;
+        defectCount > 0 ? COLORS.danger :
+            completion >= 100 ? COLORS.success :
+                completion > 0 ? COLORS.warning : COLORS.textSecondary;
+
+    // ── Open edit modal ──────────────────────────────────────────────────
+    const openEdit = () => {
+        setEditNumber(coach.coach_number || '');
+        setEditError('');
+        setEditVisible(true);
+    };
+
+    // ── Validate + save ──────────────────────────────────────────────────
+    const handleSave = async () => {
+        const trimmed = editNumber.trim().toUpperCase();
+
+        if (!trimmed || !COACH_NUM_REGEX.test(trimmed)) {
+            setEditError('Coach number must be exactly 6 digits (e.g. 123456).');
+            return;
+        }
+
+        setSaving(true);
+        setEditError('');
+        try {
+            await onUpdateCoach(coach.id, { coach_number: trimmed });
+            setEditVisible(false);
+        } catch (err) {
+            const msg = err?.response?.data?.error || 'Failed to update coach.';
+            setEditError(msg);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <View style={styles.card}>
@@ -25,10 +66,25 @@ const CoachHeaderCard = memo(({ coach, completion = 0, defectCount = 0, position
                 <View style={styles.iconCircle}>
                     <MaterialCommunityIcons name="train-car" size={28} color={COLORS.primary} />
                 </View>
+
                 <View style={styles.titleGroup}>
-                    <Text style={styles.coachNum}>{coach.coach_number}</Text>
+                    {/* Primary: coach name (B1, GEN1, EOG1 etc.) */}
+                    <View style={styles.numRow}>
+                        <Text style={styles.coachNum}>
+                            {coach.coach_name || coach.coach_number}
+                        </Text>
+                        {onUpdateCoach && (
+                            <TouchableOpacity style={styles.editBtn} onPress={openEdit}>
+                                <MaterialCommunityIcons name="pencil-outline" size={16} color={COLORS.secondary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    {/* Secondary: the 6-digit unique coach number */}
+                    <Text style={styles.coachNoLabel}>
+                        Coach No: <Text style={styles.coachNoValue}>{coach.coach_number}</Text>
+                    </Text>
                     {position != null && (
-                        <Text style={styles.position}>Coach #{position} in rake</Text>
+                        <Text style={styles.position}>Position: {position} in rake</Text>
                     )}
                 </View>
             </View>
@@ -43,7 +99,7 @@ const CoachHeaderCard = memo(({ coach, completion = 0, defectCount = 0, position
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.stat}>
-                    <Text style={[styles.statValue, { color: defectCount > 0 ? '#EF4444' : '#10B981' }]}>
+                    <Text style={[styles.statValue, { color: defectCount > 0 ? COLORS.danger : COLORS.success }]}>
                         {defectCount}
                     </Text>
                     <Text style={styles.statLabel}>Defects</Text>
@@ -64,6 +120,72 @@ const CoachHeaderCard = memo(({ coach, completion = 0, defectCount = 0, position
                     backgroundColor: completionColor
                 }]} />
             </View>
+
+            {/* ── Edit Coach Number Modal ──────────────────────────────────────── */}
+            <Modal
+                visible={editVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setEditVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                        <View style={styles.modalBox}>
+                            {/* Title row */}
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Edit Coach Number</Text>
+                                <TouchableOpacity onPress={() => setEditVisible(false)}>
+                                    <MaterialCommunityIcons name="close" size={22} color={COLORS.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.modalSub}>
+                                Editing 6-digit Coach Number for: <Text style={{ fontWeight: '700' }}>{coach.coach_name || coach.coach_number}</Text>
+                            </Text>
+
+                            {/* Input */}
+                            <Text style={styles.inputLabel}>New Coach Number</Text>
+                            <TextInput
+                                style={[styles.input, editError ? styles.inputError : null]}
+                                value={editNumber}
+                                onChangeText={t => { setEditNumber(t.replace(/[^0-9]/g, '')); setEditError(''); }}
+                                placeholder="6-digit number (e.g. 123456)"
+                                placeholderTextColor={COLORS.placeholder}
+                                keyboardType="numeric"
+                                autoFocus
+                                maxLength={6}
+                            />
+                            {editError ? (
+                                <Text style={styles.errorText}>{editError}</Text>
+                            ) : null}
+
+                            <Text style={styles.hintText}>Enter exactly 6 digits — must be unique in this train.</Text>
+
+                            {/* Actions */}
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={[styles.modalBtn, styles.cancelBtn]}
+                                    onPress={() => setEditVisible(false)}
+                                    disabled={saving}
+                                >
+                                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.modalBtn, styles.saveBtn, saving && { opacity: 0.7 }]}
+                                    onPress={handleSave}
+                                    disabled={saving}
+                                >
+                                    {saving
+                                        ? <ActivityIndicator size="small" color="#fff" />
+                                        : <Text style={styles.saveBtnText}>Save</Text>
+                                    }
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
         </View>
     );
 });
@@ -84,24 +206,49 @@ const styles = StyleSheet.create({
     },
     headerRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: SPACING.md,
     },
     iconCircle: {
         width: 52,
         height: 52,
         borderRadius: 26,
-        backgroundColor: '#EFF6FF',
+        backgroundColor: COLORS.primaryLight,
         alignItems: 'center',
         justifyContent: 'center',
     },
     titleGroup: { flex: 1 },
+
+    // Coach label row
+    numRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+    },
     coachNum: { fontSize: 22, fontWeight: 'bold', color: COLORS.textPrimary },
-    position: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+    editBtn: {
+        padding: 4,
+        borderRadius: 6,
+        backgroundColor: COLORS.primaryLight,
+    },
+
+    // Secondary labels
+    coachNoLabel: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        marginTop: 2,
+    },
+    coachNoValue: {
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    position: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
+
+    // Stats
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: COLORS.background,
         borderRadius: RADIUS.md,
         padding: SPACING.md,
     },
@@ -109,9 +256,11 @@ const styles = StyleSheet.create({
     statValue: { fontSize: 18, fontWeight: '800' },
     statLabel: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
     divider: { width: 1, height: 32, backgroundColor: COLORS.border },
+
+    // Progress bar
     progressBg: {
         height: 6,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: COLORS.mutedLight,
         borderRadius: 3,
         overflow: 'hidden',
     },
@@ -119,6 +268,8 @@ const styles = StyleSheet.create({
         height: '100%',
         borderRadius: 3,
     },
+
+    // Empty state
     placeholder: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -138,6 +289,76 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: SPACING.xl,
     },
+
+    // ── Edit Modal ───────────────────────────────────────────────────────
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: SPACING.xl,
+    },
+    modalBox: {
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.lg,
+        padding: SPACING.xl,
+        width: '100%',
+        minWidth: 300,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.sm,
+    },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    modalSub: { fontSize: 13, color: COLORS.textSecondary, marginBottom: SPACING.lg },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        marginBottom: SPACING.xs,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: RADIUS.md,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        fontSize: 16,
+        color: COLORS.textPrimary,
+        marginBottom: SPACING.xs,
+        letterSpacing: 1,
+    },
+    inputError: {
+        borderColor: COLORS.danger,
+    },
+    errorText: {
+        fontSize: 12,
+        color: COLORS.danger,
+        marginBottom: SPACING.xs,
+    },
+    hintText: {
+        fontSize: 11,
+        color: COLORS.textSecondary,
+        marginBottom: SPACING.lg,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: SPACING.sm,
+    },
+    modalBtn: {
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.sm,
+        borderRadius: RADIUS.md,
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    cancelBtn: { backgroundColor: COLORS.disabled },
+    cancelBtnText: { color: COLORS.textSecondary, fontWeight: '600' },
+    saveBtn: { backgroundColor: COLORS.secondary },
+    saveBtnText: { color: '#fff', fontWeight: '600' },
 });
 
 export default CoachHeaderCard;

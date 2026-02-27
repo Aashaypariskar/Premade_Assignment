@@ -21,17 +21,22 @@ exports.createTrain = async (req, res) => {
 
         const train = await PitLineTrain.create({ train_number });
 
-        // Part 1: Default 20 real coaches
-        const coachList = [
-            "EOG1", "GEN1", "GEN2", "GEN3", "GEN4", "S1", "S2", "S3", "S4", "S5", "S6",
-            "B1", "B2", "B3", "B4", "B5", "B6", "A1", "A2", "H1",
-            "PANTRY", "EOG2"
+        // Default coaches: coach_name = label (B1/GEN1 etc.), coach_number = 6-digit unique ID
+        const defaults = [
+            { name: 'EOG1' }, { name: 'GEN1' }, { name: 'GEN2' }, { name: 'GEN3' }, { name: 'GEN4' },
+            { name: 'S1' }, { name: 'S2' }, { name: 'S3' }, { name: 'S4' }, { name: 'S5' },
+            { name: 'S6' }, { name: 'B1' }, { name: 'B2' }, { name: 'B3' }, { name: 'B4' },
+            { name: 'B5' }, { name: 'B6' }, { name: 'A1' }, { name: 'A2' }, { name: 'H1' },
+            { name: 'PANTRY' }, { name: 'EOG2' },
         ];
 
-        const coaches = coachList.map((coach, index) => ({
+        // Assign unique 6-digit numbers starting from a base built on timestamp
+        const base = 200000 + (train.id * 100);
+        const coaches = defaults.map((d, index) => ({
             train_id: train.id,
-            coach_number: coach,
-            position: index + 1
+            coach_name: d.name,
+            coach_number: String(base + index + 1),
+            position: index + 1,
         }));
 
         await PitLineCoach.bulkCreate(coaches);
@@ -78,8 +83,13 @@ exports.getCoaches = async (req, res) => {
 // POST /api/pitline/coaches/add
 exports.addCoach = async (req, res) => {
     try {
-        const { train_id, coach_number, position } = req.body;
+        const { train_id, coach_number, coach_name, position } = req.body;
         if (!train_id || !coach_number) return res.status(400).json({ error: 'train_id and coach_number are required' });
+
+        // Enforce exactly 6 numeric digits for coach_number
+        if (!/^[0-9]{6}$/.test(coach_number)) {
+            return res.status(400).json({ error: 'Coach number must be exactly 6 digits (e.g. 123456).' });
+        }
 
         const count = await PitLineCoach.count({ where: { train_id } });
         if (count >= 24) {
@@ -89,6 +99,7 @@ exports.addCoach = async (req, res) => {
         const coach = await PitLineCoach.create({
             train_id,
             coach_number,
+            coach_name: coach_name || null,
             position: position || (count + 1)
         });
         res.json(coach);
@@ -109,6 +120,38 @@ exports.deleteCoach = async (req, res) => {
         res.status(500).json({ error: 'Failed to delete coach' });
     }
 };
+
+// PUT /api/pitline/coaches/:id  — update coach_number (and optional position)
+exports.updateCoach = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { coach_number } = req.body;
+
+        // Validate strictly 6 digits
+        if (!coach_number || !/^[0-9]{6}$/.test(coach_number)) {
+            return res.status(400).json({ error: 'Coach number must be exactly 6 digits (e.g. 123456).' });
+        }
+
+        const coach = await PitLineCoach.findByPk(id);
+        if (!coach) return res.status(404).json({ error: 'Coach not found' });
+
+        // Check for duplicate within the same train
+        const duplicate = await PitLineCoach.findOne({
+            where: { train_id: coach.train_id, coach_number }
+        });
+        if (duplicate && duplicate.id !== parseInt(id)) {
+            return res.status(400).json({ error: 'Coach number already exists in this train.' });
+        }
+
+        await coach.update({ coach_number });
+        res.json(coach);
+    } catch (err) {
+        console.error('updateCoach Error:', err);
+        res.status(500).json({ error: 'Failed to update coach' });
+    }
+};
+
+
 
 // POST /api/pitline/session/start
 exports.startSession = async (req, res) => {

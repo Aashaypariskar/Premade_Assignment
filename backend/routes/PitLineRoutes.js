@@ -9,7 +9,9 @@ router.delete('/trains/:id', verifyToken, controller.deleteTrain);
 
 router.get('/coaches', verifyToken, controller.getCoaches);
 router.post('/coaches/add', verifyToken, controller.addCoach);
+router.put('/coaches/:id', verifyToken, controller.updateCoach);
 router.delete('/coaches/:id', verifyToken, controller.deleteCoach);
+
 
 router.post('/session/start', verifyToken, controller.startSession);
 
