@@ -5,7 +5,7 @@ const { DataTypes } = require('sequelize');
 const DeficiencyReason = sequelize.define('DeficiencyReason', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     category: { type: DataTypes.STRING(255), allowNull: true },
-    text: { type: DataTypes.STRING(255), allowNull: false }
+    reason_text: { type: DataTypes.STRING(255), allowNull: false }
 }, {
     tableName: 'deficiency_reasons',
     timestamps: false
@@ -88,11 +88,11 @@ async function seed() {
             await DeficiencyReason.findOrCreate({
                 where: {
                     category: 'Undergear',
-                    text: rText
+                    reason_text: rText
                 },
                 defaults: {
                     category: 'Undergear',
-                    text: rText
+                    reason_text: rText
                 },
                 transaction
             });
