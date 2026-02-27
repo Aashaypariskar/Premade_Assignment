@@ -78,12 +78,12 @@ const WspCoachScreen = ({ route, navigation }) => {
                                 <Text style={styles.coachNum}>{coach.coach_number}</Text>
                                 <Text style={styles.coachType}>{coach.coach_type || 'General'}</Text>
                             </View>
-                            <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                            <Ionicons name="chevron-forward" size={20} color={COLORS.border} />
                         </TouchableOpacity>
                     ))}
                     {coaches.length === 0 && !loading && (
                         <View style={styles.empty}>
-                            <Ionicons name="bus-outline" size={48} color="#e2e8f0" />
+                            <Ionicons name="bus-outline" size={48} color={COLORS.disabled} />
                             <Text style={styles.emptyText}>No coaches found for WSP.</Text>
                         </View>
                     )}

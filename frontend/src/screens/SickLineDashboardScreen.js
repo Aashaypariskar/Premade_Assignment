@@ -4,6 +4,7 @@ import { getAmenitySubcategories, getSickLineProgress, completeSickLineSession, 
 import { useStore } from '../store/StoreContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const SickLineDashboardScreen = ({ route, navigation }) => {
     const params = route.params;
@@ -105,7 +106,7 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
         });
     };
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
 
     // Prepend WSP as a virtual subcategory for the grid
     const gridData = [{ id: 'wsp', name: 'WSP Examination', isWsp: true }, ...subcategories];
@@ -132,20 +133,20 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
                 numColumns={2}
                 renderItem={({ item, index }) => {
                     let badgeText = "Pending";
-                    let badgeColor = "#94a3b8";
+                    let badgeColor = COLORS.muted;
                     let iconName = "build-outline";
-                    let iconColor = "#2563eb";
+                    let iconColor = COLORS.secondary;
 
                     if (item.isWsp) {
                         iconName = "shield-checkmark-outline";
-                        iconColor = "#1e293b";
+                        iconColor = COLORS.textPrimary;
                         const isWspComplete = wspProgress?.totalCount > 0 && wspProgress?.completedCount === wspProgress?.totalCount;
                         if (isWspComplete) {
                             badgeText = "Completed";
-                            badgeColor = "#10b981";
+                            badgeColor = COLORS.success;
                         } else if (wspProgress?.completedCount > 0) {
                             badgeText = "Partial";
-                            badgeColor = "#f59e0b";
+                            badgeColor = COLORS.warning;
                         }
                     } else {
                         const status = progress?.perAreaStatus?.find(s => s.subcategory_id === item.id);
@@ -155,13 +156,13 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
 
                         if (pendingDefects > 0) {
                             badgeText = `${pendingDefects} Defects`;
-                            badgeColor = "#ef4444";
+                            badgeColor = COLORS.danger;
                         } else if (isMajorDone && isMinorDone) {
                             badgeText = "Completed";
-                            badgeColor = "#10b981";
+                            badgeColor = COLORS.success;
                         } else if (isMajorDone || isMinorDone || (status?.majorAnswered > 0) || (status?.minorAnswered > 0)) {
                             badgeText = "Partial";
-                            badgeColor = "#f59e0b";
+                            badgeColor = COLORS.warning;
                         }
                     }
 
@@ -233,35 +234,35 @@ const SickLineDashboardScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
-    pills: { flexDirection: 'row', marginBottom: 20 },
-    pill: { backgroundColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginRight: 8 },
-    activePill: { backgroundColor: '#2563eb' },
-    pillText: { fontSize: 10, fontWeight: 'bold', color: '#64748b' },
-    title: { fontSize: 26, fontWeight: 'bold', color: '#1e293b' },
-    subtitle: { fontSize: 14, color: '#64748b', marginBottom: 30 },
-    list: { paddingBottom: 20 },
-    subCard: { flex: 1, backgroundColor: '#fff', margin: 6, padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 4, minHeight: 140 },
-    iconBox: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    subName: { fontSize: 13, fontWeight: 'bold', color: '#334155', textAlign: 'center' },
+    container: { flex: 1, backgroundColor: COLORS.background, padding: SPACING.xl },
+    pills: { flexDirection: 'row', marginBottom: SPACING.xl },
+    pill: { backgroundColor: COLORS.mutedLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.pill, marginRight: 8 },
+    activePill: { backgroundColor: COLORS.secondary },
+    pillText: { fontSize: 10, fontWeight: 'bold', color: COLORS.textSecondary },
+    title: { fontSize: 26, fontWeight: 'bold', color: COLORS.textPrimary },
+    subtitle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 30 },
+    list: { paddingBottom: SPACING.xl },
+    subCard: { flex: 1, backgroundColor: COLORS.card, margin: 6, padding: SPACING.xl, borderRadius: 14, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, minHeight: 140 },
+    iconBox: { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.md },
+    subName: { fontSize: 13, fontWeight: 'bold', color: COLORS.textPrimary, textAlign: 'center' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-    footer: { marginTop: 20, paddingBottom: 40 },
-    progressCard: { backgroundColor: '#fff', padding: 20, borderRadius: 16, marginBottom: 15, elevation: 2 },
-    progressTitle: { fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginBottom: 10 },
-    progressBar: { height: 8, backgroundColor: '#f1f5f9', borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
-    progressFill: { height: '100%', backgroundColor: '#10b981' },
-    progressText: { fontSize: 12, color: '#64748b' },
-    submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#10b981', padding: 18, borderRadius: 16, elevation: 4 },
-    submitBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
-    badge: { position: 'absolute', top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.xl },
+    footer: { marginTop: SPACING.xl, paddingBottom: 40 },
+    progressCard: { backgroundColor: COLORS.card, padding: SPACING.xl, borderRadius: RADIUS.lg, marginBottom: SPACING.md, elevation: 2 },
+    progressTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: SPACING.sm },
+    progressBar: { height: 8, backgroundColor: COLORS.mutedLight, borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
+    progressFill: { height: '100%', backgroundColor: COLORS.success },
+    progressText: { fontSize: 12, color: COLORS.textSecondary },
+    submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.success, height: 48, borderRadius: 10, elevation: 4 },
+    submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: SPACING.sm },
+    badge: { position: 'absolute', top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.sm },
     badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
     wspCard: {
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         marginHorizontal: 6,
         marginVertical: 10,
-        padding: 20,
-        borderRadius: 24,
+        padding: SPACING.xl,
+        borderRadius: RADIUS.xl,
         flexDirection: 'row',
         alignItems: 'center',
         elevation: 6,
@@ -270,50 +271,31 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         borderWidth: 1,
-        borderColor: '#e2e8f0'
+        borderColor: COLORS.border,
     },
     wspIconBox: {
         width: 60,
         height: 60,
-        borderRadius: 20,
-        backgroundColor: '#1e293b',
+        borderRadius: RADIUS.lg,
+        backgroundColor: COLORS.textPrimary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 15
+        marginRight: SPACING.md,
     },
-    wspContent: {
-        flex: 1
-    },
-    wspName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1e293b'
-    },
-    wspSub: {
-        fontSize: 12,
-        color: '#64748b',
-        marginTop: 2
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#e2e8f0',
-        marginHorizontal: 20,
-        marginVertical: 15
-    },
+    wspContent: { flex: 1 },
+    wspName: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    wspSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+    divider: { height: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.xl, marginVertical: SPACING.md },
     fixBtn: {
         marginTop: 10,
-        backgroundColor: '#fef2f2',
+        backgroundColor: COLORS.dangerLight,
         borderWidth: 1,
-        borderColor: '#ef4444',
-        borderRadius: 8,
+        borderColor: COLORS.danger,
+        borderRadius: RADIUS.sm,
         paddingVertical: 4,
-        paddingHorizontal: 12
+        paddingHorizontal: 12,
     },
-    fixBtnText: {
-        fontSize: 10,
-        fontWeight: '900',
-        color: '#ef4444'
-    }
+    fixBtnText: { fontSize: 10, fontWeight: '900', color: COLORS.danger },
 });
 
 export default SickLineDashboardScreen;

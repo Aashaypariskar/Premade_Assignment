@@ -79,7 +79,7 @@ const WspScheduleScreen = ({ route, navigation }) => {
         navigation.navigate('QuestionsScreen', navParams);
     };
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
 
     return (
         <View style={styles.container}>
@@ -112,11 +112,11 @@ const WspScheduleScreen = ({ route, navigation }) => {
                             coach_number: coachNumber
                         })}
                     >
-                        <Ionicons name="build-outline" size={20} color="#ef4444" />
+                        <Ionicons name="build-outline" size={20} color={COLORS.danger} />
                         <Text style={styles.defectsTabText}>
                             Resolve {pendingDefectsCount} Pending Defects
                         </Text>
-                        <Ionicons name="chevron-forward" size={16} color="#ef4444" />
+                        <Ionicons name="chevron-forward" size={16} color={COLORS.danger} />
                     </TouchableOpacity>
                 )}
 
@@ -146,7 +146,7 @@ const WspScheduleScreen = ({ route, navigation }) => {
                                             });
                                         }}
                                     >
-                                        <Ionicons name="settings-outline" size={14} color="#2563eb" />
+                                        <Ionicons name="settings-outline" size={14} color={COLORS.secondary} />
                                         <Text style={styles.wspEditBtnText}>Edit {item.name}</Text>
                                     </TouchableOpacity>
                                 )}
@@ -190,37 +190,37 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: SPACING.lg,
         borderWidth: 1,
-        borderColor: '#F1F5F9'
+        borderColor: COLORS.mutedLight,
     },
     cardContent: { flex: 1 },
     catTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
     catSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    wspEditBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#eff6ff', borderRadius: 8, alignSelf: 'flex-start' },
-    wspEditBtnText: { color: '#2563eb', fontSize: 12, fontWeight: 'bold', marginLeft: 4 },
+    wspEditBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: COLORS.primaryLight, borderRadius: RADIUS.sm, alignSelf: 'flex-start' },
+    wspEditBtnText: { color: COLORS.secondary, fontSize: 12, fontWeight: 'bold', marginLeft: 4 },
     defectsTab: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fef2f2',
+        backgroundColor: COLORS.dangerLight,
         padding: 15,
-        borderRadius: 12,
-        marginBottom: 20,
+        borderRadius: RADIUS.md,
+        marginBottom: SPACING.xl,
         borderWidth: 1,
-        borderColor: '#fecaca',
-        borderStyle: 'dashed'
+        borderColor: '#FECACA',
+        borderStyle: 'dashed',
     },
     defectsTabText: {
         flex: 1,
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#ef4444',
-        marginLeft: 10
-    }
+        color: COLORS.danger,
+        marginLeft: 10,
+    },
 });
 
 export default WspScheduleScreen;

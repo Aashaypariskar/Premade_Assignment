@@ -63,7 +63,7 @@ const PitLineTrainListScreen = () => {
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <View style={styles.cardHeader}>
-                <MaterialCommunityIcons name="train" size={24} color="#1E3A8A" />
+                <MaterialCommunityIcons name="train" size={24} color={COLORS.primary} />
                 <Text style={styles.trainNum}>{item.train_number}</Text>
             </View>
             <View style={styles.btnRow}>
@@ -94,7 +94,7 @@ const PitLineTrainListScreen = () => {
                 }
             />
 
-            {loading ? <ActivityIndicator size="large" color="#1E3A8A" /> : (
+            {loading ? <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} /> : (
                 <FlatList
                     data={trains}
                     renderItem={renderItem}
@@ -156,10 +156,10 @@ const styles = StyleSheet.create({
     trainNum: { fontSize: 18, fontWeight: 'bold', marginLeft: SPACING.sm, color: COLORS.primary },
     btnRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     openBtn: {
-        backgroundColor: '#E0F2FE',
+        backgroundColor: COLORS.primaryLight,
         paddingHorizontal: 20,
         paddingVertical: 8,
-        borderRadius: RADIUS.sm
+        borderRadius: RADIUS.sm,
     },
     btnText: { color: COLORS.secondary, fontWeight: 'bold' },
     delBtn: { padding: 8 },

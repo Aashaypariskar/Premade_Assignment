@@ -72,7 +72,7 @@ const SickLineCoachScreen = ({ navigation }) => {
         }
     };
 
-    if (loading && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+    if (loading && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
 
     return (
         <View style={styles.container}>
@@ -108,12 +108,12 @@ const SickLineCoachScreen = ({ navigation }) => {
                                 <Text style={styles.coachNum}>{coach.coach_number}</Text>
                                 <Text style={styles.coachType}>{coach.coach_type || 'General'}</Text>
                             </View>
-                            <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                            <Ionicons name="chevron-forward" size={20} color={COLORS.border} />
                         </TouchableOpacity>
                     ))}
                     {coaches.length === 0 && !loading && (
                         <View style={styles.empty}>
-                            <Ionicons name="bus-outline" size={48} color="#e2e8f0" />
+                            <Ionicons name="bus-outline" size={48} color={COLORS.disabled} />
                             <Text style={styles.emptyText}>No coaches found. Create one to start.</Text>
                         </View>
                     )}
@@ -132,7 +132,7 @@ const SickLineCoachScreen = ({ navigation }) => {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>New Coach Registration</Text>
                             <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-                                <Ionicons name="close" size={24} color="#64748b" />
+                                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
@@ -215,14 +215,14 @@ const styles = StyleSheet.create({
     modalBody: { paddingBottom: 20 },
     label: { fontSize: 14, fontWeight: 'bold', color: COLORS.textSecondary, marginBottom: 8 },
     input: {
-        backgroundColor: '#F9FAFB',
+        backgroundColor: COLORS.background,
         borderWidth: 1,
         borderColor: COLORS.border,
-        borderRadius: 10,
+        borderRadius: RADIUS.sm,
         padding: 14,
         fontSize: 16,
         color: COLORS.textPrimary,
-        marginBottom: 16
+        marginBottom: SPACING.lg,
     },
     submitBtn: { backgroundColor: COLORS.secondary, padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
     submitBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
