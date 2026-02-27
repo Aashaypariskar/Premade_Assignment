@@ -13,6 +13,47 @@ const { calculateCompliance } = require('../utils/compliance');
 
 
 
+// GET /api/commissionary/seed-reasons (TEMPORARY FIX)
+exports.seedReasons = async (req, res) => {
+    try {
+        const [questions] = await sequelize.query("SELECT id FROM questions WHERE category = 'Undergear'");
+        const reasons = [
+            'Complete Failure',
+            'Structural Damage',
+            'Replacement Required',
+            'Safety Hazard',
+            'Beyond Repair',
+            'Non-Functional'
+        ];
+
+        let count = 0;
+        for (const q of questions) {
+            for (const text of reasons) {
+                try {
+                    await sequelize.query(
+                        `INSERT INTO Reasons (question_id, text, created_at, updatedAt) VALUES (?, ?, NOW(), NOW())`,
+                        { replacements: [q.id, text] }
+                    );
+                    count++;
+                } catch (e) {
+                    if (e.name === 'SequelizeUniqueConstraintError' || e.original?.code === 'ER_DUP_ENTRY') continue;
+                    try {
+                        await sequelize.query(
+                            `INSERT INTO Reasons (question_id, text) VALUES (?, ?)`,
+                            { replacements: [q.id, text] }
+                        );
+                        count++;
+                    } catch (e2) { }
+                }
+            }
+        }
+        res.json({ message: `Successfully seeded ${count} reasons for Undergear` });
+    } catch (err) {
+        console.error('Seed Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // GET /api/commissionary/coaches
 exports.listCoaches = async (req, res) => {
     try {
@@ -87,21 +128,21 @@ exports.getOrCreateSession = async (req, res) => {
 exports.getQuestions = async (req, res) => {
     try {
         const { subcategory_id, activity_type, categoryName } = req.query;
+        if (req.query.categoryName?.toLowerCase() === 'undergear') {
+            const questions = await Question.findAll({
+                where: {
+                    category: 'Undergear',
+                    is_active: 1
+                },
+                order: [['display_order', 'ASC']]
+            });
+            return res.json({ questions });
+        }
+
         if (!subcategory_id) return res.status(400).json({ error: 'Missing subcategory_id' });
 
         console.log('[SUBCATEGORY REQUESTED]', req.query.subcategory_id);
         console.log(`[STABILIZATION-INPUT] subcategory_id: ${subcategory_id}, activity_type: ${activity_type}, categoryName: ${categoryName}`);
-
-        if (categoryName === 'Undergear') {
-            const questions = await Question.findAll({
-                where: { category: 'Undergear', is_active: 1 },
-                order: [['display_order', 'ASC']]
-            });
-            return res.json({
-                groups: [{ item_name: 'Undergear', questions }],
-                supportsActivityType: false
-            });
-        }
 
         // Phase 1 & 2: Enforce strict item filtering, remove ANY loose filtering
         const includeConfig = {

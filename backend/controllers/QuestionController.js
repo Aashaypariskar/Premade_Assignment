@@ -1,4 +1,4 @@
-const { Question, Activity, Category, Reason } = require('../models');
+const { Question, Activity, Category, Reason, WspQuestion, SickLineQuestion } = require('../models');
 
 /**
  * QuestionController - Admin Question Management
@@ -8,21 +8,60 @@ const { Question, Activity, Category, Reason } = require('../models');
 // GET /api/questions?activity_id=X (All authenticated users)
 exports.getQuestionsByActivity = async (req, res) => {
     try {
-        const { activity_id, schedule_id } = req.query;
-        if (!activity_id && !schedule_id) {
-            return res.status(400).json({ error: 'activity_id or schedule_id is required' });
+        const { activity_id, schedule_id, module_type, subcategory_id, categoryName } = req.query;
+
+        // UNDERGEAR Branch (Must bypass generic filtering)
+        if (categoryName?.toLowerCase() === 'undergear') {
+            const questions = await Question.findAll({
+                where: {
+                    category: 'Undergear',
+                    is_active: 1
+                },
+                order: [['display_order', 'ASC']]
+            });
+            return res.json({ questions });
+        }
+
+        // WSP Branch
+        if (module_type === 'WSP') {
+            if (!schedule_id) {
+                return res.status(400).json({ error: 'schedule_id is required for WSP' });
+            }
+            const questions = await WspQuestion.findAll({
+                where: { schedule_id },
+                order: [['id', 'ASC']]
+            });
+            return res.json({ questions }); // Returning matched object
+        }
+
+        // SICKLINE Branch
+        if (module_type === 'SICKLINE') {
+            if (!subcategory_id) {
+                return res.status(400).json({ error: 'subcategory_id is required for Sick Line' });
+            }
+            const questions = await SickLineQuestion.findAll({
+                where: { subcategory_id },
+                order: [['id', 'ASC']]
+            });
+            return res.json({ questions }); // Returning matched object
+        }
+
+        // DEFAULT Generic Branch
+        if (!activity_id && !schedule_id && !subcategory_id) {
+            return res.status(400).json({ error: 'activity_id, schedule_id, or subcategory_id is required' });
         }
 
         const where = {};
         if (activity_id) where.activity_id = activity_id;
         if (schedule_id) where.schedule_id = schedule_id;
+        if (subcategory_id) where.subcategory_id = subcategory_id;
 
         const questions = await Question.findAll({
             where,
-            order: [['id', 'ASC']]
+            order: [['display_order', 'ASC']] // Match requested layout config
         });
 
-        res.json(questions);
+        res.json({ questions }); // Returning consistent wrapper
     } catch (err) {
         console.error('Get Questions Error:', err);
         res.status(500).json({ error: 'Failed to fetch questions' });

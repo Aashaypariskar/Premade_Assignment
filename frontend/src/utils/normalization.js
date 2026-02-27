@@ -28,6 +28,10 @@ export const normalizeQuestionResponse = (response) => {
         else if (Array.isArray(response)) {
             rawGroups = response;
         }
+        // Pattern 4: { questions: [...] } — Flat array wrapper (Undergear / QuestionController)
+        else if (response.questions && Array.isArray(response.questions)) {
+            rawGroups = [{ item_name: 'Undergear', questions: response.questions }];
+        }
         // Unknown Shape
         else {
             console.warn('[NORMALIZATION] Unexpected question response shape:', response);

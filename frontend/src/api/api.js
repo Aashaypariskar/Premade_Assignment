@@ -241,8 +241,14 @@ export const getAdminMetadata = async () => {
 };
 
 // Question Management APIs
-export const getQuestionsByActivity = async (activityId) => {
-    const res = await api.get(`/questions?activity_id=${activityId}`);
+export const getQuestionsByActivity = async (activityId, moduleType = null, subcategoryId = null, scheduleId = null, categoryName = null) => {
+    let url = `/questions?`;
+    if (activityId) url += `activity_id=${activityId}&`;
+    if (moduleType) url += `module_type=${moduleType}&`;
+    if (subcategoryId) url += `subcategory_id=${subcategoryId}&`;
+    if (scheduleId) url += `schedule_id=${scheduleId}&`;
+    if (categoryName) url += `categoryName=${encodeURIComponent(categoryName)}&`;
+    const res = await api.get(url.endsWith('&') ? url.slice(0, -1) : url);
     return res.data;
 };
 

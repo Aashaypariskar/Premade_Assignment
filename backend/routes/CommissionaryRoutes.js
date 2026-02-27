@@ -11,6 +11,7 @@ router.post('/coaches', verifyToken, controller.createCoach);
 
 router.get('/session', verifyToken, controller.getOrCreateSession);
 router.get('/questions', verifyToken, controller.getQuestions);
+router.get('/seed-reasons', controller.seedReasons);
 router.get('/answers', verifyToken, controller.getAnswers);
 router.post('/save', verifyToken, (req, res, next) => {
     console.log(`[DEBUG] POST /save - Request received from ${req.ip}`);

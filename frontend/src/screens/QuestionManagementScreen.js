@@ -9,6 +9,8 @@ import { COLORS, SPACING, RADIUS } from '../config/theme';
 const QuestionManagementScreen = ({ route, navigation }) => {
     const { activityId, activityType, categoryName, subcategoryId, scheduleId, coachId } = route.params;
 
+    console.log("QB PARAMS:", route.params);
+
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -36,28 +38,26 @@ const QuestionManagementScreen = ({ route, navigation }) => {
             setLoading(true);
             let data = [];
 
-            if (categoryName === 'Coach Commissionary') {
-                if (!subcategoryId || !activityType) {
-                    Alert.alert('Error', 'Missing subcategory_id or activity_type');
-                    setLoading(false);
-                    return;
-                }
-                const res = await api.get('/commissionary/questions', { params: { subcategory_id: subcategoryId, activity_type: activityType } });
-                data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : []);
-            } else if (categoryName === 'Sick Line Examination') {
-                const res = await api.get('/sickline/questions');
-                data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : []);
-            } else if (categoryName === 'WSP Examination') {
-                if (!scheduleId) {
-                    Alert.alert('Error', 'schedule_id is missing. Cannot load WSP questions.');
-                    setLoading(false);
-                    return;
-                }
-                const res = await api.get('/wsp/questions', { params: { schedule_id: scheduleId, coach_id: coachId } });
-                // WSP returns an array of groups [{item_name, questions}] - Flatten it
-                data = Array.isArray(res.data) ? res.data.flatMap(g => g.questions || []) : [];
+            if (categoryName === 'Coach Commissionary' || categoryName === 'Undergear') {
+                const res = await api.get('/commissionary/questions', {
+                    params: {
+                        subcategory_id: subcategoryId,
+                        activity_type: activityType,
+                        categoryName: categoryName
+                    }
+                });
+                console.log('[EDIT_QS] categoryName:', categoryName, 'res.data keys:', Object.keys(res.data || {}), 'len:', (res.data?.questions || res.data?.groups || []).length);
+                data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : (res.data.questions || []));
+            } else if (categoryName === 'Sick Line Examination' || route.params.module_type === 'SICKLINE') {
+                const res = await getQuestionsByActivity(activityId || null, 'SICKLINE', subcategoryId, null, categoryName);
+                data = res?.questions || [];
+            } else if (categoryName === 'WSP Examination' || route.params.module_type === 'WSP') {
+                // Rely on native generic question store mapped to scheduleId directly
+                const res = await getQuestionsByActivity(activityId || null, 'WSP', null, scheduleId, categoryName);
+                data = res?.questions || [];
             } else {
-                data = await getQuestionsByActivity(activityId);
+                const res = await getQuestionsByActivity(activityId, null, null, null, categoryName);
+                data = res?.questions || res || []; // Fallback handler for previous structures
             }
 
             setQuestions(data);
