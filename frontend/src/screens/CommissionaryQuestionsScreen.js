@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
     getCommissionaryQuestions,
@@ -116,15 +116,17 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
         }
     }, [subcategoryId, activeTab, sessionId, compartmentId]);
 
-    useFocusEffect(
-        useCallback(() => {
-            isMounted.current = true;
-            loadData();
-            return () => {
-                isMounted.current = false;
-            };
-        }, [loadData])
-    );
+    useEffect(() => {
+        isMounted.current = true;
+        loadData();
+        return () => {
+            isMounted.current = false;
+        };
+    }, [loadData]);
+
+    const onRefresh = React.useCallback(() => {
+        loadData();
+    }, [loadData]);
 
     const refreshProgress = async () => {
         try {
@@ -377,7 +379,16 @@ const CommissionaryQuestionsScreen = ({ route, navigation }) => {
                 </View>
             )}
 
-            <ScrollView contentContainerStyle={styles.scroll}>
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={loading}
+                        onRefresh={onRefresh}
+                        colors={[COLORS.primary]}
+                    />
+                }
+            >
                 {Array.isArray(currentQs) && currentQs.length > 0 ? (
                     currentQs.map(renderQuestion)
                 ) : (

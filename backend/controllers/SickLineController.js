@@ -15,7 +15,7 @@ const { calculateCompliance } = require('../utils/compliance');
 exports.listCoaches = async (req, res) => {
     try {
         const coaches = await Coach.findAll({
-            where: { created_by: req.user.id },
+            where: { module_type: 'SICKLINE' },
             order: [['createdAt', 'DESC']]
         });
         res.json(coaches);
@@ -36,6 +36,7 @@ exports.createCoach = async (req, res) => {
         const coach = await Coach.create({
             coach_number,
             coach_type,
+            module_type: 'SICKLINE',
             created_by: req.user.id,
             train_id: 1 // Dummy default
         });
@@ -52,7 +53,20 @@ exports.getOrCreateSession = async (req, res) => {
         if (!coach_number) return res.status(400).json({ error: 'Coach number is required' });
 
         const coach = await Coach.findOne({ where: { coach_number } });
+
+        console.log("SESSION INIT:", {
+            coach_id: coach?.id,
+            coach_number,
+            coach_module_type: coach?.module_type,
+            expected_module: 'SICKLINE'
+        });
+
         if (!coach) return res.status(404).json({ error: 'Coach not found' });
+
+        // Hard Validation: Ensure coach belongs to this module
+        if (coach.module_type !== 'SICKLINE') {
+            return res.status(400).json({ error: 'Invalid coach module for this session type' });
+        }
 
         const today = new Date().toISOString().split('T')[0];
 

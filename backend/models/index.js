@@ -35,6 +35,10 @@ const Train = sequelize.define('Train', {
 const Coach = sequelize.define('Coach', {
     coach_number: { type: DataTypes.STRING, allowNull: false, unique: true },
     coach_type: { type: DataTypes.STRING, allowNull: true },
+    module_type: {
+        type: DataTypes.ENUM('PITLINE', 'COMMISSIONARY', 'SICKLINE', 'WSP', 'CAI'),
+        allowNull: true
+    },
     created_by: { type: DataTypes.INTEGER, allowNull: true } // Who created the coach (null for system coaches)
 }, { tableName: 'coaches', timestamps: true });
 

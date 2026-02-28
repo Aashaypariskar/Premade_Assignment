@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Modal, TextInput, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
     getCaiQuestions,
@@ -86,17 +86,19 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
         }
     }, [sessionId]);
 
-    useFocusEffect(
-        useCallback(() => {
-            isMounted.current = true;
-            // Load both questions/answers and count on focus
-            loadData();
-            loadDefectCount();
-            return () => {
-                isMounted.current = false;
-            };
-        }, [sessionId, loadData])
-    );
+    useEffect(() => {
+        isMounted.current = true;
+        loadData();
+        loadDefectCount();
+        return () => {
+            isMounted.current = false;
+        };
+    }, [loadData]);
+
+    const onRefresh = React.useCallback(() => {
+        loadData();
+        loadDefectCount();
+    }, [loadData]);
 
     const calculateProgress = (qs, ans) => {
         const total = qs.length;
@@ -258,7 +260,16 @@ const CaiQuestionsScreen = ({ route, navigation }) => {
                 </View>
             )}
 
-            <ScrollView contentContainerStyle={styles.scroll}>
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={loading}
+                        onRefresh={onRefresh}
+                        colors={[COLORS.primary]}
+                    />
+                }
+            >
                 {questions.map(q => (
                     <QuestionCard
                         key={q.id}

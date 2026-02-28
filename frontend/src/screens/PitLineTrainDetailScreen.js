@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform
+    Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, RefreshControl
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../api/api';
@@ -24,14 +24,16 @@ const PitLineTrainDetailScreen = () => {
 
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [activeCoachId, setActiveCoachId] = useState(null);
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [newCoachNumber, setNewCoachNumber] = useState('');
 
     // ─── Existing API call — UNCHANGED ──────────────────────────────────────
-    const fetchCoaches = useCallback(async () => {
+    const fetchCoaches = useCallback(async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
             const response = await api.get(`/pitline/coaches?train_id=${trainId}`);
             const list = response.data || [];
             setCoaches(list);
@@ -44,17 +46,26 @@ const PitLineTrainDetailScreen = () => {
             Alert.alert('Error', 'Failed to fetch coaches');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
-    }, [trainId]);
+    }, [trainId, activeCoachId]);
 
     useFocusEffect(
         useCallback(() => {
             fetchCoaches();
-        }, [trainId])
+        }, [fetchCoaches])
     );
+
+    const onRefresh = () => {
+        fetchCoaches(true);
+    };
 
     // ─── Add / delete coach — UNCHANGED ─────────────────────────────────────
     const handleAddCoach = () => {
+        if (user?.role !== 'Admin') {
+            Alert.alert('Permission Denied', 'Only Admins can add coaches.');
+            return;
+        }
         setNewCoachNumber('');
         setAddModalVisible(true);
     };
@@ -146,15 +157,15 @@ const PitLineTrainDetailScreen = () => {
                 title={`Train ${trainNumber}`}
                 onBack={() => navigation.goBack()}
                 onHome={() => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] })}
-                rightComponent={
+                rightComponent={user?.role === 'Admin' && (
                     <TouchableOpacity style={styles.addBtn} onPress={handleAddCoach}>
                         <MaterialCommunityIcons name="plus" size={16} color={COLORS.surface} />
                         <Text style={styles.addText}>Add Coach</Text>
                     </TouchableOpacity>
-                }
+                )}
             />
 
-            {loading ? (
+            {loading && !refreshing ? (
                 <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
             ) : (
                 <>
@@ -167,7 +178,7 @@ const PitLineTrainDetailScreen = () => {
                                 completionMap={{}}
                                 defectMap={{}}
                                 onCoachSelect={(c) => setActiveCoachId(c.id)}
-                                onCoachDelete={handleDeleteCoach}
+                                onCoachDelete={user?.role === 'Admin' ? handleDeleteCoach : null}
                             />
                             <RakeStatusLegend />
                         </>
@@ -183,21 +194,33 @@ const PitLineTrainDetailScreen = () => {
                         style={styles.detailScroll}
                         contentContainerStyle={styles.detailContent}
                         showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[COLORS.primary]}
+                                tintColor={COLORS.primary}
+                            />
+                        }
                     >
-                        <CoachHeaderCard
-                            coach={activeCoach}
-                            completion={0}
-                            defectCount={0}
-                            position={activePosition != null ? activePosition + 1 : null}
-                            onUpdateCoach={handleUpdateCoach}
-                        />
+                        {activeCoach && (
+                            <View>
+                                <CoachHeaderCard
+                                    coach={activeCoach}
+                                    completion={0}
+                                    defectCount={0}
+                                    position={activePosition != null ? activePosition + 1 : null}
+                                    onUpdateCoach={user?.role === 'Admin' ? handleUpdateCoach : null}
+                                />
 
-                        <CoachActionPanel
-                            coach={activeCoach}
-                            defectCount={0}
-                            onStartInspection={handleStartInspection}
-                            onViewDefects={handleViewDefects}
-                        />
+                                <CoachActionPanel
+                                    coach={activeCoach}
+                                    defectCount={0}
+                                    onStartInspection={handleStartInspection}
+                                    onViewDefects={handleViewDefects}
+                                />
+                            </View>
+                        )}
 
                         {/* Info banner */}
                         {coaches.length > 0 && (

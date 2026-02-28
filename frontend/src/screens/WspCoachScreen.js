@@ -1,34 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getWspSession, getCoaches } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
+import { useStore } from '../store/StoreContext';
 
 const WspCoachScreen = ({ route, navigation }) => {
     const category_name = route?.params?.category_name || 'WSP Examination';
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
 
-    // Create Coach Form State (WSP usually doesn't create coaches, but keeping for parity if needed)
-    const [coachNumber, setCoachNumber] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-
-    useEffect(() => {
-        loadCoaches();
-    }, []);
-
-    const loadCoaches = async () => {
+    const loadCoaches = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
             const data = await getCoaches(undefined, category_name);
             setCoaches(data);
         } catch (err) {
             Alert.alert('Error', 'Failed to fetch coaches');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            loadCoaches();
+        }, [category_name])
+    );
+
+    const onRefresh = () => {
+        loadCoaches(true);
     };
 
     const handleSelectCoach = async (coach) => {
@@ -50,7 +57,7 @@ const WspCoachScreen = ({ route, navigation }) => {
         }
     };
 
-    if (loading && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+    if (loading && !refreshing && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
         <View style={styles.container}>
@@ -67,7 +74,18 @@ const WspCoachScreen = ({ route, navigation }) => {
                 <Text style={styles.title}>Select Coach</Text>
                 <Text style={styles.subtitle}>Choose a coach for WSP Daily Examination</Text>
 
-                <ScrollView style={styles.coachList} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    style={styles.coachList}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.primary]}
+                            tintColor={COLORS.primary}
+                        />
+                    }
+                >
                     {coaches.map(coach => (
                         <TouchableOpacity
                             key={coach.id}

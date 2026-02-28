@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getCoaches } from '../api/api';
 import { useStore } from '../store/StoreContext';
 import AppHeader from '../components/AppHeader';
@@ -13,21 +14,31 @@ const CoachSelectionScreen = ({ route, navigation }) => {
     const { trainId, trainName, categoryName } = route.params || {};
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const { setDraft } = useStore();
 
-    useEffect(() => {
-        loadData();
-    }, [trainId, categoryName]);
-
-    const loadData = async () => {
+    const loadData = async (isRefresh = false) => {
         try {
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
             const data = await getCoaches(trainId, categoryName);
             setCoaches(data);
         } catch (e) {
             console.log(e);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+        }, [trainId, categoryName])
+    );
+
+    const onRefresh = () => {
+        loadData(true);
     };
 
     const handleSelect = (item) => {
@@ -55,12 +66,12 @@ const CoachSelectionScreen = ({ route, navigation }) => {
             <View style={styles.coachCard}>
                 <Text style={styles.coachIcon}>🚃</Text>
                 <Text style={styles.coachNum}>{item.coach_number}</Text>
-                <Text style={styles.type}>Sleeper/AC</Text>
+                <Text style={styles.type}>{item.coach_type || 'Sleeper/AC'}</Text>
             </View>
         </TouchableOpacity>
     );
 
-    if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+    if (loading && !refreshing) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
     return (
         <View style={styles.container}>
@@ -86,6 +97,14 @@ const CoachSelectionScreen = ({ route, navigation }) => {
                 renderItem={renderItem}
                 keyExtractor={(item, index) => (item?.id || index).toString()}
                 contentContainerStyle={styles.list}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[COLORS.primary]}
+                        tintColor={COLORS.primary}
+                    />
+                }
             />
         </View>
     );

@@ -7,7 +7,7 @@ const adminRoutes = require('./routes/AdminRoutes');
 const questionRoutes = require('./routes/QuestionRoutes');
 const reasonRoutes = require('./routes/ReasonRoutes');
 const { verifyToken } = require('./middleware/auth');
-const CaiController = require('./controllers/CaiController');
+
 
 const app = express();
 const PORT = 3000;
@@ -42,6 +42,7 @@ app.use((req, res, next) => {
 
 app.use('/public', express.static('public'));
 
+console.log('--- REGISTERING ROUTES ---');
 // Routes
 app.use('/api', authRoutes);
 app.use('/api', auditRoutes);
@@ -55,13 +56,7 @@ app.use('/api/wsp', require('./routes/WspRoutes'));
 app.use('/api/pitline', require('./routes/PitLineRoutes'));
 app.use('/api/common', require('./routes/CommonRoutes'));
 
-// CAI Routes (Explicit Registration)
-app.post('/api/cai/session/start', verifyToken, CaiController.startSession);
-app.get('/api/cai/questions', verifyToken, CaiController.getQuestions);
-app.get('/api/cai/answers', verifyToken, CaiController.getAnswers);
-app.post('/api/cai/submit', verifyToken, CaiController.submitSession);
-app.post('/api/cai/questions/add', verifyToken, CaiController.addQuestion);
-app.post('/api/cai/questions/update', verifyToken, CaiController.updateQuestion);
+app.use('/api/cai', require('./routes/CaiRoutes'));
 
 // Inspection Lifecycle
 const inspectionController = require('./controllers/InspectionController');

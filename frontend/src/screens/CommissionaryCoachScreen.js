@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
-import { getCommissionaryCoaches, createCommissionaryCoach, getCommissionarySession, getCoaches } from '../api/api';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useStore } from '../store/StoreContext';
+import api, { getCommissionaryCoaches, getCommissionarySession, createCommissionaryCoach, getCoaches } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const CommissionaryCoachScreen = ({ route, navigation }) => {
+    const { user } = useStore();
     const category_name = route?.params?.category_name || route?.params?.category || 'Coach Commissionary';
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
 
     // Create Coach Form State
@@ -16,13 +20,10 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
     const [coachType, setCoachType] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        loadCoaches();
-    }, []);
-
-    const loadCoaches = async () => {
+    const loadCoaches = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
             let data;
             if (category_name === 'Coach Commissionary') {
                 data = await getCommissionaryCoaches();
@@ -34,10 +35,25 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
             Alert.alert('Error', 'Failed to fetch coaches');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
+    useFocusEffect(
+        useCallback(() => {
+            loadCoaches();
+        }, [category_name])
+    );
+
+    const onRefresh = () => {
+        loadCoaches(true);
+    };
+
     const handleCreateCoach = async () => {
+        if (user?.role !== 'Admin') {
+            Alert.alert('Permission Denied', 'Only Admins can create coaches.');
+            return;
+        }
         if (!coachNumber.trim()) return Alert.alert('Error', 'Coach number is required');
 
         try {
@@ -101,7 +117,7 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
         }
     };
 
-    if (loading && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
+    if (loading && !refreshing && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
 
     return (
         <View style={styles.container}>
@@ -118,15 +134,28 @@ const CommissionaryCoachScreen = ({ route, navigation }) => {
                 <Text style={styles.title}>Manage Coaches</Text>
                 <Text style={styles.subtitle}>Select an existing coach or create a new one</Text>
 
-                <TouchableOpacity
-                    style={styles.createBtn}
-                    onPress={() => setIsModalVisible(true)}
-                >
-                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                    <Text style={styles.createBtnText}>Create New Coach</Text>
-                </TouchableOpacity>
+                {user?.role === 'Admin' && (
+                    <TouchableOpacity
+                        style={styles.createBtn}
+                        onPress={() => setIsModalVisible(true)}
+                    >
+                        <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                        <Text style={styles.createBtnText}>Create New Coach</Text>
+                    </TouchableOpacity>
+                )}
 
-                <ScrollView style={styles.coachList} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    style={styles.coachList}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.secondary]}
+                            tintColor={COLORS.secondary}
+                        />
+                    }
+                >
                     {coaches.map(coach => (
                         <TouchableOpacity
                             key={coach.id}

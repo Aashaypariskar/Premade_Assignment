@@ -3,6 +3,11 @@ const router = express.Router();
 const controller = require('../controllers/SickLineController');
 const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { authorizeRoles } = require('../middleware/auth');
+
+// Coach Management
+router.get('/coaches', verifyToken, controller.listCoaches);
+router.post('/coaches', verifyToken, authorizeRoles('Admin'), controller.createCoach);
 
 router.get('/session', verifyToken, controller.getOrCreateSession);
 router.get('/questions', verifyToken, controller.getQuestions);

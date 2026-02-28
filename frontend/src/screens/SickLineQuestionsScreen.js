@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
     getSickLineQuestions,
@@ -107,15 +107,17 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
         }
     }, [sessionId]);
 
-    useFocusEffect(
-        useCallback(() => {
-            isMounted.current = true;
-            loadData();
-            return () => {
-                isMounted.current = false;
-            };
-        }, [loadData])
-    );
+    useEffect(() => {
+        isMounted.current = true;
+        loadData();
+        return () => {
+            isMounted.current = false;
+        };
+    }, [loadData]);
+
+    const onRefresh = React.useCallback(() => {
+        loadData();
+    }, [loadData]);
 
     const triggerAutoSave = (qId, data) => {
         if (isLocked) return;
@@ -291,7 +293,16 @@ const SickLineQuestionsScreen = ({ route, navigation }) => {
                     </TouchableOpacity>
                 )}
 
-                <ScrollView contentContainerStyle={styles.list}>
+                <ScrollView
+                    contentContainerStyle={styles.list}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={loading}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.primary]}
+                        />
+                    }
+                >
                     {groups.length > 0 ? (
                         groups.map((group, gIdx) => (
                             <View key={group.item_name || gIdx}>

@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
-import { getCommissionaryCoaches, createCommissionaryCoach, getSickLineSession } from '../api/api';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useStore } from '../store/StoreContext';
+import api, { getSickLineCoaches, createSickLineCoach, getSickLineSession } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
-
-// Sick Line shares coach creation API since coaches are global, but we use SickLineSession specifically
 const SickLineCoachScreen = ({ navigation }) => {
+    const { user } = useStore();
     const [coaches, setCoaches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
 
     // Create Coach Form State
@@ -16,28 +18,40 @@ const SickLineCoachScreen = ({ navigation }) => {
     const [coachType, setCoachType] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        loadCoaches();
-    }, []);
-
-    const loadCoaches = async () => {
+    const loadCoaches = async (isRefresh = false) => {
         try {
-            setLoading(true);
-            const data = await getCommissionaryCoaches();
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
+            const data = await getSickLineCoaches();
             setCoaches(data);
         } catch (err) {
             Alert.alert('Error', 'Failed to fetch coaches');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
+    useFocusEffect(
+        useCallback(() => {
+            loadCoaches();
+        }, [])
+    );
+
+    const onRefresh = () => {
+        loadCoaches(true);
+    };
+
     const handleCreateCoach = async () => {
+        if (user?.role !== 'Admin') {
+            Alert.alert('Permission Denied', 'Only Admins can create coaches.');
+            return;
+        }
         if (!coachNumber.trim()) return Alert.alert('Error', 'Coach number is required');
 
         try {
             setSubmitting(true);
-            await createCommissionaryCoach({
+            await createSickLineCoach({
                 coach_number: coachNumber.trim(),
                 coach_type: coachType.trim()
             });
@@ -72,7 +86,7 @@ const SickLineCoachScreen = ({ navigation }) => {
         }
     };
 
-    if (loading && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
+    if (loading && !refreshing && !isModalVisible) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
 
     return (
         <View style={styles.container}>
@@ -89,15 +103,28 @@ const SickLineCoachScreen = ({ navigation }) => {
                 <Text style={styles.title}>Manage Coaches</Text>
                 <Text style={styles.subtitle}>Select an existing coach or create a new one for Sick Line</Text>
 
-                <TouchableOpacity
-                    style={styles.createBtn}
-                    onPress={() => setIsModalVisible(true)}
-                >
-                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                    <Text style={styles.createBtnText}>Create New Coach</Text>
-                </TouchableOpacity>
+                {user?.role === 'Admin' && (
+                    <TouchableOpacity
+                        style={styles.createBtn}
+                        onPress={() => setIsModalVisible(true)}
+                    >
+                        <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                        <Text style={styles.createBtnText}>Create New Coach</Text>
+                    </TouchableOpacity>
+                )}
 
-                <ScrollView style={styles.coachList} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    style={styles.coachList}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.secondary]}
+                            tintColor={COLORS.secondary}
+                        />
+                    }
+                >
                     {coaches.map(coach => (
                         <TouchableOpacity
                             key={coach.id}

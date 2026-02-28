@@ -58,7 +58,7 @@ exports.seedReasons = async (req, res) => {
 exports.listCoaches = async (req, res) => {
     try {
         const coaches = await Coach.findAll({
-            where: { created_by: req.user.id },
+            where: { module_type: 'COMMISSIONARY' },
             order: [['createdAt', 'DESC']]
         });
         res.json(coaches);
@@ -79,8 +79,9 @@ exports.createCoach = async (req, res) => {
         const coach = await Coach.create({
             coach_number,
             coach_type,
+            module_type: 'COMMISSIONARY',
             created_by: req.user.id,
-            train_id: 1 // Default to a dummy train for now to satisfy FK if not nullable
+            train_id: 1 // Default dummy train
         });
         res.json(coach);
     } catch (err) {
@@ -95,11 +96,24 @@ exports.getOrCreateSession = async (req, res) => {
         if (!coach_number) return res.status(400).json({ error: 'Coach number is required' });
 
         const coach = await Coach.findOne({ where: { coach_number } });
+
+        console.log("SESSION INIT:", {
+            coach_id: coach?.id,
+            coach_number,
+            coach_module_type: coach?.module_type,
+            expected_module: 'COMMISSIONARY'
+        });
+
         if (!coach) return res.status(404).json({ error: 'Coach not found' });
+
+        // Hard Validation: Ensure coach belongs to this module
+        if (coach.module_type !== 'COMMISSIONARY') {
+            return res.status(400).json({ error: 'Invalid coach module for this session type' });
+        }
 
         const today = new Date().toISOString().split('T')[0];
 
-        // Check for ANY session today for this coach
+        // Check for ANY session today for this coach (Global visibility)
         let session = await CommissionarySession.findOne({
             where: {
                 coach_id: coach.id,

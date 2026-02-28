@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
-import { getCommissionaryCoaches, createCommissionaryCoach, startCaiSession } from '../api/api';
+import { getCaiCoaches, createCaiCoach, startCaiSession } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
@@ -22,7 +22,7 @@ const CaiCoachScreen = ({ navigation }) => {
     const loadCoaches = async () => {
         try {
             setLoading(true);
-            const data = await getCommissionaryCoaches();
+            const data = await getCaiCoaches();
             setCoaches(data);
         } catch (err) {
             Alert.alert('Error', 'Failed to fetch coaches');
@@ -36,7 +36,7 @@ const CaiCoachScreen = ({ navigation }) => {
 
         try {
             setSubmitting(true);
-            await createCommissionaryCoach({
+            await createCaiCoach({
                 coach_number: coachNumber.trim(),
                 coach_type: coachType.trim()
             });

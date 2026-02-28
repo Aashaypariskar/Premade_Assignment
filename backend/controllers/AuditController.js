@@ -71,24 +71,42 @@ exports.getCoaches = async (req, res) => {
         const where = {};
         if (train_id && train_id !== 'undefined') where.train_id = train_id;
 
-        const findOptions = {
-            where,
-            include: []
+        const moduleMap = {
+            'WSP Examination': 'WSP',
+            'Coach Commissionary': 'COMMISSIONARY',
+            'Sick Line Examination': 'SICKLINE',
+            'Pit Line': 'PITLINE'
         };
 
-        // If category_name is WSP, we show ALL coaches because WSP is daily and isolated
-        // For other categories, we stay strict to filtered coaches
-        if (category_name === 'WSP Examination') {
-            findOptions.include = [{
+        const targetModule = moduleMap[category_name];
+
+        const findOptions = {
+            where,
+            include: [{
                 model: Category,
-                required: false // Show even if no category record exists
-            }];
-        } else {
-            findOptions.include = [{
-                model: Category,
-                where: category_name ? { name: category_name } : {},
-                required: true
-            }];
+                required: false
+            }]
+        };
+
+        if (category_name) {
+            if (category_name === 'WSP Examination') {
+                // WSP shows all coaches traditionally, but we'll prioritize WSP module_type or any coach if needed
+                // For now, keep it broad as requested per legacy
+                where[Op.or] = [
+                    { module_type: 'WSP' },
+                    { '$Categories.name$': 'WSP Examination' },
+                    { module_type: null } // Broad legacy fallback
+                ];
+            } else if (targetModule) {
+                where[Op.or] = [
+                    { module_type: targetModule },
+                    { '$Categories.name$': category_name }
+                ];
+            } else {
+                // Unknown category, filter by category join only
+                findOptions.include[0].where = { name: category_name };
+                findOptions.include[0].required = true;
+            }
         }
 
         const coaches = await Coach.findAll(findOptions);

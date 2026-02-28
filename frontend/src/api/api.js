@@ -149,6 +149,8 @@ export const getCommissionaryCombinedReport = (sessionId) =>
 
 // --- SICK LINE ENDPOINTS (Isolated) ---
 export const getSickLineSession = (coach_number) => api.get(`/sickline/session?coach_number=${coach_number}`).then(res => res.data);
+export const getSickLineCoaches = () => api.get('/sickline/coaches').then(res => res.data);
+export const createSickLineCoach = (data) => api.post('/sickline/coaches', data).then(res => res.data);
 export const getSickLineQuestions = (params = {}) =>
     api.get('/sickline/questions', { params }).then(r => r.data);
 
@@ -352,6 +354,8 @@ export const getCaiQuestions = () => api.get('/cai/questions').then(res => res.d
 export const getCaiAnswers = (sessionId) => api.get('/cai/answers', { params: { session_id: sessionId } }).then(res => res.data);
 export const startCaiSession = (coachId) => api.post('/cai/session/start', { coach_id: coachId }).then(res => res.data);
 export const submitCaiSession = (sessionId) => api.post('/cai/submit', { session_id: sessionId }).then(res => res.data);
+export const getCaiCoaches = () => api.get('/cai/coaches').then(res => res.data);
+export const createCaiCoach = (data) => api.post('/cai/coaches', data).then(res => res.data);
 
 // Admin
 export const addCaiQuestion = (data) => api.post('/cai/questions/add', data).then(res => res.data);

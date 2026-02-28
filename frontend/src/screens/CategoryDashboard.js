@@ -1,19 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import api, { getUserCategories, getWspProgress } from '../api/api';
 import { useStore } from '../store/StoreContext';
-import { getUserCategories, getWspProgress } from '../api/api';
+import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 const CategoryDashboard = ({ navigation }) => {
     const { user, logout, setDraft } = useStore();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
     const [wspProgress, setWspProgress] = useState(null);
 
-    const fetchCategories = async () => {
+    const fetchCategories = async (isRefresh = false) => {
         try {
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
+
             const data = await getUserCategories();
 
             // Transform data or ensure CAI is present in specific position
@@ -44,12 +51,19 @@ const CategoryDashboard = ({ navigation }) => {
             setError('Could not connect to the server. Please check your connection or IP configuration.');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
-    useEffect(() => {
-        fetchCategories();
-    }, []);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchCategories();
+        }, [])
+    );
+
+    const onRefresh = () => {
+        fetchCategories(true);
+    };
 
     const handleSelectCategory = (categoryName) => {
         // Clear previous draft and start fresh focus
@@ -137,6 +151,14 @@ const CategoryDashboard = ({ navigation }) => {
                         </TouchableOpacity>
                     )}
                     contentContainerStyle={styles.list}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.primary]}
+                            tintColor={COLORS.primary}
+                        />
+                    }
                     ListHeaderComponent={() => (
                         <View style={{ marginBottom: 16 }}>
                             <Text style={styles.sectionTitle}>Inspection Modules</Text>

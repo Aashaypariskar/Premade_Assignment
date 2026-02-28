@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../api/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
+import { useStore } from '../store/StoreContext';
 
 const PitLineTrainListScreen = () => {
     const navigation = useNavigation();
+    const { user } = useStore();
     const [trains, setTrains] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [trainNumber, setTrainNumber] = useState('');
 
-    const fetchTrains = async () => {
+    const fetchTrains = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
             const response = await api.get('/pitline/trains');
             setTrains(response.data);
         } catch (err) {
@@ -23,6 +27,7 @@ const PitLineTrainListScreen = () => {
             Alert.alert('Error', 'Failed to fetch trains');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -31,6 +36,10 @@ const PitLineTrainListScreen = () => {
             fetchTrains();
         }, [])
     );
+
+    const onRefresh = () => {
+        fetchTrains(true);
+    };
 
     const handleAddTrain = async () => {
         if (!trainNumber.trim()) return;
@@ -70,9 +79,11 @@ const PitLineTrainListScreen = () => {
                 <TouchableOpacity style={styles.openBtn} onPress={() => navigation.navigate('PitLineTrainDetail', { train_id: item.id, train_number: item.train_number })}>
                     <Text style={styles.btnText}>Open</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.delBtn} onPress={() => handleDeleteTrain(item.id)}>
-                    <MaterialCommunityIcons name="delete" size={20} color="#EF4444" />
-                </TouchableOpacity>
+                {user?.role === 'Admin' && (
+                    <TouchableOpacity style={styles.delBtn} onPress={() => handleDeleteTrain(item.id)}>
+                        <MaterialCommunityIcons name="delete" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );
@@ -86,21 +97,29 @@ const PitLineTrainListScreen = () => {
                     index: 0,
                     routes: [{ name: 'Dashboard' }],
                 })}
-                rightComponent={
+                rightComponent={user?.role === 'Admin' && (
                     <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
                         <MaterialCommunityIcons name="plus" size={20} color={COLORS.surface} />
                         <Text style={styles.addText}>Add</Text>
                     </TouchableOpacity>
-                }
+                )}
             />
 
-            {loading ? <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} /> : (
+            {loading && !refreshing ? <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} /> : (
                 <FlatList
                     data={trains}
                     renderItem={renderItem}
                     keyExtractor={item => item.id.toString()}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={<Text style={styles.empty}>No trains found. Add one to start.</Text>}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.primary]}
+                            tintColor={COLORS.primary}
+                        />
+                    }
                 />
             )}
 

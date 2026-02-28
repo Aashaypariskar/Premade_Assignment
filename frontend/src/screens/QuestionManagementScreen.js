@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, ScrollView, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useStore } from '../store/StoreContext';
 import api, { getQuestionsByActivity, createQuestion, updateQuestion, deleteQuestion, getReasonsByQuestion, createReason, deleteReason } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
 
 const QuestionManagementScreen = ({ route, navigation }) => {
+    const { user } = useStore();
     const {
         activityId,
         activityType,
@@ -24,10 +26,9 @@ const QuestionManagementScreen = ({ route, navigation }) => {
     const subcategoryIdResolved = subcategoryId || subcategory_id;
     const scheduleId = _scheduleId || schedule_id;
 
-    console.log("QB PARAMS:", route.params);
-
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
@@ -44,13 +45,10 @@ const QuestionManagementScreen = ({ route, navigation }) => {
     const [newReasonText, setNewReasonText] = useState('');
     const [addingReason, setAddingReason] = useState(false);
 
-    useEffect(() => {
-        fetchQuestions();
-    }, []);
-
-    const fetchQuestions = async () => {
+    const fetchQuestions = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (!isRefresh) setLoading(true);
+            else setRefreshing(true);
             let data = [];
 
             if (categoryName === 'Coach Commissionary' || categoryName === 'Undergear') {
@@ -61,7 +59,6 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                         categoryName: categoryName
                     }
                 });
-                console.log('[EDIT_QS] categoryName:', categoryName, 'res.data keys:', Object.keys(res.data || {}), 'len:', (res.data?.questions || res.data?.groups || []).length);
                 data = res.data.groups ? res.data.groups.flatMap(g => g.questions || []) : (Array.isArray(res.data) ? res.data : (res.data.questions || []));
             } else if (categoryName === 'Sick Line Examination' || route.params.module_type === 'SICKLINE') {
                 const res = await getQuestionsByActivity(activityId || null, 'SICKLINE', subcategoryIdResolved, null, categoryName);
@@ -79,7 +76,18 @@ const QuestionManagementScreen = ({ route, navigation }) => {
             Alert.alert('Error', 'Failed to fetch questions');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchQuestions();
+        }, [activityId, subcategoryIdResolved, scheduleId, categoryName])
+    );
+
+    const onRefresh = () => {
+        fetchQuestions(true);
     };
 
     const fetchReasons = async (questionId) => {
@@ -223,20 +231,22 @@ const QuestionManagementScreen = ({ route, navigation }) => {
         <View style={styles.card}>
             <View style={styles.cardHeader}>
                 <Text style={styles.cardNumber}>Q{index + 1}</Text>
-                <View style={styles.cardActions}>
-                    <TouchableOpacity
-                        style={[styles.actionBtn, styles.editBtn]}
-                        onPress={() => openEditModal(item)}
-                    >
-                        <Text style={styles.editBtnText}>Edit / Reasons</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.actionBtn, styles.deleteBtn]}
-                        onPress={() => handleDeleteQuestion(item.id)}
-                    >
-                        <Text style={styles.deleteBtnText}>Delete</Text>
-                    </TouchableOpacity>
-                </View>
+                {user?.role === 'Admin' && (
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, styles.editBtn]}
+                            onPress={() => openEditModal(item)}
+                        >
+                            <Text style={styles.editBtnText}>Edit / Reasons</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, styles.deleteBtn]}
+                            onPress={() => handleDeleteQuestion(item.id)}
+                        >
+                            <Text style={styles.deleteBtnText}>Delete</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
             <Text style={styles.cardText}>{item.text}</Text>
         </View>
@@ -258,12 +268,14 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                     <Text style={styles.title}>{categoryName} - {activityType}</Text>
                     <Text style={styles.count}>{questions.length} Questions</Text>
                 </View>
-                <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-                    <Text style={styles.addBtnText}>+ Add New</Text>
-                </TouchableOpacity>
+                {user?.role === 'Admin' && (
+                    <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
+                        <Text style={styles.addBtnText}>+ Add New</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
-            {loading ? (
+            {loading && !refreshing ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color="#2563eb" />
                 </View>
@@ -273,6 +285,13 @@ const QuestionManagementScreen = ({ route, navigation }) => {
                     keyExtractor={(item, index) => (item?.id || index).toString()}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#2563eb']}
+                        />
+                    }
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyText}>No questions found</Text>

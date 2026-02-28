@@ -13,6 +13,40 @@ const getQuestions = async (req, res) => {
     }
 };
 
+// GET /api/cai/coaches
+const listCoaches = async (req, res) => {
+    try {
+        const coaches = await Coach.findAll({
+            where: { module_type: 'CAI' },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(coaches);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to list CAI coaches' });
+    }
+};
+
+// POST /api/cai/coaches
+const createCoach = async (req, res) => {
+    try {
+        const { coach_number, coach_type } = req.body;
+        if (!coach_number) return res.status(400).json({ error: 'Coach number is required' });
+
+        const existing = await Coach.findOne({ where: { coach_number } });
+        if (existing) return res.status(400).json({ error: 'Coach number already exists' });
+
+        const coach = await Coach.create({
+            coach_number,
+            coach_type,
+            module_type: 'CAI',
+            created_by: req.user.id
+        });
+        res.json(coach);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create CAI coach' });
+    }
+};
+
 // GET /api/cai/answers?session_id=XX
 const getAnswers = async (req, res) => {
     try {
@@ -29,8 +63,24 @@ const getAnswers = async (req, res) => {
 // POST /api/cai/session/start
 const startSession = async (req, res) => {
     try {
-        console.log("[CAI SESSION START]", req.body);
         const { coach_id } = req.body;
+
+        // Find coach to check module type
+        const coach = await Coach.findByPk(coach_id);
+
+        console.log("SESSION INIT:", {
+            coach_id,
+            coach_module_type: coach?.module_type,
+            expected_module: 'CAI'
+        });
+
+        if (!coach) return res.status(404).json({ error: 'Coach not found' });
+
+        // Hard Validation: Ensure coach belongs to this module
+        if (coach.module_type !== 'CAI') {
+            return res.status(400).json({ error: 'Invalid coach module for this session type' });
+        }
+
         if (!coach_id) return res.status(400).json({ error: 'coach_id is required' });
 
         let session = await CaiSession.findOne({
@@ -47,6 +97,7 @@ const startSession = async (req, res) => {
 
         res.json({ session_id: session.id });
     } catch (err) {
+        console.error('Cai startSession Error:', err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -108,5 +159,7 @@ module.exports = {
     startSession,
     submitSession,
     addQuestion,
-    updateQuestion
+    updateQuestion,
+    listCoaches,
+    createCoach
 };

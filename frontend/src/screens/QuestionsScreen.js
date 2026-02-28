@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api, {
     getQuestions,
@@ -153,16 +153,17 @@ const QuestionsScreen = ({ route, navigation }) => {
         }
     }, [params.subcategoryId, params.subcategory_id, params.activityId, params.scheduleId, params.categoryName]);
 
-    useFocusEffect(
-        useCallback(() => {
-            isMounted.current = true;
-            fetchRef.current = null;
-            loadData();
-            return () => {
-                isMounted.current = false;
-            };
-        }, [loadData])
-    );
+    useEffect(() => {
+        isMounted.current = true;
+        loadData();
+        return () => {
+            isMounted.current = false;
+        };
+    }, [loadData]);
+
+    const onRefresh = React.useCallback(() => {
+        loadData();
+    }, [loadData]);
 
     const getAnswerKey = (qId) => {
         if (!qId) {
@@ -454,7 +455,16 @@ const QuestionsScreen = ({ route, navigation }) => {
 
             {console.log('QUESTIONS STATE:', questions)}
             {isUndergear ? (
-                <ScrollView contentContainerStyle={{ padding: 16 }}>
+                <ScrollView
+                    contentContainerStyle={{ padding: 16 }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={loading}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.secondary]}
+                        />
+                    }
+                >
                     {questions?.map((q, index) => (
                         <QuestionCard
                             key={q.id || index}
@@ -470,7 +480,16 @@ const QuestionsScreen = ({ route, navigation }) => {
                     ))}
                 </ScrollView>
             ) : (
-                <ScrollView contentContainerStyle={{ padding: 16 }}>
+                <ScrollView
+                    contentContainerStyle={{ padding: 16 }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={loading}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.secondary]}
+                        />
+                    }
+                >
                     {questions?.map((group, groupIndex) => (
                         <View key={groupIndex} style={{ marginBottom: 20 }}>
                             <Text style={{
