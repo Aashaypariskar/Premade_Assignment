@@ -92,6 +92,8 @@ export const getAmenitySubcategories = async (categoryName, coachId) => {
 
 // --- WSP (New Architecture) ---
 export const getWspSession = (coach_number) => api.get(`/wsp/session?coach_number=${coach_number}`).then(res => res.data);
+export const getWspCoaches = () => api.get('/wsp/coaches').then(res => res.data);
+export const createWspCoach = (data) => api.post('/wsp/coaches', data).then(res => res.data);
 export const getWspSchedules = () => api.get('/wsp/schedules').then(res => res.data);
 export const getWspQuestions = (scheduleId) => api.get(`/wsp/questions?schedule_id=${scheduleId}`).then(res => res.data);
 export const getWspAnswers = (sessionId, mode, scheduleId) =>

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getWspSchedules, getWspSession } from '../api/api';
+import { getWspSchedules, getWspSession, getWspProgress } from '../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SPACING, RADIUS } from '../config/theme';
@@ -39,7 +39,7 @@ const WspScheduleScreen = ({ route, navigation }) => {
                         setPendingDefectsCount(count);
                     }
                 }
-            } else if (mode === 'SICKLINE' && sickLineSessionId) {
+            } else if (mode === 'SICKLINE' && sick_line_session_id) {
                 const progress = await getWspProgress(coachNumber, mode);
                 const count = progress.pendingDefects || progress.pending_defects || 0;
                 setPendingDefectsCount(count);
@@ -62,7 +62,16 @@ const WspScheduleScreen = ({ route, navigation }) => {
         init(true);
     };
 
-    // handleSelect ... UNCHANGED
+    const handleSelect = (item) => {
+        navigation.navigate('QuestionsScreen', {
+            session_id: wspSession?.id,
+            schedule_id: item.id,
+            schedule_name: item.name,
+            module_type: 'WSP',
+            mode: mode,
+            category_name: categoryName
+        });
+    };
 
     if (loading && !refreshing) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.secondary} /></View>;
 
@@ -95,9 +104,9 @@ const WspScheduleScreen = ({ route, navigation }) => {
                                         style={styles.wspEditBtn}
                                         onPress={() => {
                                             navigation.navigate('QuestionManagement', {
-                                                category_name: route.params.category_name,
+                                                category_name: category_name,
                                                 scheduleId: item.id,
-                                                coach_id: route.params.coach_id || route.params.coachId,
+                                                coach_id: coach_id,
                                                 activityType: item.name
                                             });
                                         }}

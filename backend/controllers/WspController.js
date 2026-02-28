@@ -3,13 +3,60 @@ const {
 } = require('../models');
 const { Op } = require('sequelize');
 
+// GET /api/wsp/coaches
+exports.listCoaches = async (req, res) => {
+    try {
+        const coaches = await Coach.findAll({
+            where: { module_type: 'WSP' },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(coaches);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to list WSP coaches' });
+    }
+};
+
+// POST /api/wsp/coaches
+exports.createCoach = async (req, res) => {
+    try {
+        const { coach_number, coach_type } = req.body;
+        if (!coach_number) return res.status(400).json({ error: 'Coach number is required' });
+
+        const existing = await Coach.findOne({ where: { coach_number } });
+        if (existing) return res.status(400).json({ error: 'Coach number already exists' });
+
+        const coach = await Coach.create({
+            coach_number,
+            coach_type,
+            module_type: 'WSP',
+            created_by: req.user.id
+        });
+        res.json(coach);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create WSP coach' });
+    }
+};
+
 exports.getOrCreateSession = async (req, res) => {
     try {
         const { coach_number } = req.query;
         if (!coach_number) return res.status(400).json({ error: 'Coach number is required' });
 
         const coach = await Coach.findOne({ where: { coach_number } });
+
+        console.log("SESSION INIT:", {
+            coach_id: coach?.id,
+            coach_number,
+            coach_module_type: coach?.module_type,
+            expected_module: 'WSP'
+        });
+
         if (!coach) return res.status(404).json({ error: 'Coach not found' });
+
+        // Hard Validation: Ensure coach belongs to this module
+        if (coach.module_type !== 'WSP') {
+            return res.status(400).json({ error: 'Invalid coach module for this session type' });
+        }
 
         const today = new Date().toISOString().split('T')[0];
         let session = await WspSession.findOne({

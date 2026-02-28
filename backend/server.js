@@ -55,7 +55,6 @@ app.use('/api/sickline', require('./routes/SickLineRoutes'));
 app.use('/api/wsp', require('./routes/WspRoutes'));
 app.use('/api/pitline', require('./routes/PitLineRoutes'));
 app.use('/api/common', require('./routes/CommonRoutes'));
-
 app.use('/api/cai', require('./routes/CaiRoutes'));
 
 // Inspection Lifecycle
