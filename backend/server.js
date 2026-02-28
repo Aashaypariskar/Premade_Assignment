@@ -56,6 +56,7 @@ app.use('/api/wsp', require('./routes/WspRoutes'));
 app.use('/api/pitline', require('./routes/PitLineRoutes'));
 app.use('/api/common', require('./routes/CommonRoutes'));
 app.use('/api/cai', require('./routes/CaiRoutes'));
+app.use('/api/monitoring', require('./routes/MonitoringRoutes'));
 
 // Inspection Lifecycle
 const inspectionController = require('./controllers/InspectionController');
@@ -92,8 +93,21 @@ sequelize.authenticate()
     })
     .then(() => {
         console.log('--- SCHEMA SYNCED ---');
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`--- BACKEND IS LIVE ---`);
+
+        // Socket.IO Base Setup (Attached to Server)
+        const http = require('http');
+        const server = http.createServer(app);
+        const io = require('socket.io')(server, {
+            cors: { origin: "*", methods: ["GET", "POST"] }
+        });
+
+        io.on('connection', (socket) => {
+            console.log(`[SOCKET] Monitoring client connected: ${socket.id}`);
+            socket.on('disconnect', () => console.log(`[SOCKET] Client disconnected: ${socket.id}`));
+        });
+
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`--- BACKEND IS LIVE (Real-time Enabled) ---`);
             console.log(`Listening on http://localhost:${PORT}`);
             console.log(`Or http://192.168.1.2:${PORT} (for mobile)`);
         });

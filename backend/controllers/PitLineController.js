@@ -158,24 +158,20 @@ exports.startSession = async (req, res) => {
     try {
         const { train_id, coach_id, inspector_id } = req.body;
 
-        // Find coach to check module type
-        const coach = await Coach.findByPk(coach_id);
-
-        console.log("SESSION INIT:", {
-            coach_id,
-            coach_module_type: coach?.module_type,
-            expected_module: 'PITLINE'
-        });
-
-        if (!coach) return res.status(404).json({ error: 'Coach not found' });
-
-        // Hard Validation: Ensure coach belongs to this module
-        if (coach.module_type !== 'PITLINE') {
-            return res.status(400).json({ error: 'Invalid coach module for this session type' });
-        }
-
         if (!train_id || !coach_id) {
             return res.status(400).json({ error: 'train_id and coach_id are required' });
+        }
+
+        // Find coach
+        const coach = await PitLineCoach.findByPk(coach_id);
+
+        if (!coach) {
+            return res.status(404).json({ error: 'Coach not found' });
+        }
+
+        // Validate Train Context
+        if (coach.train_id !== train_id) {
+            return res.status(400).json({ error: 'Coach does not belong to this train' });
         }
 
         let session = await PitLineSession.findOne({
@@ -189,7 +185,7 @@ exports.startSession = async (req, res) => {
                 inspector_id: inspector_id || req.user.id,
                 status: 'IN_PROGRESS'
             });
-            console.log(`[PITLINE] New session created: ${session.id}`);
+            console.log("[PITLINE] New session created:", session.id);
         } else {
             console.log(`[PITLINE] Resuming session: ${session.id}`);
         }
